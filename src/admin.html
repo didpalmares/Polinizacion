@@ -1,0 +1,731 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Administración · Polinización</title>
+<link rel="icon" href="icons/icon-192.png">
+<style>/*FUENTES*/</style>
+<style>
+:root{--fondo:#06140f;--panel:#0b2119;--borde:rgba(144,205,241,.18);--borde2:rgba(255,255,255,.10);--texto:#eaf5f0;--tenue:#94b6a9;
+  --acento:#22d39a;--acento2:#0f9d6b;--naranja:#ee7633;--rojo:#ff5d5d;--ambar:#ffc53d;--t:'Rajdhani',system-ui,sans-serif}
+*{box-sizing:border-box}
+html{background:#06140f}
+body{margin:0;background:radial-gradient(120% 60% at 50% 0%,#0d3a2a 0%,#06140f 55%) fixed;color:var(--texto);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+button,input,select{font:inherit;color:inherit}
+.contenedor{max-width:980px;margin:0 auto;padding:24px 16px 60px}
+header{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-bottom:18px}
+.logo{background:#fff;border-radius:16px;padding:10px 16px}
+.logo img{height:56px;display:block}
+h1{font-family:var(--t);letter-spacing:3px;font-size:26px;margin:0}
+h1 small{display:block;font-size:13px;letter-spacing:2px;color:var(--tenue)}
+h2{font-family:var(--t);letter-spacing:1.5px;font-size:20px;margin:0 0 6px;color:var(--acento);text-transform:uppercase}
+.tarjeta{background:rgba(11,33,25,.85);border:1px solid var(--borde);border-radius:18px;padding:18px;margin:14px 0;box-shadow:0 12px 30px rgba(0,0,0,.35)}
+.tenue{color:var(--tenue);font-size:13.5px}
+label{display:block;margin:12px 0 5px;font-weight:600;font-size:13px;color:#cfe6dc}
+input[type=text],input[type=password],input[type=file],select{width:100%;padding:10px 12px;border:1px solid var(--borde2);border-radius:12px;background:rgba(255,255,255,.06);outline:none}
+input:focus,select:focus{border-color:var(--acento);box-shadow:0 0 0 3px rgba(34,211,154,.18)}
+select option{background:#0c2219}
+.fila{display:flex;gap:10px;flex-wrap:wrap}
+.fila>*{flex:1;min-width:150px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--borde);background:rgba(255,255,255,.06);padding:10px 14px;border-radius:12px;font-family:var(--t);font-weight:700;font-size:16px;letter-spacing:.6px;cursor:pointer}
+.btn.prim{background:linear-gradient(145deg,#26d9a0,var(--acento2));border-color:transparent;color:#032a1d}
+.btn.nar{background:linear-gradient(145deg,#ff9a5c,var(--naranja));border-color:transparent;color:#fff}
+.btn.peligro{color:#ffb3b3;border-color:rgba(255,93,93,.45)}
+.btn.chico{padding:6px 10px;font-size:14px}
+.btn:disabled{opacity:.45;cursor:default}
+.tabs{display:flex;gap:8px;flex-wrap:wrap}
+.tabs button{border:1px solid var(--borde2);background:transparent;color:var(--tenue);border-radius:999px;padding:8px 16px;font-family:var(--t);font-weight:700;font-size:16px;cursor:pointer}
+.tabs button.on{background:var(--acento);color:#032a1d;border-color:var(--acento)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:8px 6px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left;vertical-align:middle}
+th{font-family:var(--t);letter-spacing:.8px;text-transform:uppercase;color:var(--tenue);font-size:13px}
+td input,td select{padding:8px 10px}
+.aviso{background:rgba(255,197,61,.10);border:1px solid rgba(255,197,61,.45);color:#ffe6a6;border-radius:12px;padding:10px 12px;font-size:13.5px;margin:10px 0}
+.ok{background:rgba(34,211,154,.10);border:1px solid rgba(34,211,154,.5);color:#c9f7e6;border-radius:12px;padding:10px 12px;font-size:14px;margin:10px 0}
+.err{color:var(--rojo);font-size:13.5px;min-height:18px;margin-top:6px}
+.paso{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--naranja);color:#fff;font-family:var(--t);font-weight:700;margin-right:8px}
+code{background:rgba(255,255,255,.08);padding:1px 6px;border-radius:6px}
+.rEnf{border:1px solid var(--borde);border-radius:14px;padding:10px;margin:10px 0;background:rgba(255,255,255,.03)}
+.rEnf .cab{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.rEnf .cab input[type=text]{flex:1;min-width:160px}
+.rEnf .cab input.cod{flex:0 0 90px;min-width:0;text-transform:uppercase}
+.rEnf input[type=color]{width:42px;height:36px;padding:2px;border-radius:8px;border:1px solid var(--borde2);background:none}
+.rOp{display:grid;grid-template-columns:1.2fr 1fr 1.6fr 1fr auto;gap:6px;align-items:start;border-top:1px dashed rgba(255,255,255,.12);padding-top:8px;margin-top:8px}
+.rOp textarea{width:100%;min-height:62px;padding:8px;border:1px solid var(--borde2);border-radius:10px;background:rgba(255,255,255,.06);color:inherit;font:inherit;font-size:13px}
+.rOp .flags{grid-column:1/-1;display:flex;gap:12px;flex-wrap:wrap;font-size:13px;align-items:center}
+.rOp .flags label{display:inline-flex;gap:5px;margin:0;font-weight:500}
+.rOp .flags input[type=text]{flex:1;min-width:200px;padding:6px 10px}
+.rOp small{display:block;color:var(--tenue);font-size:11.5px;margin-bottom:2px}
+@media (max-width:760px){.rOp{grid-template-columns:1fr}}
+[hidden]{display:none!important}
+.chips-res{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.chips-res span{border:1px solid var(--borde2);border-radius:999px;padding:4px 10px;font-size:13px;color:var(--tenue)}
+.chips-res b{color:var(--texto);font-family:var(--t);font-size:16px}
+table.usuarios td{font-size:13.5px}
+.sello{display:inline-block;border-radius:999px;padding:2px 8px;font-size:12px;font-weight:700;letter-spacing:.3px;white-space:nowrap}
+.sello.act{background:rgba(34,211,154,.15);color:#8ff0cd}.sello.sus{background:rgba(255,93,93,.15);color:#ffb3b3}
+.sello.nuevo{background:rgba(238,118,51,.18);color:#ffc29e}.sello.cambio{background:rgba(255,197,61,.15);color:#ffe08a}
+.acciones{display:flex;gap:5px;flex-wrap:wrap}
+.form-usr{border:1px solid var(--acento);border-radius:16px;padding:14px;margin-top:14px;background:rgba(34,211,154,.05)}
+.check{display:inline-flex;align-items:center;gap:6px;margin:6px 14px 0 0;font-weight:500}
+.check input{width:auto}
+</style>
+</head>
+<body>
+<div class="contenedor">
+  <header>
+    <div class="logo"><img src="__LOGO__" alt="Palmas de Tumaco"></div>
+    <h1>POLINIZACIÓN<small>ADMINISTRACIÓN DE ACCESOS</small></h1>
+  </header>
+  <div class="aviso">Todo el cifrado ocurre en este navegador: el token y las contraseñas no se envían a ningún servidor. Los archivos que genere se publican en la carpeta <code>datos/</code> del repositorio de la aplicación.</div>
+  <div class="tabs" id="tabs"><button data-t="crear" class="on">Crear paquete nuevo</button><button data-t="editar">Modificar paquete existente</button></div>
+
+  <!-- ================= CREAR ================= -->
+  <section id="crear">
+    <div class="tarjeta">
+      <h2><span class="paso">1</span>Repositorio de datos y token</h2>
+      <div class="fila">
+        <div><label>Usuario u organización</label><input type="text" id="cOwner" value="didpalmares"></div>
+        <div><label>Repositorio privado de datos</label><input type="text" id="cRepo" value="PolinizacionData"></div>
+        <div><label>Rama</label><input type="text" id="cRama" value="main"></div>
+      </div>
+      <label>Token de acceso (fine-grained, Contents: Read and write)</label>
+      <div class="fila"><input type="password" id="cToken" placeholder="github_pat_…" autocomplete="off" style="flex:3"><button class="btn" id="cProbar" style="flex:1">Probar token</button></div>
+      <div class="err" id="cTokenMsg"></div>
+    </div>
+    <div class="tarjeta">
+      <h2><span class="paso">2</span>Cartografía</h2>
+      <p class="tenue">Seleccione los dos archivos a la vez: <code>lotes.geojson</code> y <code>palmas.zip</code>.</p>
+      <input type="file" id="cCarto" multiple accept=".geojson,.json,.zip">
+      <div class="tenue" id="cCartoMsg"></div>
+    </div>
+    <div class="tarjeta">
+      <h2><span class="paso">3</span>Usuarios</h2>
+      <p class="tenue">Usuario: minúsculas, números, punto o guion (mín. 3). Contraseña: mínimo 8 caracteres con letras y números. Debe haber al menos un administrador.</p>
+      <table><thead><tr><th>Usuario</th><th>Nombre completo</th><th>Rol</th><th>Contraseña</th><th></th></tr></thead><tbody id="cUsuarios"></tbody></table>
+      <button class="btn chico" id="cAgregar" style="margin-top:10px">＋ Agregar usuario</button>
+    </div>
+    <div class="tarjeta">
+      <h2><span class="paso">4</span>Generar</h2>
+      <button class="btn nar" id="cGenerar">GENERAR ARCHIVOS CIFRADOS</button>
+      <div class="err" id="cMsg"></div>
+      <div id="cOk" hidden></div>
+    </div>
+  </section>
+
+  <!-- ================= EDITAR ================= -->
+  <section id="editar" hidden>
+    <div class="tarjeta">
+      <h2><span class="paso">1</span>Abrir paquete</h2>
+      <label>Archivo <code>acceso.json</code> actual</label><input type="file" id="eArchivo" accept=".json">
+      <div class="fila">
+        <div><label>Usuario administrador</label><input type="text" id="eUser" autocapitalize="none"></div>
+        <div><label>Contraseña</label><input type="password" id="eClave"></div>
+      </div>
+      <button class="btn prim" id="eAbrir" style="margin-top:12px">ABRIR</button>
+      <div class="err" id="eAbrirMsg"></div>
+    </div>
+    <div id="ePanel" hidden>
+      <div class="tarjeta">
+        <h2>Usuarios</h2>
+        <p class="tenue" id="eYo" style="margin:0 0 6px"></p>
+        <div class="chips-res" id="eResumen"></div>
+        <div class="fila" style="margin:10px 0">
+          <input type="text" id="eBuscar" placeholder="Buscar por usuario, nombre, cargo o identificación" style="flex:3;min-width:220px">
+          <select id="eFRol"><option value="">Todos los roles</option><option value="operario">Operarios</option><option value="supervisor">Supervisores</option><option value="analista">Analistas de datos</option><option value="admin">Administradores</option><option value="superadmin">Super administradores</option></select>
+          <select id="eFLab"><option value="">Todas las labores</option><option value="censo">Censo</option><option value="cirugia">Cirugía</option><option value="erradicacion">Erradicación</option><option value="plagas">Monitoreo de plagas</option><option value="inactivo">Suspendidos</option><option value="cambios">Con cambios</option></select>
+        </div>
+        <div style="overflow-x:auto"><table class="usuarios"><thead><tr><th>Usuario</th><th>Nombre</th><th>Cargo</th><th>Rol</th><th>Labores</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="eLista"></tbody></table></div>
+        <div class="fila" style="margin-top:12px"><button class="btn chico prim" id="eAgregar">＋ Nuevo usuario</button><button class="btn chico" id="eImport">⬆ Cargar desde Excel o CSV</button><button class="btn chico" id="eCsv">⬇ Exportar lista (CSV, sin contraseñas)</button><button class="btn chico" id="eHist">🕘 Historial de cambios</button></div>
+        <input type="file" id="eImportF" accept=".csv,.xlsx,.txt" hidden>
+        <div id="eHistBox" class="form-usr" hidden></div>
+        <div id="eForm" class="form-usr" hidden></div>
+        <p class="tenue" style="margin-top:10px">Los cambios quedan marcados como <b>pendientes</b> y se aplican al pulsar <b>GENERAR ARCHIVOS ACTUALIZADOS</b> (al final de esta página).</p>
+      </div>
+      <div class="tarjeta">
+        <h2>Token y repositorio</h2>
+        <div class="fila">
+          <div><label>Usuario u organización</label><input type="text" id="eOwner"></div>
+          <div><label>Repositorio de datos</label><input type="text" id="eRepo"></div>
+          <div><label>Rama</label><input type="text" id="eRama"></div>
+        </div>
+        <label>Nuevo token (déjelo vacío para conservar el actual)</label>
+        <div class="fila"><input type="password" id="eToken" placeholder="github_pat_…" autocomplete="off" style="flex:3"><button class="btn" id="eProbar" style="flex:1">Probar token</button></div>
+        <div class="err" id="eTokenMsg"></div>
+      </div>
+      <div class="tarjeta">
+        <h2>Cartografía</h2>
+        <p class="tenue">Versión actual: <b id="eCartoVer"></b>. Para reemplazarla, seleccione los nuevos <code>lotes.geojson</code> y <code>palmas.zip</code>; si no, deje vacío.</p>
+        <input type="file" id="eCarto" multiple accept=".geojson,.json,.zip">
+      </div>
+      <div class="tarjeta">
+        <h2>Límite de la plantación</h2>
+        <p class="tenue">Versión actual: <b id="ePlantVer">—</b>. Polígono de toda la plantación (<code>.geojson</code> en WGS84, por ejemplo <code>plantacion.geojson</code>). La app no deja iniciar jornada por fuera de él. Se publica cifrado como <code>plantacion.enc</code>. Si no lo va a cambiar, deje vacío.</p>
+        <input type="file" id="ePlant" accept=".geojson,.json">
+      </div>
+      <div class="tarjeta">
+        <h2>Alertas y reportes automáticos</h2>
+        <p class="tenue">Reporte <b>diario</b> (lunes a sábado, 3:00 p. m., sin festivos) y <b>semanal</b> (lunes 6:00 a. m.) con PDF y mapa, reporte interactivo y Excel; <b>alertas</b> automáticas. Se envían por correo (Microsoft 365) y WhatsApp. Configuración guardada en <code>config/alertas.json</code> del repositorio de datos.</p>
+        <button class="btn" id="aAbrir">Abrir la configuración de alertas y reportes</button>
+        <div id="aEditor" hidden></div>
+        <div class="err" id="aMsg"></div>
+      </div>
+      <div class="tarjeta">
+        <h2>Diagnóstico sugerido por IA (piloto)</h2>
+        <p class="tenue">Con la foto de la palma, la App sugiere el diagnóstico del formulario y el operario lo confirma o corrige. Usa un servicio intermedio propio (Cloudflare Worker, carpeta <code>ia/</code> del repositorio de la App) que guarda la clave de Anthropic. Configuración en <code>config/servicios.json</code>.</p>
+        <button class="btn" id="iAbrir">Abrir la configuración de la IA</button>
+        <div id="iEditor" hidden></div>
+        <div class="err" id="iMsg"></div>
+      </div>
+      <div class="tarjeta">
+        <h2>Formulario de diagnóstico</h2>
+        <p class="tenue">Enfermedades principales, sus opciones, síntomas, estados del hongo y campos que aplican. Se guarda en el repositorio de datos (<code>config/ramas.json</code>); la App lo toma al ingresar con internet. Versión publicada: <b id="rVer">—</b></p>
+        <button class="btn" id="rAbrir">Abrir el editor del formulario</button>
+        <div id="rEditor" hidden></div>
+        <div class="err" id="rMsg"></div>
+      </div>
+      <div class="tarjeta">
+        <button class="btn nar" id="eGuardar">GENERAR ARCHIVOS ACTUALIZADOS</button>
+        <div class="err" id="eMsg"></div>
+        <div id="eOk" hidden></div>
+      </div>
+    </div>
+  </section>
+</div>
+<script>/*LIB_JSZIP*/</script>
+<script>
+'use strict';
+const ITER=600000,FORMATO='polinizacion-acceso-1';
+const $=s=>document.querySelector(s),$$=s=>Array.from(document.querySelectorAll(s));
+const enc=new TextEncoder(),dec=new TextDecoder();
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const b64=b=>{const a=new Uint8Array(b);let s='';for(let i=0;i<a.length;i+=0x8000)s+=String.fromCharCode.apply(null,a.subarray(i,i+0x8000));return btoa(s);};
+const deB64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const rnd=n=>crypto.getRandomValues(new Uint8Array(n));
+const pad=n=>String(n).padStart(2,'0');
+function versionAhora(){const d=new Date();return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;}
+function descargar(datos,nombre,tipo){const u=URL.createObjectURL(datos instanceof Blob?datos:new Blob([datos],{type:tipo||'application/octet-stream'}));const a=document.createElement('a');a.href=u;a.download=nombre;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),8000);}
+
+/* ---------- Criptografía ---------- */
+async function kek(clave,salt){const base=await crypto.subtle.importKey('raw',enc.encode(clave),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:ITER,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);}
+const llaveDatos=raw=>crypto.subtle.importKey('raw',raw,{name:'AES-GCM'},false,['encrypt','decrypt']);
+async function cifrar(llave,bytes){const iv=rnd(12);const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},llave,bytes);return {iv:b64(iv),ct:b64(ct)};}
+async function descifrar(llave,o){return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:deB64(o.iv)},llave,deB64(o.ct)));}
+async function entradaUsuario(dk,dkRaw,u,nombre,rol,clave,extra){
+  const salt=rnd(16);const k=await kek(clave,salt);const w=await cifrar(k,dkRaw);
+  return {u,salt:b64(salt),iv:w.iv,ct:w.ct,meta:await cifrar(dk,enc.encode(JSON.stringify({...(extra||{}),nombre,rol})))}; // conserva cargo, labores y demás datos
+}
+/* Límite de la plantación: GeoJSON (Polygon/MultiPolygon, WGS84) cifrado en formato SPC1, igual que vias.enc. */
+async function cifrarPlantacion(dk,file){
+  const gj=JSON.parse(await file.text());const fs=(gj.type==='FeatureCollection'?gj.features:gj.type==='Feature'?[gj]:[{type:'Feature',properties:{},geometry:gj}])
+    .filter(f=>f&&f.geometry&&/^(Multi)?Polygon$/.test(f.geometry.type));
+  if(!fs.length)throw new Error('El archivo del límite de la plantación no contiene polígonos.');
+  const c=fs[0].geometry.coordinates.flat(3);if(!c.length||Math.abs(c[0])>180||Math.abs(c[1])>90)throw new Error('El límite de la plantación debe estar en coordenadas geográficas WGS84 (EPSG:4326).');
+  const plano=enc.encode(JSON.stringify({type:'FeatureCollection',name:'plantacion',features:fs.map(f=>({type:'Feature',properties:f.properties||{},geometry:f.geometry}))}));
+  const iv=rnd(12);const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},dk,plano));
+  const out=new Uint8Array(4+12+ct.length);out.set(enc.encode('SPC1'),0);out.set(iv,4);out.set(ct,16);
+  return {bytes:out,poligonos:fs.length};
+}
+async function cifrarCarto(dk,files){
+  const fl=files.find(f=>/\.(geo)?json$/i.test(f.name)),fz=files.find(f=>/\.zip$/i.test(f.name));
+  if(!fl||!fz)throw new Error('Seleccione los dos archivos: lotes.geojson y palmas.zip.');
+  const gj=JSON.parse(await fl.text());if(!gj.features||!gj.features.length)throw new Error('lotes.geojson no contiene polígonos.');
+  const zp=await JSZip.loadAsync(await fz.arrayBuffer());if(!zp.file('indice.json'))throw new Error('palmas.zip no contiene indice.json (formato de Polinización).');
+  const z=new JSZip();z.file('lotes.geojson',await fl.text(),{compression:'DEFLATE'});z.file('palmas.zip',await fz.arrayBuffer(),{compression:'STORE'});
+  const plano=await z.generateAsync({type:'uint8array'});
+  const iv=rnd(12);const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},dk,plano));
+  const out=new Uint8Array(4+12+ct.length);out.set(enc.encode('SPC1'),0);out.set(iv,4);out.set(ct,16);
+  return {bytes:out,lotes:gj.features.length};
+}
+
+/* ---------- Validación ---------- */
+const reUser=/^[a-z0-9._-]{3,30}$/;
+function validarClave(c){if(c.length<8)return 'mínimo 8 caracteres';if(!/[A-Za-z]/.test(c)||!/[0-9]/.test(c))return 'debe combinar letras y números';return '';}
+function generarClave(){const a='abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ',d='23456789';let s='';const r=rnd(10);
+  for(let i=0;i<10;i++)s+=(i===3||i===7?d:a+d)[r[i]%(i===3||i===7?d.length:(a+d).length)];return s;}
+async function probarToken(owner,repo,token,msg){
+  msg.style.color='var(--tenue)';msg.textContent='Probando…';
+  try{const r=await fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`,{headers:{Authorization:'Bearer '+token,Accept:'application/vnd.github+json'}});
+    const j=await r.json();
+    if(!r.ok)throw new Error(r.status===401?'Token inválido o vencido.':r.status===404?'Repositorio no encontrado o sin acceso con este token.':j.message);
+    if(j.permissions&&j.permissions.push===false)throw new Error('El token solo tiene lectura: necesita Contents: Read and write.');
+    msg.style.color='var(--acento)';msg.textContent=`✅ Correcto: ${j.full_name} (${j.private?'privado':'⚠️ PÚBLICO'}).`;
+  }catch(e){msg.style.color='var(--rojo)';msg.textContent='❌ '+e.message;}
+}
+function filaUsuario(tbody,datos={}){
+  const tr=document.createElement('tr');
+  tr.innerHTML=`<td><input type="text" data-k="u" placeholder="jperez" value="${esc(datos.u||'')}" autocapitalize="none"></td>
+    <td><input type="text" data-k="nombre" placeholder="Juan Pérez" value="${esc(datos.nombre||'')}"></td>
+    <td><select data-k="rol"><option value="operario">Operario</option><option value="admin" ${datos.rol==='admin'?'selected':''}>Administrador</option><option value="supervisor" ${datos.rol==='supervisor'?'selected':''}>Supervisor (visor web)</option><option value="analista" ${datos.rol==='analista'?'selected':''}>Analista de datos (permisos de administrador)</option><option value="superadmin" ${datos.rol==='superadmin'?'selected':''}>Super administrador (control total)</option></select></td>
+    <td><div class="fila" style="flex-wrap:nowrap;gap:6px"><input type="text" data-k="clave" value="${esc(datos.clave||generarClave())}" style="min-width:110px;flex:1"><button class="btn chico" data-gen title="Generar contraseña" style="flex:none;min-width:0">🎲</button></div></td>
+    <td><button class="btn chico peligro" data-x title="Quitar">✕</button></td>`;
+  tr.querySelector('[data-gen]').onclick=()=>{tr.querySelector('[data-k=clave]').value=generarClave();};
+  tr.querySelector('[data-x]').onclick=()=>tr.remove();
+  tbody.appendChild(tr);
+}
+function leerFilas(tbody,existentes){
+  const out=[],vistos=new Set(existentes||[]);
+  for(const tr of tbody.querySelectorAll('tr')){
+    const v=k=>tr.querySelector(`[data-k=${k}]`).value.trim();
+    const u=v('u').toLowerCase(),nombre=v('nombre'),rol=v('rol'),clave=v('clave');
+    if(!u&&!nombre)continue;
+    if(!reUser.test(u))throw new Error(`Usuario «${u||'(vacío)'}» no válido.`);
+    if(vistos.has(u))throw new Error(`El usuario «${u}» está repetido.`);
+    if(!nombre)throw new Error(`Falta el nombre del usuario «${u}».`);
+    const e=validarClave(clave);if(e)throw new Error(`Contraseña de «${u}»: ${e}.`);
+    vistos.add(u);out.push({u,nombre,rol,clave});
+  }
+  return out;
+}
+function csvCredenciales(lista){return '﻿usuario;nombre;rol;contraseña\r\n'+lista.map(x=>[x.u,x.nombre,x.rol,x.clave].join(';')).join('\r\n');}
+function mostrarResultado(cont,archivos,lista){
+  cont.hidden=false;
+  /* archivos: [{nombre, datos}] — un botón por archivo: el navegador puede bloquear la 2.ª descarga automática, pero nunca una pedida con un clic */
+  cont.innerHTML=`<div class="ok">✅ Archivos generados: ${archivos.map(a=>`<code>${a.nombre}</code>`).join(' ')}.<br>
+    Si alguno no se descargó solo (el navegador suele bloquear la segunda descarga), use su botón:
+    <div class="fila" style="margin:8px 0">${archivos.map((a,i)=>`<button class="btn chico" data-dl="${i}">⬇ ${a.nombre}</button>`).join('')}</div>
+    Súbalos al repositorio <b>Polinizacion</b> dentro de la carpeta <code>datos/</code> (reemplazando los anteriores). Los celulares los tomarán la próxima vez que abran la aplicación con internet.</div>
+    ${lista.length?`<button class="btn" id="dlCred">Descargar credenciales para entregar (CSV)</button>
+    <p class="tenue">⚠️ El CSV contiene contraseñas en texto plano: entréguelas de forma personal y elimínelo después.</p>`:''}`;
+  cont.querySelectorAll('[data-dl]').forEach(b=>b.onclick=()=>{const a=archivos[+b.dataset.dl];descargar(a.datos,a.nombre,a.tipo);});
+  const b=cont.querySelector('#dlCred');if(b)b.onclick=()=>descargar(csvCredenciales(lista),'credenciales_polinizacion_vegetal.csv','text/csv');
+}
+
+/* ---------- Pestañas ---------- */
+$('#tabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;$$('#tabs button').forEach(x=>x.classList.toggle('on',x===b));$('#crear').hidden=b.dataset.t!=='crear';$('#editar').hidden=b.dataset.t!=='editar';};
+
+/* ---------- Crear paquete ---------- */
+filaUsuario($('#cUsuarios'),{u:'admin',nombre:'Administrador',rol:'admin'});filaUsuario($('#cUsuarios'));
+$('#cAgregar').onclick=()=>filaUsuario($('#cUsuarios'));
+$('#cProbar').onclick=()=>probarToken($('#cOwner').value.trim(),$('#cRepo').value.trim(),$('#cToken').value.trim(),$('#cTokenMsg'));
+$('#cCarto').onchange=()=>{const fs=Array.from($('#cCarto').files);$('#cCartoMsg').textContent=fs.map(f=>`${f.name} (${(f.size/1048576).toFixed(1)} MB)`).join(' · ');};
+$('#cGenerar').onclick=async()=>{
+  const msg=$('#cMsg');msg.textContent='';$('#cOk').hidden=true;const bt=$('#cGenerar');
+  try{
+    const owner=$('#cOwner').value.trim(),repo=$('#cRepo').value.trim(),rama=$('#cRama').value.trim()||'main',token=$('#cToken').value.trim();
+    if(!owner||!repo)throw new Error('Complete el usuario y el repositorio.');
+    if(!/^(github_pat_|ghp_)/.test(token))throw new Error('El token debe empezar por github_pat_ (fine-grained).');
+    const lista=leerFilas($('#cUsuarios'));if(!lista.length)throw new Error('Agregue al menos un usuario.');
+    if(!lista.some(x=>ROLES_PRIV.includes(x.rol)))throw new Error('Debe existir al menos un usuario administrador.');
+    const files=Array.from($('#cCarto').files||[]);
+    bt.disabled=true;bt.textContent='Cifrando… (puede tardar unos segundos)';
+    const dkRaw=rnd(32),dk=await llaveDatos(dkRaw);
+    const carto=await cifrarCarto(dk,files);
+    const usuarios=[];for(const x of lista)usuarios.push(await entradaUsuario(dk,dkRaw,x.u,x.nombre,x.rol,x.clave));
+    const acceso={formato:FORMATO,id:crypto.randomUUID(),creado:new Date().toISOString(),repo:{owner,repo,rama},
+      kdf:{alg:'PBKDF2-SHA256',iter:ITER},token:await cifrar(dk,enc.encode(token)),
+      carto:{archivo:'carto.enc',version:versionAhora(),tam:carto.bytes.length,lotes:carto.lotes},usuarios};
+    const arch=[{nombre:'acceso.json',datos:JSON.stringify(acceso,null,1),tipo:'application/json'},{nombre:'carto.enc',datos:new Blob([carto.bytes])}];
+    descargar(arch[0].datos,arch[0].nombre,arch[0].tipo);
+    await new Promise(r=>setTimeout(r,600));descargar(arch[1].datos,arch[1].nombre);
+    mostrarResultado($('#cOk'),arch,lista);
+  }catch(e){msg.textContent='❌ '+e.message;}
+  finally{bt.disabled=false;bt.textContent='GENERAR ARCHIVOS CIFRADOS';}
+};
+
+/* ---------- Modificar paquete ---------- */
+const ED={acceso:null,dk:null,dkRaw:null,lista:[],nuevos:[],eliminar:new Set(),claves:new Map(),cambios:new Set()};
+const ROL_TXT={operario:'Operario',supervisor:'Supervisor',analista:'Analista de datos',admin:'Administrador',superadmin:'Super administrador'};
+/* Jerarquía: el super administrador tiene el control total. Cuando existe uno, solo él puede crear, editar, suspender, eliminar o cambiar la
+   contraseña de las cuentas privilegiadas (administrador, analista de datos y super administrador), asignar esos roles y cambiar el token o el repositorio.
+   Mientras no exista ninguno, cualquier administrador puede asignar el rol (para crear el primero). */
+const ROLES_PRIV=['admin','analista','superadmin'];
+const esSuperYo=()=>!!(ED.yo&&ED.yo.rol==='superadmin');
+const restringido=()=>!!ED.haySuper&&!esSuperYo();
+const rolOrig=x=>{try{return ED.orig[x.u]?JSON.parse(ED.orig[x.u]).rol:x.rol;}catch(e){return x.rol;}};
+const puedeGestionar=x=>!restringido()||(!ROLES_PRIV.includes(rolOrig(x))&&!ROLES_PRIV.includes(x.rol));
+const LAB_TXT={censo:'Censo',cirugia:'Cirugía',erradicacion:'Erradicación',plagas:'Monitoreo de plagas'};
+const ROL_ERR_TXT={erradicador:'erradicador',auxiliar:'auxiliar de erradicación'};
+/* Labores efectivas (igual que la app): sin labores definidas, admin y supervisor ven todas; el operario, censo. */
+const laboresDe=x=>x.labores&&x.labores.length?x.labores:(ROLES_PRIV.includes(x.rol)||x.rol==='supervisor'?['censo','cirugia','erradicacion','plagas']:['censo']);
+/* Datos del usuario que viajan cifrados en «meta» (se conservan los campos que no edita esta página). */
+function metaDe(x){const m={...x};for(const k of ['u','clave','nuevo'])delete m[k];
+  for(const k of ['cargo','identificacion','rol_cirugia','rol_erradicacion'])if(!m[k])delete m[k];if(!m.inactivo)delete m.inactivo;
+  if(m.labores&&!m.labores.length)delete m.labores;if(!(m.labores||[]).includes('cirugia'))delete m.rol_cirugia;if(!(m.labores||[]).includes('erradicacion'))delete m.rol_erradicacion;return m;}
+$('#eAbrir').onclick=async()=>{
+  const msg=$('#eAbrirMsg');msg.textContent='';
+  try{
+    const f=$('#eArchivo').files[0];if(!f)throw new Error('Seleccione el archivo acceso.json.');
+    const a=JSON.parse(await f.text());if(a.formato!==FORMATO)throw new Error('El archivo no es un paquete de acceso de Polinización.');
+    const u=$('#eUser').value.trim().toLowerCase();const e=a.usuarios.find(x=>x.u===u);if(!e)throw new Error('Usuario o contraseña incorrectos.');
+    $('#eAbrir').disabled=true;$('#eAbrir').textContent='Verificando…';
+    const k=await kek($('#eClave').value,deB64(e.salt));let dkRaw;
+    try{dkRaw=await descifrar(k,{iv:e.iv,ct:e.ct});}catch(_){throw new Error('Usuario o contraseña incorrectos.');}
+    const dk=await llaveDatos(dkRaw);const meta=JSON.parse(dec.decode(await descifrar(dk,e.meta)));
+    if(!ROLES_PRIV.includes(meta.rol))throw new Error('Este usuario no es administrador.');   // administrador, analista de datos (mismos permisos) o super administrador
+    ED.acceso=a;ED.dk=dk;ED.dkRaw=dkRaw;ED.eliminar.clear();ED.claves.clear();ED.cambios.clear();ED.nuevos=[];$('#eForm').hidden=true;
+    ED.lista=[];ED.orig={};for(const x of a.usuarios){const m=JSON.parse(dec.decode(await descifrar(dk,x.meta)));ED.lista.push({u:x.u,...m});ED.orig[x.u]=JSON.stringify(metaDe({u:x.u,...m}));}
+    ED.yo={u,rol:meta.rol};ED.haySuper=ED.lista.some(x=>x.rol==='superadmin'&&!x.inactivo);
+    for(const s of ['#eOwner','#eRepo','#eRama','#eToken','#eProbar'])$(s).disabled=restringido();
+    $('#eYo').innerHTML=`Sesión: <b>${esc(meta.nombre)}</b> · ${ROL_TXT[meta.rol]}${restringido()?' · <span class="tenue">las cuentas privilegiadas, el token y el repositorio los gestiona el super administrador</span>':''}`;
+    $('#eOwner').value=a.repo.owner;$('#eRepo').value=a.repo.repo;$('#eRama').value=a.repo.rama;$('#eCartoVer').textContent=a.carto.version;$('#ePlantVer').textContent=a.plantacion?a.plantacion.version:'sin cargar';
+    pintarLista();$('#ePanel').hidden=false;EDR.cfg=null;EDR.abierto=false;$('#rEditor').hidden=true;$('#rAbrir').textContent='Abrir el editor del formulario';
+    cargarFormulario().catch(()=>{$('#rVer').textContent='—';});EDA.cfg=null;EDA.abierto=false;$('#aEditor').hidden=true;
+  }catch(e){msg.textContent='❌ '+e.message;}
+  finally{$('#eAbrir').disabled=false;$('#eAbrir').textContent='ABRIR';}
+};
+function todos(){return ED.lista.concat(ED.nuevos);}
+function pintarLista(){
+  const q=$('#eBuscar').value.trim().toLowerCase(),fr=$('#eFRol').value,fl=$('#eFLab').value;
+  const T=todos();const activos=T.filter(x=>!x.inactivo&&!ED.eliminar.has(x.u));
+  $('#eResumen').innerHTML=[['Usuarios',T.length],['Activos',activos.length],['Operarios',activos.filter(x=>x.rol==='operario').length],['Supervisores',activos.filter(x=>x.rol==='supervisor').length],['Analistas',activos.filter(x=>x.rol==='analista').length],
+    ['Administradores',activos.filter(x=>x.rol==='admin').length],['Super administradores',activos.filter(x=>x.rol==='superadmin').length],['Censo',activos.filter(x=>laboresDe(x).includes('censo')).length],['Cirugía',activos.filter(x=>laboresDe(x).includes('cirugia')).length],['Erradicación',activos.filter(x=>laboresDe(x).includes('erradicacion')).length],['Plagas',activos.filter(x=>laboresDe(x).includes('plagas')).length],
+    ['Suspendidos',T.filter(x=>x.inactivo).length]].map(([t,n])=>`<span>${t} <b>${n}</b></span>`).join('');
+  const vis=T.filter(x=>(!q||[x.u,x.nombre,x.cargo,x.identificacion].some(v=>String(v||'').toLowerCase().includes(q)))&&(!fr||x.rol===fr)&&
+    (!fl||(fl==='inactivo'?x.inactivo:fl==='cambios'?(x.nuevo||ED.cambios.has(x.u)||ED.claves.has(x.u)||ED.eliminar.has(x.u)):laboresDe(x).includes(fl))))
+    .sort((a,b)=>String(a.nombre).localeCompare(String(b.nombre),'es'));
+  $('#eLista').innerHTML=vis.map(x=>{const del=ED.eliminar.has(x.u),nueva=ED.claves.get(x.u);
+    const est=del?'<span class="sello sus">SE ELIMINARÁ</span>':x.nuevo?'<span class="sello nuevo">NUEVO</span>':x.inactivo?'<span class="sello sus">SUSPENDIDO</span>':'<span class="sello act">ACTIVO</span>';
+    const pend=!x.nuevo&&!del&&(ED.cambios.has(x.u)||nueva)?' <span class="sello cambio">CAMBIOS</span>':'';
+    const lab=laboresDe(x).map(l=>LAB_TXT[l]+(l==='cirugia'&&x.rol_cirugia?` (${x.rol_cirugia})`:'')+(l==='erradicacion'&&x.rol_erradicacion?` (${ROL_ERR_TXT[x.rol_erradicacion]||x.rol_erradicacion})`:'')).join(', ')+(x.labores&&x.labores.length?'':' <span class="tenue">(por defecto)</span>');
+    return `<tr style="${del?'opacity:.45;text-decoration:line-through':''}"><td><b>${esc(x.u)}</b></td><td>${esc(x.nombre)}${x.identificacion?`<br><span class="tenue">CC ${esc(x.identificacion)}</span>`:''}</td>
+      <td>${esc(x.cargo||'—')}</td><td>${ROL_TXT[x.rol]||esc(x.rol)}</td><td>${lab}</td><td>${est}${pend}</td>
+      <td><div class="acciones">${!puedeGestionar(x)?'<span class="tenue">🔒 Solo el super administrador</span>':`${del?'':`<button class="btn chico" data-ed="${esc(x.u)}">Editar</button>`}
+        ${x.nuevo||del?'':`<button class="btn chico" data-clave="${esc(x.u)}">${nueva?'✓ Nueva: '+esc(nueva):'Contraseña'}</button>`}
+        ${x.nuevo||del?'':`<button class="btn chico" data-sus="${esc(x.u)}">${x.inactivo?'Reactivar':'Suspender'}</button>`}
+        <button class="btn chico peligro" data-del="${esc(x.u)}">${x.nuevo?'Quitar':del?'Deshacer':'Eliminar'}</button>`}</div></td></tr>`;}).join('')||'<tr><td colspan="7" class="tenue">Ningún usuario coincide con la búsqueda.</td></tr>';
+  $$('[data-ed]').forEach(b=>b.onclick=()=>formUsuario(todos().find(x=>x.u===b.dataset.ed)));
+  $$('[data-clave]').forEach(b=>b.onclick=()=>{const c=prompt('Nueva contraseña para '+b.dataset.clave+' (mín. 8, letras y números):',generarClave());
+    if(c==null)return;const e=validarClave(c.trim());if(e){alert('Contraseña no válida: '+e);return;}ED.claves.set(b.dataset.clave,c.trim());pintarLista();});
+  $$('[data-sus]').forEach(b=>b.onclick=()=>{const x=ED.lista.find(y=>y.u===b.dataset.sus);if(!x)return;
+    if(!x.inactivo&&!confirm(`¿Suspender a ${x.nombre} (${x.u})?\n\nNo podrá ingresar a la app ni al visor hasta que lo reactive. Sus jornadas y diagnósticos se conservan.`))return;
+    x.inactivo=!x.inactivo;ED.cambios.add(x.u);pintarLista();});
+  $$('[data-del]').forEach(b=>b.onclick=()=>{const u=b.dataset.del;const n=ED.nuevos.find(x=>x.u===u);
+    if(n){ED.nuevos=ED.nuevos.filter(x=>x!==n);}else if(ED.eliminar.has(u))ED.eliminar.delete(u);
+    else{if(!confirm(`¿Eliminar al usuario ${u}?\n\nSi solo quiere impedir el ingreso por un tiempo, use «Suspender».`))return;ED.eliminar.add(u);ED.claves.delete(u);}
+    pintarLista();});
+}
+/* Formulario para crear o editar un usuario (todos sus datos). */
+function formUsuario(x){
+  const nuevo=!x||x.nuevo,d=x||{u:'',nombre:'',cargo:'',identificacion:'',rol:'operario',labores:['censo'],rol_cirugia:'',rol_erradicacion:'',clave:generarClave(),nuevo:true};
+  const lab=laboresDe(d);const f=$('#eForm');f.hidden=false;
+  f.innerHTML=`<h2 style="font-size:17px">${nuevo&&!x?'Nuevo usuario':'Editar usuario · '+esc(d.u)}</h2>
+    <div class="fila"><div><label>Usuario</label><input type="text" id="fU" value="${esc(d.u)}" ${nuevo?'':'disabled'} autocapitalize="none" placeholder="jperez"></div>
+      <div style="flex:2"><label>Nombre completo</label><input type="text" id="fNombre" value="${esc(d.nombre)}"></div></div>
+    <div class="fila"><div><label>Cargo</label><input type="text" id="fCargo" value="${esc(d.cargo||'')}" placeholder="Auxiliar de censo"></div>
+      <div><label>Identificación</label><input type="text" id="fId" value="${esc(d.identificacion||'')}" placeholder="Cédula"></div>
+      <div><label>Rol</label><select id="fRol">${Object.entries(ROL_TXT).filter(([k])=>!restringido()||!ROLES_PRIV.includes(k)).map(([k,t])=>`<option value="${k}" ${d.rol===k?'selected':''}>${t}${k==='supervisor'?' (visor web)':k==='analista'?' (permisos de administrador)':k==='superadmin'?' (control total)':''}</option>`).join('')}</select></div></div>
+    <label>Labores</label><label class="check"><input type="checkbox" id="fCenso" ${lab.includes('censo')?'checked':''}> Censo</label><label class="check"><input type="checkbox" id="fCir" ${lab.includes('cirugia')?'checked':''}> Cirugía</label>
+    <div id="fRolCirW" ${lab.includes('cirugia')?'':'hidden'}><label>Rol en cirugía</label><select id="fRolCir"><option value="cirujano" ${d.rol_cirugia==='cirujano'?'selected':''}>Cirujano</option><option value="auxiliar" ${d.rol_cirugia!=='cirujano'?'selected':''}>Auxiliar</option></select></div>
+    <label class="check"><input type="checkbox" id="fErr" ${lab.includes('erradicacion')?'checked':''}> Erradicación</label>
+    <div id="fRolErrW" ${lab.includes('erradicacion')?'':'hidden'}><label>Rol en erradicación</label><select id="fRolErr"><option value="erradicador" ${d.rol_erradicacion!=='auxiliar'?'selected':''}>Erradicador</option><option value="auxiliar" ${d.rol_erradicacion==='auxiliar'?'selected':''}>Auxiliar de erradicación</option></select></div>
+    <label class="check"><input type="checkbox" id="fPlg" ${lab.includes('plagas')?'checked':''}> Monitoreo de plagas</label>
+    ${nuevo?`<label>Contraseña</label><div class="fila" style="flex-wrap:nowrap"><input type="text" id="fClave" value="${esc(d.clave||generarClave())}"><button class="btn chico" id="fGen" style="flex:none;min-width:0">↻</button></div>`
+      :`<label class="check" style="margin-top:12px"><input type="checkbox" id="fSus" ${d.inactivo?'checked':''}> Suspendido (no puede ingresar)</label>`}
+    <div class="err" id="fMsg"></div>
+    <div class="fila" style="margin-top:8px"><button class="btn prim" id="fOk">${nuevo&&!x?'AGREGAR':'GUARDAR CAMBIOS'}</button><button class="btn" id="fNo">Cancelar</button></div>`;
+  $('#fCir').onchange=()=>{$('#fRolCirW').hidden=!$('#fCir').checked;};
+  $('#fErr').onchange=()=>{$('#fRolErrW').hidden=!$('#fErr').checked;};
+  if($('#fGen'))$('#fGen').onclick=()=>{$('#fClave').value=generarClave();};
+  $('#fNo').onclick=()=>{f.hidden=true;};
+  $('#fOk').onclick=()=>{try{
+      const u=$('#fU').value.trim().toLowerCase(),nombre=$('#fNombre').value.trim(),rol=$('#fRol').value;
+      const labores=[$('#fCenso').checked&&'censo',$('#fCir').checked&&'cirugia',$('#fErr').checked&&'erradicacion',$('#fPlg').checked&&'plagas'].filter(Boolean);
+      if(restringido()&&ROLES_PRIV.includes(rol))throw new Error('Solo el super administrador puede asignar roles de administrador, analista o super administrador.');
+      if(nuevo){if(!reUser.test(u))throw new Error('Usuario no válido: minúsculas, números, punto o guion (mín. 3).');
+        if(todos().some(y=>y.u===u&&y!==x))throw new Error(`El usuario «${u}» ya existe.`);}
+      if(!nombre)throw new Error('Escriba el nombre completo.');if(!labores.length)throw new Error('Marque al menos una labor.');
+      const datos={nombre,cargo:$('#fCargo').value.trim(),identificacion:$('#fId').value.trim(),rol,labores,rol_cirugia:labores.includes('cirugia')?$('#fRolCir').value:'',rol_erradicacion:labores.includes('erradicacion')?$('#fRolErr').value:''};
+      if(nuevo){const clave=$('#fClave').value.trim();const e=validarClave(clave);if(e)throw new Error('Contraseña: '+e+'.');
+        if(x)Object.assign(x,datos,{u,clave});else ED.nuevos.push({u,...datos,clave,nuevo:true});}
+      else{Object.assign(x,datos,{inactivo:$('#fSus').checked});ED.cambios.add(x.u);}
+      f.hidden=true;pintarLista();}catch(e){$('#fMsg').textContent='❌ '+e.message;}};
+  f.scrollIntoView({behavior:'smooth',block:'center'});
+}
+/* ---------- Editor del formulario de diagnóstico (config/ramas.json en el repositorio de datos) ---------- */
+const EDR={cfg:null,sha:null,abierto:false};
+const TIPOS_N1={enferma:'Enfermedad / problema sanitario',novedad:'Otra novedad (no fitosanitaria)',faltante:'Sitio vacío / faltante',sana:'Palma sana'};
+async function ghAdmin(ruta,opt={}){const a=ED.acceso;const token=dec.decode(await descifrar(ED.dk,a.token));
+  const r=await fetch(`https://api.github.com/repos/${encodeURIComponent(a.repo.owner)}/${encodeURIComponent(a.repo.repo)}${ruta}`,{cache:'no-store',...opt,
+    headers:{Authorization:'Bearer '+token,Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28',...(opt.body?{'Content-Type':'application/json'}:{})}});
+  if(!r.ok){let m='';try{m=(await r.json()).message||'';}catch(e){}const e=new Error(`GitHub (${r.status}) ${m}`);e.status=r.status;throw e;}return r.json();}
+const b64u=s=>{const b=enc.encode(s);let t='';for(let i=0;i<b.length;i+=32768)t+=String.fromCharCode.apply(null,b.subarray(i,i+32768));return btoa(t);};
+const deB64u=s=>dec.decode(Uint8Array.from(atob(s.replace(/\s/g,'')),c=>c.charCodeAt(0)));
+async function cargarFormulario(){
+  const rama=encodeURIComponent(ED.acceso.repo.rama||'main');
+  try{const f=await ghAdmin(`/contents/config/ramas.json?ref=${rama}`);EDR.cfg=JSON.parse(deB64u(f.content));EDR.sha=f.sha;}
+  catch(e){if(e.status!==404)throw e;const r=await fetch('ramas_base.json',{cache:'no-store'});if(!r.ok)throw new Error('No se encontró el formulario base.');EDR.cfg=await r.json();EDR.sha=null;}
+  $('#rVer').textContent=EDR.sha?(EDR.cfg.version||'publicada'):'formulario incorporado (aún no publicado)';
+}
+function gruposRamas(){const g=[];for(const x of EDR.cfg.ramas){let e=g.find(y=>y.c===x.c);if(!e)g.push(e={c:x.c,n1:x.n1,ops:[]});e.ops.push(x);}return g;}
+function pintarEditor(){
+  const G=gruposRamas(),E=EDR.cfg.enfermedades||(EDR.cfg.enfermedades={});
+  const ta=(k,v,ph)=>`<textarea data-k="${k}" placeholder="${ph}">${esc((v||[]).join('\n'))}</textarea>`;
+  $('#rEditor').innerHTML=`<p class="tenue" style="margin-top:12px">Una línea por síntoma o estado del hongo. «Opción» vacía = la enfermedad no tiene opciones. Si dos opciones tienen el mismo nombre con distinto seguimiento, la App elige el seguimiento según el historial de la palma.</p>
+    ${G.map((g,gi)=>`<div class="rEnf" data-g="${gi}"><div class="cab">
+        <input type="text" class="cod" data-e="c" value="${esc(g.c)}" title="Código (2 a 6 letras)" ${EDR.cfg._nuevos&&EDR.cfg._nuevos.includes(g.c)?'':'disabled'}>
+        <input type="text" data-e="n1" value="${esc(g.n1)}" placeholder="Nombre de la enfermedad principal">
+        <input type="color" data-e="color" value="${esc((E[g.c]||{}).color||'#9e9e9e')}" title="Color en el mapa">
+        <select data-e="tipo" style="flex:0 0 230px">${Object.entries(TIPOS_N1).map(([k,t])=>`<option value="${k}" ${((E[g.c]||{}).tipo||'enferma')===k?'selected':''}>${t}</option>`).join('')}</select>
+        <button class="btn chico" data-mov="-1" title="Subir">↑</button><button class="btn chico" data-mov="1" title="Bajar">↓</button><button class="btn chico peligro" data-delg title="Eliminar la enfermedad">✕</button></div>
+      ${g.ops.map(o=>`<div class="rOp" data-r="${o.r}">
+        <div><small>Opción de la enfermedad</small><input type="text" data-k="n2" value="${esc(o.n2||'')}" placeholder="(sin opción)"></div>
+        <div><small>Tipo de seguimiento (automático)</small><input type="text" data-k="n3" value="${esc(o.n3||'')}" placeholder="(ninguno)"></div>
+        <div><small>Síntomas (uno por línea)</small>${ta('s',o.s,'Síntoma 1')}</div>
+        <div><small>Estados del hongo (vacío = no aplica)</small>${ta('h',o.h,'')}</div>
+        <div><small>&nbsp;</small><button class="btn chico peligro" data-delo title="Eliminar esta opción">✕</button></div>
+        <div class="flags"><span class="tenue">Pedir:</span>${[['cir','Cirugía'],['prod','Producción'],['rai','Raíces buenas'],['tra','Transitabilidad']].map(([k,t])=>`<label><input type="checkbox" data-k="${k}" ${o[k]?'checked':''}> ${t}</label>`).join('')}
+          <input type="text" data-k="f" value="${esc(o.f||'')}" placeholder="Fuente técnica"></div></div>`).join('')}
+      <button class="btn chico" data-addo style="margin-top:8px">＋ Opción</button></div>`).join('')}
+    <div class="fila" style="margin-top:10px"><button class="btn" id="rAddE">＋ Enfermedad principal</button><button class="btn" id="rJson">⬇ Descargar JSON</button><button class="btn prim" id="rGuardar">GUARDAR EN GITHUB</button></div>`;
+  enlazarEditor();
+}
+/* Pasa lo escrito en la pantalla al modelo (antes de cualquier cambio de estructura o al guardar). */
+function leerEditor(){
+  const E=EDR.cfg.enfermedades||(EDR.cfg.enfermedades={});const nuevas=[];
+  for(const box of $$('#rEditor .rEnf')){const c0=gruposRamas()[+box.dataset.g].c;
+    const c=box.querySelector('[data-e=c]').value.trim().toUpperCase(),n1=box.querySelector('[data-e=n1]').value.trim().toUpperCase();
+    E[c]={...(E[c0]||{}),color:box.querySelector('[data-e=color]').value,tipo:box.querySelector('[data-e=tipo]').value};if(c!==c0)delete E[c0];
+    for(const op of box.querySelectorAll('.rOp')){const o=EDR.cfg.ramas.find(x=>String(x.r)===op.dataset.r);if(!o)continue;
+      const lin=k=>op.querySelector(`[data-k=${k}]`).value.split('\n').map(x=>x.trim()).filter(Boolean);
+      Object.assign(o,{c,n1,n2:op.querySelector('[data-k=n2]').value.trim().toUpperCase()||null,n3:op.querySelector('[data-k=n3]').value.trim().toUpperCase()||null,s:lin('s'),h:lin('h').length?lin('h'):null,
+        cir:op.querySelector('[data-k=cir]').checked,prod:op.querySelector('[data-k=prod]').checked,rai:op.querySelector('[data-k=rai]').checked,tra:op.querySelector('[data-k=tra]').checked,obs:true,f:op.querySelector('[data-k=f]').value.trim()});}
+    if(c!==c0&&EDR.cfg._nuevos){EDR.cfg._nuevos=EDR.cfg._nuevos.map(x=>x===c0?c:x);}nuevas.push(c);}
+}
+const sigR=()=>Math.max(0,...EDR.cfg.ramas.map(x=>Number(x.r)||0))+1;
+function enlazarEditor(){
+  $$('#rEditor [data-addo]').forEach(b=>b.onclick=()=>{leerEditor();const g=gruposRamas()[+b.closest('.rEnf').dataset.g];const ult=g.ops[g.ops.length-1];
+    const i=EDR.cfg.ramas.indexOf(ult);EDR.cfg.ramas.splice(i+1,0,{r:sigR(),c:g.c,n1:g.n1,n2:'NUEVA OPCIÓN',n3:null,s:[],h:null,cir:false,prod:true,rai:true,tra:true,obs:true,f:''});pintarEditor();});
+  $$('#rEditor [data-delo]').forEach(b=>b.onclick=()=>{leerEditor();const r=b.closest('.rOp').dataset.r;const o=EDR.cfg.ramas.find(x=>String(x.r)===r);
+    if(EDR.cfg.ramas.filter(x=>x.c===o.c).length===1){alert('Es la única opción de la enfermedad: elimine la enfermedad completa con ✕.');return;}
+    EDR.cfg.ramas=EDR.cfg.ramas.filter(x=>x!==o);pintarEditor();});
+  $$('#rEditor [data-delg]').forEach(b=>b.onclick=()=>{leerEditor();const g=gruposRamas()[+b.closest('.rEnf').dataset.g];
+    if(!confirm(`¿Eliminar «${g.n1}» del formulario?\n\nLos diagnósticos ya registrados con ella se conservan.`))return;EDR.cfg.ramas=EDR.cfg.ramas.filter(x=>x.c!==g.c);pintarEditor();});
+  $$('#rEditor [data-mov]').forEach(b=>b.onclick=()=>{leerEditor();const G=gruposRamas(),i=+b.closest('.rEnf').dataset.g,j=i+Number(b.dataset.mov);if(j<0||j>=G.length)return;
+    [G[i],G[j]]=[G[j],G[i]];EDR.cfg.ramas=G.flatMap(g=>g.ops);pintarEditor();});
+  $('#rAddE').onclick=()=>{leerEditor();let c='NUEVA',k=1;while(EDR.cfg.ramas.some(x=>x.c===c))c='NUEVA'+(++k);
+    EDR.cfg._nuevos=[...(EDR.cfg._nuevos||[]),c];EDR.cfg.ramas.push({r:sigR(),c,n1:'NUEVA ENFERMEDAD',n2:null,n3:null,s:[],h:null,cir:false,prod:true,rai:true,tra:true,obs:true,f:''});
+    (EDR.cfg.enfermedades||(EDR.cfg.enfermedades={}))[c]={color:'#9e9e9e',tipo:'enferma'};pintarEditor();$$('#rEditor .rEnf').pop().scrollIntoView({behavior:'smooth',block:'center'});};
+  $('#rJson').onclick=()=>{leerEditor();descargar(JSON.stringify(limpioRamas(),null,1),'ramas.json','application/json');};
+  $('#rGuardar').onclick=guardarFormulario;
+}
+function validarRamas(){
+  const G=gruposRamas();const cods=new Set();
+  for(const g of G){if(!/^[A-Z0-9]{2,6}$/.test(g.c))throw new Error(`Código «${g.c}» no válido: use de 2 a 6 letras o números.`);if(cods.has(g.c))throw new Error(`El código «${g.c}» está repetido.`);cods.add(g.c);
+    if(!g.n1)throw new Error(`Falta el nombre de la enfermedad con código ${g.c}.`);
+    if(g.ops.length>1&&g.ops.some(o=>!o.n2))throw new Error(`«${g.n1}» tiene varias opciones: todas deben tener nombre.`);
+    const k=new Set();for(const o of g.ops){const x=(o.n2||'')+'|'+(o.n3||'');if(k.has(x))throw new Error(`«${g.n1}»: la opción «${o.n2||'(sin opción)'}» está repetida con el mismo seguimiento.`);k.add(x);}}
+  if(!G.length)throw new Error('El formulario no puede quedar vacío.');
+}
+function limpioRamas(){const c={...EDR.cfg};delete c._nuevos;const usados=new Set(c.ramas.map(x=>x.c));c.enfermedades=Object.fromEntries(Object.entries(c.enfermedades||{}).filter(([k])=>usados.has(k)));
+  const z=new Date(),p=v=>String(v).padStart(2,'0');return {...c,formato:'polinizacion-ramas-1',version:`${z.getFullYear()}${p(z.getMonth()+1)}${p(z.getDate())}-${p(z.getHours())}${p(z.getMinutes())}`,modificado:z.toISOString(),por:ED.lista.find(x=>x.u===$('#eUser').value.trim().toLowerCase())?.nombre||''};}
+async function guardarFormulario(){
+  const m=$('#rMsg'),b=$('#rGuardar');m.style.color='';m.textContent='';
+  try{leerEditor();validarRamas();const cfg=limpioRamas();b.disabled=true;b.textContent='Guardando…';
+    const r=await ghAdmin('/contents/config/ramas.json',{method:'PUT',body:JSON.stringify({message:`Formulario de diagnóstico ${cfg.version}`,content:b64u(JSON.stringify(cfg,null,1)),branch:ED.acceso.repo.rama||'main',...(EDR.sha?{sha:EDR.sha}:{})})});
+    EDR.sha=r.content.sha;EDR.cfg=cfg;delete EDR.cfg._nuevos;$('#rVer').textContent=cfg.version;m.style.color='var(--acento)';
+    m.textContent=`✅ Formulario ${cfg.version} guardado. Los celulares lo toman al abrir la App con internet (no hay que generar ni subir archivos).`;pintarEditor();}
+  catch(e){m.style.color='var(--rojo)';m.textContent='❌ '+e.message;}
+  finally{const bb=$('#rGuardar');if(bb){bb.disabled=false;bb.textContent='GUARDAR EN GITHUB';}}
+}
+$('#rAbrir').onclick=async()=>{const m=$('#rMsg');m.textContent='';const b=$('#rAbrir');
+  if(EDR.abierto){$('#rEditor').hidden=true;EDR.abierto=false;b.textContent='Abrir el editor del formulario';return;}
+  b.disabled=true;b.textContent='Cargando…';try{await cargarFormulario();pintarEditor();$('#rEditor').hidden=false;EDR.abierto=true;b.textContent='Cerrar el editor';}
+  catch(e){m.style.color='var(--rojo)';m.textContent='❌ '+e.message;b.textContent='Abrir el editor del formulario';}finally{b.disabled=false;}};
+/* ---------- Alertas y reportes automáticos (config/alertas.json del repositorio de datos) ---------- */
+const EDA={cfg:null,sha:null,abierto:false};
+const ALERTAS_DEF={formato:'polinizacion-alertas-1',activo:true,destinatarios:[],umbrales:{dias_sin_sincronizar:2,incidencia_lote_pct:2,dias_recuperacion_sin_revision:30,alertas_calidad_por_100:20},
+  whatsapp:{plantilla_reporte:'polinizacion_reporte_diario',plantilla_alerta:'polinizacion_alerta',idioma:'es'}};
+async function cargarAlertasCfg(){
+  try{const f=await ghAdmin(`/contents/config/alertas.json?ref=${encodeURIComponent(ED.acceso.repo.rama||'main')}`);const c=JSON.parse(deB64u(f.content));EDA.sha=f.sha;
+    EDA.cfg={...ALERTAS_DEF,...c,umbrales:{...ALERTAS_DEF.umbrales,...(c.umbrales||{})},whatsapp:{...ALERTAS_DEF.whatsapp,...(c.whatsapp||{})}};}
+  catch(e){if(e.status!==404)throw e;EDA.cfg=JSON.parse(JSON.stringify(ALERTAS_DEF));EDA.sha=null;}
+}
+function pintarAlertasCfg(){
+  const C=EDA.cfg,U=C.umbrales,W=C.whatsapp,repo=ED.acceso.repo;
+  const fila=(d,i)=>`<tr data-i="${i}"><td><input type="text" data-k="nombre" value="${esc(d.nombre||'')}" placeholder="Nombre"></td><td><input type="text" data-k="correo" value="${esc(d.correo||'')}" placeholder="correo@palmasdetumaco.com"></td>
+    <td><input type="text" data-k="whatsapp" value="${esc(d.whatsapp||'')}" placeholder="+57 300 000 0000"></td>
+    ${['reporte_diario','reporte_semanal','alertas'].map(k=>`<td style="text-align:center"><input type="checkbox" data-k="${k}" ${d[k]!==false?'checked':''}></td>`).join('')}<td><button class="btn chico peligro" data-x>✕</button></td></tr>`;
+  $('#aEditor').innerHTML=`
+    <label class="check" style="margin-top:12px"><input type="checkbox" id="aActivo" ${C.activo!==false?'checked':''}> Envíos activos (desmarque para pausar correos y WhatsApp; los reportes se siguen generando)</label>
+    <h2 style="font-size:15px;margin-top:14px">Destinatarios</h2>
+    <div style="overflow-x:auto"><table><thead><tr><th>Nombre</th><th>Correo</th><th>WhatsApp</th><th>Reporte diario</th><th>Reporte semanal</th><th>Alertas</th><th></th></tr></thead><tbody id="aDest">${C.destinatarios.map(fila).join('')}</tbody></table></div>
+    <button class="btn chico" id="aAdd" style="margin-top:8px">＋ Destinatario</button>
+    <h2 style="font-size:15px;margin-top:16px">Umbrales de alerta</h2>
+    <div class="fila"><div><label>Días sin sincronizar</label><input type="text" id="aU1" value="${U.dias_sin_sincronizar}"></div><div><label>Incidencia de PC por lote (%)</label><input type="text" id="aU2" value="${U.incidencia_lote_pct}"></div>
+      <div><label>Días en recuperación sin revisión</label><input type="text" id="aU3" value="${U.dias_recuperacion_sin_revision}"></div><div><label>Alertas de calidad por cada 100 diagnósticos</label><input type="text" id="aU4" value="${U.alertas_calidad_por_100}"></div></div>
+    <h2 style="font-size:15px;margin-top:16px">Plantillas de WhatsApp (aprobadas en Meta)</h2>
+    <div class="fila"><div><label>Plantilla del reporte</label><input type="text" id="aW1" value="${esc(W.plantilla_reporte)}"></div><div><label>Plantilla de alerta</label><input type="text" id="aW2" value="${esc(W.plantilla_alerta)}"></div><div><label>Idioma</label><input type="text" id="aW3" value="${esc(W.idioma)}"></div></div>
+    <div class="fila" style="margin-top:12px"><button class="btn prim" id="aGuardar">GUARDAR EN GITHUB</button>
+      <a class="btn" target="_blank" rel="noopener" href="https://github.com/${esc(repo.owner)}/${esc(repo.repo)}/actions/workflows/reporte-diario.yml">▶ Probar: generar y enviar el reporte de hoy</a></div>
+    <p class="tenue">Envío manual en cualquier momento: visor → 📊 GERENCIA o 🧭 COORDINACIÓN → Reportes → <b>📤 Generar y enviar ahora</b> (a todos, a correos puntuales o sin envío), o en la App: Menú → Panel del día.</p><div></div>
+    <details style="margin-top:14px"><summary style="cursor:pointer;font-weight:700">Configuración única de los envíos (claves y plantillas)</summary>
+      <div class="tenue" style="margin-top:8px;line-height:1.6">
+      <b>1. Claves en GitHub</b> (repositorio <code>${esc(repo.owner)}/${esc(repo.repo)}</code> → Settings → Secrets and variables → Actions → New repository secret):<br>
+      · <b>Correo (recomendado, funciona con verificación en dos pasos):</b> aplicación registrada en Microsoft Entra ID con permiso de aplicación <i>Mail.Send</i> de Microsoft Graph (con consentimiento de administrador) y limitada al buzón que envía. Claves: <code>MS_TENANT_ID</code>, <code>MS_CLIENT_ID</code>, <code>MS_CLIENT_SECRET</code> y <code>SMTP_FROM</code> (el buzón, por ejemplo did@palmares.com.co).<br>
+      · Alternativa sin verificación en dos pasos: <code>SMTP_USER</code> y <code>SMTP_PASS</code> con «SMTP autenticado» habilitado.<br>
+      · <code>WA_TOKEN</code> (token permanente de un usuario del sistema de Meta Business) y <code>WA_PHONE_ID</code> (identificador del número de WhatsApp Business).<br>
+      <b>2. Plantillas en WhatsApp Manager</b> (categoría Utilidad, idioma Español):<br>
+      · <code>polinizacion_reporte_diario</code>: encabezado <i>Documento</i>; cuerpo: «Reporte de polinización del {{1}}: {{2}} jornadas, {{3}} hectáreas recorridas, {{4}} diagnósticos y {{5}} casos de PC. Alertas: {{6}}. El detalle va en el PDF adjunto.»<br>
+      · <code>polinizacion_alerta</code>: cuerpo: «⚠ Alerta de polinización ({{1}}): {{2}}»<br>
+      <b>3. Números</b>: escríbalos con indicativo (+57…). Mientras la cuenta de Meta esté en prueba, cada número debe agregarse como destinatario de prueba en Meta.</div></details>`;
+  enlazarAlertasCfg();
+}
+function leerAlertasCfg(){
+  const C=EDA.cfg;C.activo=$('#aActivo').checked;
+  C.destinatarios=$$('#aDest tr').map(tr=>{const g=k=>tr.querySelector(`[data-k=${k}]`);return {nombre:g('nombre').value.trim(),correo:g('correo').value.trim().toLowerCase(),whatsapp:g('whatsapp').value.replace(/[^\d+]/g,''),
+    reporte_diario:g('reporte_diario').checked,reporte_semanal:g('reporte_semanal').checked,alertas:g('alertas').checked};});
+  const n=(id,d)=>{const v=Number(String($(id).value).replace(',','.'));return Number.isFinite(v)&&v>0?v:d;};
+  C.umbrales={dias_sin_sincronizar:n('#aU1',2),incidencia_lote_pct:n('#aU2',2),dias_recuperacion_sin_revision:n('#aU3',30),alertas_calidad_por_100:n('#aU4',20)};
+  C.whatsapp={plantilla_reporte:$('#aW1').value.trim()||'polinizacion_reporte_diario',plantilla_alerta:$('#aW2').value.trim()||'polinizacion_alerta',idioma:$('#aW3').value.trim()||'es'};
+}
+function enlazarAlertasCfg(){
+  $('#aAdd').onclick=()=>{leerAlertasCfg();EDA.cfg.destinatarios.push({nombre:'',correo:'',whatsapp:'',reporte_diario:true,reporte_semanal:true,alertas:true});pintarAlertasCfg();};
+  $$('#aDest [data-x]').forEach(b=>b.onclick=()=>{leerAlertasCfg();EDA.cfg.destinatarios.splice(+b.closest('tr').dataset.i,1);pintarAlertasCfg();});
+  $('#aGuardar').onclick=async()=>{const m=$('#aMsg'),b=$('#aGuardar');m.style.color='';m.textContent='';
+    try{leerAlertasCfg();const C=EDA.cfg;C.destinatarios=C.destinatarios.filter(d=>d.nombre||d.correo||d.whatsapp); // las filas vacías se descartan al guardar
+      for(const d of C.destinatarios){if(d.correo&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.correo))throw new Error(`Correo no válido: ${d.correo}`);
+        if(d.whatsapp&&!/^\+?\d{10,15}$/.test(d.whatsapp))throw new Error(`Número de WhatsApp no válido: ${d.whatsapp} (use el indicativo, por ejemplo +573001234567).`);
+        if(!d.correo&&!d.whatsapp)throw new Error(`«${d.nombre}» no tiene correo ni WhatsApp.`);}
+      b.disabled=true;b.textContent='Guardando…';C.modificado=new Date().toISOString();
+      const r=await ghAdmin('/contents/config/alertas.json',{method:'PUT',body:JSON.stringify({message:'Configuración de alertas y reportes',content:b64u(JSON.stringify(C,null,1)),branch:ED.acceso.repo.rama||'main',...(EDA.sha?{sha:EDA.sha}:{})})});
+      EDA.sha=r.content.sha;m.style.color='var(--acento)';m.textContent=`✅ Guardado: ${C.destinatarios.length} destinatario(s). Se aplica desde el próximo reporte.`;}
+    catch(e){m.style.color='var(--rojo)';m.textContent='❌ '+e.message;}finally{b.disabled=false;b.textContent='GUARDAR EN GITHUB';}};
+}
+$('#aAbrir').onclick=async()=>{const m=$('#aMsg'),b=$('#aAbrir');m.textContent='';
+  if(EDA.abierto){$('#aEditor').hidden=true;EDA.abierto=false;b.textContent='Abrir la configuración de alertas y reportes';return;}
+  b.disabled=true;b.textContent='Cargando…';try{await cargarAlertasCfg();pintarAlertasCfg();$('#aEditor').hidden=false;EDA.abierto=true;b.textContent='Cerrar la configuración';}
+  catch(e){m.style.color='var(--rojo)';m.textContent='❌ '+e.message;b.textContent='Abrir la configuración de alertas y reportes';}finally{b.disabled=false;}};
+/* ---------- Piloto de IA (config/servicios.json del repositorio de datos) ---------- */
+const EDI={cfg:null,sha:null};
+$('#iAbrir').onclick=async()=>{const m=$('#iMsg'),b=$('#iAbrir'),E=$('#iEditor');m.textContent='';
+  if(!E.hidden){E.hidden=true;b.textContent='Abrir la configuración de la IA';return;}
+  b.disabled=true;try{
+    try{const f=await ghAdmin(`/contents/config/servicios.json?ref=${encodeURIComponent(ED.acceso.repo.rama||'main')}`);EDI.cfg=JSON.parse(deB64u(f.content));EDI.sha=f.sha;}
+    catch(e){if(e.status!==404)throw e;EDI.cfg={formato:'polinizacion-servicios-1'};EDI.sha=null;}
+    const I=EDI.cfg.ia||{activo:false,url:'',usuarios:[]};
+    E.innerHTML=`<label class="check" style="margin-top:12px"><input type="checkbox" id="iActivo" ${I.activo?'checked':''}> Activar el botón «🤖 Sugerir diagnóstico» en la App</label>
+      <label>Dirección del servicio (https://…workers.dev)</label><input type="text" id="iUrl" value="${esc(I.url||'')}" placeholder="https://polinizacion-ia.<cuenta>.workers.dev">
+      <label>Usuarios del piloto (separados por coma; vacío = todos)</label><input type="text" id="iUs" value="${esc((I.usuarios||[]).join(', '))}">
+      <div class="fila" style="margin-top:12px"><button class="btn prim" id="iGuardar">GUARDAR EN GITHUB</button></div>
+      <details style="margin-top:12px"><summary style="cursor:pointer;font-weight:700">Cómo publicar el servicio (una sola vez)</summary><div class="tenue" style="margin-top:8px;line-height:1.6">
+        1. Cree una cuenta gratuita en Cloudflare y una clave de API en console.anthropic.com (con límite de gasto mensual).<br>
+        2. En la carpeta <code>ia/</code> del repositorio de la App: <code>npm install</code>, <code>npx wrangler login</code>, <code>npx wrangler secret put ANTHROPIC_API_KEY</code> (pegue la clave allí; nunca en la App ni en GitHub) y <code>npx wrangler deploy</code>.<br>
+        3. Copie aquí la dirección que muestra wrangler, marque «Activar» y guarde. La App la toma al ingresar con internet.<br>
+        El servicio solo atiende a quien tenga el token de la App con escritura en el repositorio de datos. Costo aproximado: unos pocos centavos de dólar por foto.</div></details>`;
+    $('#iGuardar').onclick=async()=>{const g=$('#iGuardar');m.textContent='';try{
+      const url=$('#iUrl').value.trim();const activo=$('#iActivo').checked;if(activo&&!/^https:\/\/[^\s]+$/.test(url))throw new Error('Escriba la dirección https:// del servicio.');
+      EDI.cfg.ia={activo,url,usuarios:$('#iUs').value.split(/[,;\s]+/).map(x=>x.trim()).filter(Boolean)};EDI.cfg.modificado=new Date().toISOString();g.disabled=true;
+      const r=await ghAdmin('/contents/config/servicios.json',{method:'PUT',body:JSON.stringify({message:'Configuración del piloto de IA',content:b64u(JSON.stringify(EDI.cfg,null,1)),branch:ED.acceso.repo.rama||'main',...(EDI.sha?{sha:EDI.sha}:{})})});
+      EDI.sha=r.content.sha;m.style.color='var(--acento)';m.textContent=activo?'✅ Guardado: la App mostrará el botón al ingresar con internet.':'✅ Guardado: piloto desactivado.';}
+      catch(e){m.style.color='var(--rojo)';m.textContent='❌ '+e.message;}finally{g.disabled=false;}};
+    E.hidden=false;b.textContent='Cerrar la configuración de la IA';}
+  catch(e){m.style.color='var(--rojo)';m.textContent='❌ '+e.message;}finally{b.disabled=false;}};
+/* ---------- Carga masiva de usuarios desde Excel (.xlsx) o CSV ----------
+   Columnas (encabezados en la primera fila, en cualquier orden): usuario, nombre, cargo, identificacion, rol, labores, rol_cirugia, rol_erradicacion, contraseña, estado.
+   Usuario existente: se actualizan los datos que traiga la fila. Usuario nuevo: se crea (contraseña de la fila o generada). */
+const normCol=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
+const SINON={usuario:['usuario','user','login'],nombre:['nombre','nombre_completo','nombres'],cargo:['cargo'],identificacion:['identificacion','cedula','documento','cc'],rol:['rol','perfil'],
+  labores:['labores','labor'],rol_cirugia:['rol_cirugia','rol_en_cirugia'],rol_erradicacion:['rol_erradicacion','rol_en_erradicacion'],clave:['contrasena','clave','password'],estado:['estado']};
+async function leerTabla(f){
+  if(/\.xlsx$/i.test(f.name)){const z=await JSZip.loadAsync(await f.arrayBuffer());const dp=new DOMParser();
+    const ss=z.file('xl/sharedStrings.xml')?[...dp.parseFromString(await z.file('xl/sharedStrings.xml').async('string'),'application/xml').getElementsByTagName('si')].map(x=>x.textContent):[];
+    const hoja=Object.keys(z.files).filter(n=>/^xl\/worksheets\/sheet\d+\.xml$/.test(n)).sort()[0];if(!hoja)throw new Error('El archivo de Excel no tiene hojas.');
+    const doc=dp.parseFromString(await z.file(hoja).async('string'),'application/xml');const filas=[];
+    for(const row of doc.getElementsByTagName('row')){const fila=[];for(const c of row.getElementsByTagName('c')){const ref=c.getAttribute('r')||'';let col=0;for(const ch of ref.replace(/\d+/g,''))col=col*26+ch.charCodeAt(0)-64;
+      const t=c.getAttribute('t'),v=c.getElementsByTagName('v')[0];fila[col-1]=t==='s'?ss[+v.textContent]:t==='inlineStr'?c.textContent:(v?v.textContent:'');}filas.push([...fila].map(x=>x??''));}
+    return filas;}
+  const txt=(await f.text()).replace(/^\ufeff/,'');const sep=(txt.split('\n')[0].match(/;/g)||[]).length>=(txt.split('\n')[0].match(/,/g)||[]).length?';':',';
+  return txt.split(/\r?\n/).filter(l=>l.trim()).map(l=>{const out=[];let cur='',q=false;for(let i=0;i<l.length;i++){const ch=l[i];if(ch==='"'){if(q&&l[i+1]==='"'){cur+='"';i++;}else q=!q;}else if(ch===sep&&!q){out.push(cur);cur='';}else cur+=ch;}out.push(cur);return out.map(x=>x.trim());});
+}
+async function importarUsuarios(f){
+  const filas=await leerTabla(f);if(filas.length<2)throw new Error('El archivo no tiene filas de usuarios.');
+  const cab=filas[0].map(normCol);const col={};for(const [k,syn] of Object.entries(SINON)){const i=cab.findIndex(c=>syn.includes(c));if(i>=0)col[k]=i;}
+  if(col.usuario==null)throw new Error('Falta la columna «usuario».');
+  const rolDe=v=>{v=normCol(v);return /super.?admin/.test(v)?'superadmin':/admin/.test(v)?'admin':/super/.test(v)?'supervisor':/analis/.test(v)?'analista':v?'operario':null;};
+  const labDe=v=>{v=normCol(v);if(!v)return null;const l=[];if(/censo/.test(v))l.push('censo');if(/cirug/.test(v))l.push('cirugia');if(/erradic/.test(v))l.push('erradicacion');if(/plaga/.test(v))l.push('plagas');return l.length?l:null;};
+  const res={nuevos:[],act:[],err:[]};const vistos=new Set();
+  filas.slice(1).forEach((fl,i)=>{const g=k=>col[k]!=null?String(fl[col[k]]??'').trim():'';const u=g('usuario').toLowerCase();const n=i+2;
+    if(!u&&!g('nombre'))return;
+    if(!reUser.test(u)){res.err.push(`Fila ${n}: usuario «${u||'(vacío)'}» no válido.`);return;}
+    if(vistos.has(u)){res.err.push(`Fila ${n}: «${u}» está repetido en el archivo.`);return;}vistos.add(u);
+    const datos={};if(g('nombre'))datos.nombre=g('nombre').toUpperCase();if(g('cargo'))datos.cargo=g('cargo');if(g('identificacion'))datos.identificacion=g('identificacion');
+    const ro=rolDe(g('rol'));if(ro)datos.rol=ro;const la=labDe(g('labores'));if(la)datos.labores=la;
+    const rc=normCol(g('rol_cirugia'));if(rc)datos.rol_cirugia=/ciruj/.test(rc)?'cirujano':'auxiliar';
+    const re=normCol(g('rol_erradicacion'));if(re)datos.rol_erradicacion=/auxil/.test(re)?'auxiliar':'erradicador';
+    const es=normCol(g('estado'));if(es)datos.inactivo=/susp|inact/.test(es);
+    const clave=g('clave');if(clave){const e=validarClave(clave);if(e){res.err.push(`Fila ${n} (${u}): contraseña ${e}.`);return;}}
+    const ex=todos().find(x=>x.u===u);
+    if(ex){res.act.push({x:ex,datos,clave});}
+    else{if(!datos.nombre){res.err.push(`Fila ${n}: falta el nombre del usuario nuevo «${u}».`);return;}
+      res.nuevos.push({u,nombre:datos.nombre,cargo:'',identificacion:'',rol:'operario',labores:['censo'],rol_cirugia:'',...datos,clave:clave||generarClave(),nuevo:true});}});
+  const msg=`Archivo: ${f.name}\n\n· ${res.nuevos.length} usuario(s) nuevo(s)\n· ${res.act.length} usuario(s) existente(s) a actualizar\n· ${res.err.length} fila(s) con error${res.err.length?':\n  '+res.err.slice(0,12).join('\n  ')+(res.err.length>12?'\n  …':''):''}\n\n¿Aplicar los cambios? (Quedan pendientes hasta «Generar archivos actualizados».)`;
+  if(!(res.nuevos.length+res.act.length)){alert(msg.replace(/\n\n¿Aplicar[\s\S]*$/,''));return;}
+  if(!confirm(msg))return;
+  for(const {x,datos,clave} of res.act){Object.assign(x,datos);if(!x.nuevo)ED.cambios.add(x.u);if(clave){if(x.nuevo)x.clave=clave;else ED.claves.set(x.u,clave);}}
+  ED.nuevos.push(...res.nuevos);pintarLista();
+}
+$('#eImport').onclick=()=>{const i=$('#eImportF');i.value='';i.click();};
+$('#eImportF').onchange=async()=>{const f=$('#eImportF').files[0];if(!f)return;try{await importarUsuarios(f);}catch(e){alert('No se pudo leer el archivo: '+e.message);}};
+/* ---------- Historial de cambios de usuarios (config/historial_usuarios.json del repositorio de datos) ---------- */
+function cambiosUsuarios(){
+  const out=[];
+  for(const x of ED.nuevos)out.push({u:x.u,accion:'Creado',detalle:`${x.nombre} · ${ROL_TXT[x.rol]||x.rol}`});
+  for(const u of ED.eliminar)out.push({u,accion:'Eliminado',detalle:(ED.lista.find(x=>x.u===u)||{}).nombre||''});
+  for(const [u] of ED.claves)if(!ED.eliminar.has(u))out.push({u,accion:'Contraseña nueva',detalle:''});
+  for(const u of ED.cambios){if(ED.eliminar.has(u))continue;const x=ED.lista.find(y=>y.u===u);const o=JSON.parse(ED.orig[u]||'{}'),n=metaDe(x);
+    const campos=[...new Set([...Object.keys(o),...Object.keys(n)])].filter(k=>JSON.stringify(o[k]??null)!==JSON.stringify(n[k]??null));
+    if(campos.includes('inactivo'))out.push({u,accion:n.inactivo?'Suspendido':'Reactivado',detalle:''});
+    const resto=campos.filter(k=>k!=='inactivo');if(resto.length)out.push({u,accion:'Editado',detalle:resto.map(k=>`${k}: ${JSON.stringify(o[k]??'—')} → ${JSON.stringify(n[k]??'—')}`).join('; ')});}
+  return out;
+}
+async function registrarHistorial(cambios){
+  if(!cambios.length)return;const rama=ED.acceso.repo.rama||'main';let arr=[],sha=null;
+  try{const f=await ghAdmin(`/contents/config/historial_usuarios.json?ref=${encodeURIComponent(rama)}`);arr=JSON.parse(deB64u(f.content));sha=f.sha;}catch(e){if(e.status!==404)throw e;}
+  const admin=(ED.lista.find(x=>x.u===$('#eUser').value.trim().toLowerCase())||{}).nombre||$('#eUser').value.trim();
+  arr.unshift({fecha:new Date().toISOString(),admin,usuario_admin:$('#eUser').value.trim().toLowerCase(),cambios});arr=arr.slice(0,500);
+  await ghAdmin('/contents/config/historial_usuarios.json',{method:'PUT',body:JSON.stringify({message:`Usuarios: ${cambios.length} cambio(s) por ${admin}`,content:b64u(JSON.stringify(arr,null,1)),branch:rama,...(sha?{sha}:{})})});
+}
+$('#eHist').onclick=async()=>{const B=$('#eHistBox');if(!B.hidden){B.hidden=true;return;}B.hidden=false;B.innerHTML='<p class="tenue">Consultando el historial…</p>';
+  try{let arr=[];try{const f=await ghAdmin(`/contents/config/historial_usuarios.json?ref=${encodeURIComponent(ED.acceso.repo.rama||'main')}`);arr=JSON.parse(deB64u(f.content));}catch(e){if(e.status!==404)throw e;}
+    B.innerHTML=`<h2 style="font-size:16px">Historial de cambios de usuarios</h2>`+(arr.length?`<div style="overflow-x:auto;max-height:420px"><table><thead><tr><th>Fecha</th><th>Administrador</th><th>Usuario</th><th>Acción</th><th>Detalle</th></tr></thead><tbody>${
+      arr.slice(0,100).flatMap(h=>h.cambios.map(c=>`<tr><td>${esc(new Date(h.fecha).toLocaleString('es-CO',{dateStyle:'medium',timeStyle:'short'}))}</td><td>${esc(h.admin)}</td><td><b>${esc(c.u)}</b></td><td>${esc(c.accion)}</td><td class="tenue">${esc(c.detalle)}</td></tr>`)).join('')}</tbody></table></div>`:'<p class="tenue">Aún no hay cambios registrados.</p>');}
+  catch(e){B.innerHTML=`<p class="err">❌ ${esc(e.message)}</p>`;}};
+$('#eAgregar').onclick=()=>formUsuario(null);
+['#eBuscar','#eFRol','#eFLab'].forEach(s=>$(s).addEventListener('input',pintarLista));
+$('#eCsv').onclick=()=>{const T=todos().filter(x=>!ED.eliminar.has(x.u));
+  const filas=T.map(x=>[x.u,x.nombre,x.cargo||'',x.identificacion||'',ROL_TXT[x.rol]||x.rol,laboresDe(x).map(l=>LAB_TXT[l]).join(' + '),x.rol_cirugia||'',x.rol_erradicacion||'',x.inactivo?'Suspendido':'Activo'].map(v=>String(v).replace(/;/g,',')).join(';'));
+  descargar('\ufeffusuario;nombre;cargo;identificacion;rol;labores;rol_cirugia;rol_erradicacion;estado\r\n'+filas.join('\r\n'),'usuarios_polinizacion_vegetal.csv','text/csv');};
+$('#eProbar').onclick=()=>{const t=$('#eToken').value.trim();if(!t){$('#eTokenMsg').textContent='Escriba el nuevo token para probarlo.';return;}probarToken($('#eOwner').value.trim(),$('#eRepo').value.trim(),t,$('#eTokenMsg'));};
+$('#eGuardar').onclick=async()=>{
+  const msg=$('#eMsg');msg.textContent='';$('#eOk').hidden=true;const bt=$('#eGuardar');
+  try{
+    const a=JSON.parse(JSON.stringify(ED.acceso));
+    const nuevos=ED.nuevos;
+    const quedan=ED.lista.filter(x=>!ED.eliminar.has(x.u));
+    if(!quedan.concat(nuevos).some(x=>ROLES_PRIV.includes(x.rol)&&!x.inactivo))throw new Error('Debe quedar al menos un administrador activo.');
+    if(ED.haySuper&&!quedan.concat(nuevos).some(x=>x.rol==='superadmin'&&!x.inactivo))throw new Error('Debe quedar al menos un super administrador activo.');
+    if(restringido()&&quedan.concat(nuevos).some(x=>!puedeGestionar(x)&&(ED.cambios.has(x.u)||ED.claves.has(x.u))))throw new Error('Hay cambios en cuentas privilegiadas: solo el super administrador puede hacerlos.');
+    bt.disabled=true;bt.textContent='Cifrando…';
+    const usuarios=[];
+    for(const x of a.usuarios){if(ED.eliminar.has(x.u))continue;const m=ED.lista.find(y=>y.u===x.u);
+      const c=ED.claves.get(x.u);
+      if(c)usuarios.push(await entradaUsuario(ED.dk,ED.dkRaw,x.u,m.nombre,m.rol,c,metaDe(m)));
+      else if(ED.cambios.has(x.u))usuarios.push({...x,meta:await cifrar(ED.dk,enc.encode(JSON.stringify(metaDe(m))))}); // solo cambian los datos, la contraseña se conserva
+      else usuarios.push(x);}
+    for(const x of nuevos)usuarios.push(await entradaUsuario(ED.dk,ED.dkRaw,x.u,x.nombre,x.rol,x.clave,metaDe(x)));
+    a.usuarios=usuarios;a.repo={owner:$('#eOwner').value.trim(),repo:$('#eRepo').value.trim(),rama:$('#eRama').value.trim()||'main'};
+    const t=$('#eToken').value.trim();if(t){if(!/^(github_pat_|ghp_)/.test(t))throw new Error('El token debe empezar por github_pat_.');a.token=await cifrar(ED.dk,enc.encode(t));}
+    const files=Array.from($('#eCarto').files||[]);let carto=null;
+    if(files.length){carto=await cifrarCarto(ED.dk,files);a.carto={archivo:'carto.enc',version:versionAhora(),tam:carto.bytes.length,lotes:carto.lotes};}
+    const fp=$('#ePlant').files[0];let plant=null;
+    if(fp){plant=await cifrarPlantacion(ED.dk,fp);a.plantacion={archivo:'plantacion.enc',version:versionAhora(),tam:plant.bytes.length};}
+    a.modificado=new Date().toISOString();
+    const arch=[{nombre:'acceso.json',datos:JSON.stringify(a,null,1),tipo:'application/json'},...(carto?[{nombre:'carto.enc',datos:new Blob([carto.bytes])}]:[]),...(plant?[{nombre:'plantacion.enc',datos:new Blob([plant.bytes])}]:[])];
+    for(const [i,x] of arch.entries()){if(i)await new Promise(r=>setTimeout(r,600));descargar(x.datos,x.nombre,x.tipo);}
+    const entregar=nuevos.concat(Array.from(ED.claves,([u,clave])=>{const m=ED.lista.find(y=>y.u===u);return {u,nombre:m.nombre,rol:m.rol,clave};}));
+    mostrarResultado($('#eOk'),arch,entregar);
+    ED.acceso=a;
+    const cambiosH=cambiosUsuarios();registrarHistorial(cambiosH).catch(e=>{msg.textContent='⚠ Archivos generados, pero no se pudo guardar el historial de cambios: '+e.message;});
+    // El paquete descargado pasa a ser el actual: los cambios ya quedaron aplicados
+    for(const x of ED.nuevos){delete x.clave;delete x.nuevo;ED.lista.push(x);}ED.nuevos=[];
+    ED.lista=ED.lista.filter(x=>!ED.eliminar.has(x.u));ED.eliminar.clear();ED.claves.clear();ED.cambios.clear();ED.orig={};for(const x of ED.lista)ED.orig[x.u]=JSON.stringify(metaDe(x));pintarLista();
+  }catch(e){msg.textContent='❌ '+e.message;}
+  finally{bt.disabled=false;bt.textContent='GENERAR ARCHIVOS ACTUALIZADOS';}
+};
+</script>
+</body>
+</html>

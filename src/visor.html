@@ -1,0 +1,1189 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#06140f">
+<meta name="robots" content="noindex">
+<title>Visor Web · Polinización</title>
+<link rel="icon" type="image/svg+xml" href="icons/sv_icono.svg">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>/*LEAFLET_CSS*/.parada-ic{background:none;border:0}
+.parada-pill{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;gap:2px;white-space:nowrap;height:22px;padding:0 8px 0 7px;border:2px solid #fff;border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,.45);font:700 11.5px/1 Inter,system-ui,sans-serif;cursor:pointer}
+.parada-pill i{display:block;width:3.5px;height:11px;border-radius:1px;background:#fff}
+.parada-pill b{margin-left:4px;font-weight:700}
+.parada-pill.mini{position:static;transform:none;display:inline-flex;height:16px;padding:0 6px 0 5px;font-size:10px;vertical-align:-3px;margin-right:6px;border-width:1.5px;box-shadow:none}
+.parada-pill.mini i{height:8px;width:2.5px}
+.flecha-ic{background:none;border:0;pointer-events:none}
+.flecha-op{width:90px;height:90px;transform-origin:50% 50%;transition:transform .35s ease-out;filter:drop-shadow(0 2px 4px rgba(0,0,0,.45))}
+.ico-palma{display:inline-block;vertical-align:-3px;margin-right:6px}
+.ms{position:relative}
+.ms-bt{width:100%;text-align:left;background:#0a1d16;border:1px solid var(--borde);border-radius:9px;padding:7px 22px 7px 9px;color:var(--texto);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;font:inherit;font-size:13.5px;position:relative;min-height:34px}
+.ms-bt::after{content:'▾';position:absolute;right:8px;top:50%;transform:translateY(-50%);color:var(--tenue)}
+.ms.activo .ms-bt{border-color:var(--acento);box-shadow:0 0 0 1px rgba(34,211,154,.35)}
+#msPop{position:fixed;z-index:3000;width:280px;background:#0c2219;border:1px solid var(--borde);border-radius:12px;padding:10px;box-shadow:0 14px 34px rgba(0,0,0,.55)}
+#msPop input[type=text]{width:100%;box-sizing:border-box}
+#msPop .ms-acc{display:flex;gap:6px;margin:8px 0 6px;flex-wrap:wrap}
+#msPop .ms-lista{max-height:300px;overflow:auto;display:flex;flex-direction:column;gap:1px}
+#msPop .ms-it{display:flex;align-items:center;gap:6px;padding:4px 4px;border-radius:6px}
+#msPop .ms-it:hover{background:rgba(255,255,255,.05)}
+#msPop .ms-it label{flex:1;display:flex;gap:8px;align-items:center;cursor:pointer;font-size:13.5px;min-width:0}
+#msPop .ms-it label span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#msPop input[type=checkbox]{accent-color:var(--acento);width:16px;height:16px;flex:none}
+#msPop .solo{background:none;border:0;color:var(--acento);font-size:11.5px;cursor:pointer;white-space:nowrap;padding:2px 4px}
+#msPop .vacio{font-size:12.5px;color:var(--tenue);padding:6px 4px}
+.ic-oficina{background:none;border:0}
+.ic-oficina svg{filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))}
+</style>
+<style>/*FUENTES*/</style>
+<style>
+:root{
+  --fondo:#06140f;--panel:rgba(8,25,19,.92);--panel2:#0c2219;--borde:rgba(144,205,241,.18);--borde2:rgba(255,255,255,.10);
+  --texto:#eaf5f0;--tenue:#94b6a9;--acento:#22d39a;--acento2:#0f9d6b;--marca:#036545;--naranja:#ee7633;--azul:#2f93d5;--celeste:#90cdf1;
+  --rojo:#ff5d5d;--ambar:#ffc53d;--t:'Rajdhani',system-ui,sans-serif;--lat:430px;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;background:var(--fondo);color:var(--texto);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button,select,input{font:inherit;color:inherit}
+.tit{font-family:var(--t);font-weight:700;letter-spacing:1.5px;text-transform:uppercase}
+.tenue{color:var(--tenue)}
+.glass{background:var(--panel);border:1px solid var(--borde);backdrop-filter:blur(10px)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--borde);background:rgba(255,255,255,.05);border-radius:10px;padding:7px 12px;cursor:pointer;font-family:var(--t);font-weight:700;letter-spacing:.8px;font-size:14px;white-space:nowrap}
+.btn:hover{border-color:var(--acento)}
+.btn.prim{background:linear-gradient(135deg,var(--acento),var(--acento2));color:#03140d;border-color:transparent}
+.btn.nar{background:linear-gradient(135deg,#ff9a5a,var(--naranja));color:#1d0b00;border-color:transparent}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.mini{padding:4px 8px;font-size:12.5px;border-radius:8px}
+input[type=date],input[type=text],input[type=password],select{background:#0a1d16;border:1px solid var(--borde);border-radius:9px;padding:7px 9px;min-width:0}
+input:focus,select:focus{outline:2px solid rgba(34,211,154,.45);outline-offset:1px}
+label.campo{display:block;font-size:11.5px;color:var(--tenue);text-transform:uppercase;letter-spacing:1px;margin:0 0 3px;font-family:var(--t);font-weight:600}
+
+/* Ingreso */
+#login{position:fixed;inset:0;z-index:5000;display:flex;align-items:center;justify-content:center;padding:16px;
+  background:radial-gradient(1200px 600px at 20% 0%,rgba(34,211,154,.16),transparent 60%),radial-gradient(900px 500px at 100% 100%,rgba(47,147,213,.16),transparent 60%),var(--fondo)}
+#login .caja{width:min(420px,100%);border-radius:22px;padding:26px 24px}
+#login img{width:min(260px,70%);display:block;margin:0 auto 6px}
+#login h1{text-align:center;margin:4px 0 2px;font-size:26px}
+#login .sub{text-align:center;margin:0 0 16px}
+#login form{display:grid;gap:12px}
+#login input{width:100%;padding:11px 12px;font-size:15px}
+#lgMsg{min-height:20px;font-size:13.5px}
+#lgVer{text-align:center;font-family:var(--t);letter-spacing:2px;color:var(--tenue);font-size:12px;margin-top:10px}
+
+/* Estructura */
+#app{display:grid;grid-template-rows:auto minmax(0,1fr);height:100vh;height:100dvh}
+header{display:flex;align-items:center;gap:12px;padding:8px 14px;border-bottom:1px solid var(--borde);background:linear-gradient(90deg,rgba(3,101,69,.35),rgba(6,20,15,.9))}
+header img.app{height:40px;width:40px;border-radius:10px}
+header .empresa{background:#fff;border-radius:10px;padding:4px 10px;display:flex;align-items:center}
+header .empresa img{height:28px;width:auto;display:block}
+#login .marca-app{display:flex;align-items:center;justify-content:center;gap:12px;margin:14px 0 4px}
+#login .marca-app img{width:56px;height:56px;margin:0}
+#login input[type=checkbox]{width:auto;padding:0}
+header .nombre{font-size:20px;line-height:1}
+header .nombre small{display:block;font-size:12px;letter-spacing:2.5px;color:var(--celeste)}
+header .esp{flex:1}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--borde);border-radius:999px;padding:4px 10px;font-size:12.5px;background:rgba(0,0,0,.25)}
+.chip i{width:8px;height:8px;border-radius:50%;background:var(--acento);display:inline-block}
+.chip.med i{background:var(--ambar)}.chip.mal i{background:var(--rojo)}
+main{display:grid;grid-template-columns:var(--lat) minmax(0,1fr);min-height:0;overflow:hidden}
+aside{display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden;border-right:1px solid var(--borde);background:var(--panel2)}
+#filtros{padding:12px 14px;border-bottom:1px solid var(--borde);display:grid;gap:8px}
+#filtros .fila{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+#filtros .fila3,#filtros .fila4{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+#filtros .fila4{grid-template-columns:repeat(4,minmax(0,1fr))}
+#filtros select,#filtros input{width:100%}
+#filtros .acc{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.atajos{display:flex;gap:6px;flex-wrap:wrap}
+#prog{height:3px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden}
+#prog b{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--acento),var(--celeste));transition:width .2s}
+#progTxt{font-size:12.5px;min-height:18px}
+nav.tabs{display:flex;border-bottom:1px solid var(--borde);overflow-x:auto}
+nav.tabs button{flex:1;background:none;border:0;border-bottom:3px solid transparent;padding:9px 4px;font-size:12.5px;cursor:pointer;font-family:var(--t);font-weight:700;letter-spacing:1px;color:var(--tenue);white-space:nowrap}
+nav.tabs button.on{color:var(--texto);border-bottom-color:var(--acento)}
+#panel{flex:1;overflow:auto;padding:12px 14px 30px}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.kpi{border:1px solid var(--borde);border-radius:12px;padding:8px 10px;background:rgba(255,255,255,.03)}
+.kpi b{display:block;font-family:var(--t);font-size:22px;line-height:1.1}
+.kpi span{font-size:11px;color:var(--tenue);text-transform:uppercase;letter-spacing:.8px}
+h3{font-family:var(--t);letter-spacing:1.2px;text-transform:uppercase;font-size:15px;margin:16px 0 8px;color:var(--celeste)}
+.barra{display:grid;grid-template-columns:130px 1fr 52px;gap:8px;align-items:center;font-size:13px;margin:4px 0}
+.barra .b{height:10px;border-radius:6px;background:rgba(255,255,255,.06);overflow:hidden}
+.barra .b i{display:block;height:100%}
+table.t{width:100%;border-collapse:collapse;font-size:12.8px}
+table.t th{position:sticky;top:-12px;background:#0d261c;text-align:left;font-weight:600;color:var(--tenue);padding:6px 6px;border-bottom:1px solid var(--borde);cursor:pointer;white-space:nowrap;font-size:12px}
+table.t th.ord::after{content:' ▾'}table.t th.ord.asc::after{content:' ▴'}
+table.t td{padding:6px;border-bottom:1px solid var(--borde2);vertical-align:top}
+table.t tr.sel td{background:rgba(34,211,154,.12)}
+table.t tbody tr{cursor:pointer}
+table.t tbody tr:hover td{background:rgba(255,255,255,.04)}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.punto{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px;border:1px solid rgba(255,255,255,.5)}
+.vacio{padding:24px 6px;text-align:center;color:var(--tenue)}
+.aviso{border:1px solid rgba(255,197,61,.45);background:rgba(255,197,61,.08);border-radius:12px;padding:10px 12px;font-size:13.5px}
+.mapaCaja{position:relative;min-height:0;overflow:hidden}
+#mapa{position:absolute;inset:0;background:#0a1712}
+.leaflet-container{font:inherit}
+.capas{position:absolute;top:10px;right:10px;z-index:900;border-radius:14px;padding:8px 10px;display:grid;gap:4px;font-size:13px}
+.capas label{display:flex;gap:6px;align-items:center;cursor:pointer}
+.leyenda{position:absolute;left:10px;bottom:24px;z-index:900;border-radius:14px;padding:8px 10px;font-size:11px;max-width:330px;display:grid;grid-template-columns:1fr 1fr;column-gap:10px}
+.leyenda b.tit,.leyenda .tenue{grid-column:1/-1}
+.leyenda div{margin:2px 0}
+.etq-lote{background:rgba(6,20,15,.78);color:#d8efe6;border:1px solid rgba(144,205,241,.35);border-radius:6px;font-family:var(--t);font-weight:700;font-size:12px;padding:0 5px;box-shadow:none}
+.etq-lote::before{display:none}
+.sin-etq .etq-lote{display:none}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#0b1f17;color:var(--texto);border:1px solid var(--borde)}
+.leaflet-popup-content{margin:10px 12px;font-size:13px;min-width:220px}
+.leaflet-popup-content b.h{font-family:var(--t);font-size:16px;letter-spacing:.8px}
+.leaflet-container a.leaflet-popup-close-button{color:var(--tenue)}
+/* Reproducción de todas las jornadas filtradas */
+.btRep{font-family:var(--t);font-weight:700;letter-spacing:.6px}
+#rep{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);z-index:960;width:min(760px,calc(100% - 20px));border-radius:18px;padding:10px 12px;display:grid;gap:8px}
+#rep .r1{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+#rep .r1 b.t{font-family:var(--t);font-size:17px;letter-spacing:.8px;flex:1;min-width:160px}
+#rep .modo{display:inline-flex;border:1px solid var(--borde);border-radius:999px;overflow:hidden}
+#rep .modo button{border:0;background:transparent;color:var(--tenue);padding:5px 12px;font-family:var(--t);font-weight:700;font-size:13.5px;cursor:pointer}
+#rep .modo button.on{background:var(--acento);color:#032a1d}
+#rep .r2{display:flex;align-items:center;gap:8px}
+#rep .r2 input[type=range]{flex:1}
+#rep .reloj{font-family:var(--t);font-size:22px;font-weight:700;min-width:96px;text-align:right;font-variant-numeric:tabular-nums}
+#rep .r3{display:flex;gap:6px 14px;flex-wrap:wrap;font-size:12.5px;color:var(--tenue);align-items:center}
+#rep .r3 b{color:var(--texto)}
+#rep .ops{display:flex;gap:6px;flex-wrap:wrap;max-height:58px;overflow:auto;font-size:12px}
+#rep .ops span{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--borde);border-radius:999px;padding:1px 8px}
+#rep .ops span.inact{opacity:.4}
+#rep .acu{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+#rep .acu div{border:1px solid var(--borde);border-radius:10px;padding:4px 8px;font-size:11.5px;color:var(--tenue);line-height:1.25}
+#rep .acu div b{display:block;color:var(--texto);font-family:var(--t);font-size:16px;font-variant-numeric:tabular-nums}
+#rep .critRep{display:none;align-items:center;gap:8px;flex-wrap:wrap;background:#b71c1c;color:#fff;border:2px solid #ff5252;border-radius:10px;padding:5px 10px;font-weight:800;font-size:13px;animation:critLatido 1.2s ease-out infinite}
+#rep .critRep.on{display:flex}
+#rep .critRep.nuevo{animation:critLatido 1.2s ease-out infinite,critParpadeo .35s linear 6}
+@media (max-width:560px){#rep .acu{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.rep-etq{background:rgba(6,20,15,.82);color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:6px;font-family:var(--t);font-weight:700;font-size:12px;padding:0 5px;box-shadow:none}
+.rep-etq::before{display:none}
+.ppFoto{margin:-2px 0 8px}
+.ppFoto img{display:block;width:100%;max-height:230px;object-fit:cover;border-radius:10px;cursor:zoom-in;border:1px solid var(--borde)}
+.ppFoto .tenue{display:block;padding:18px 0;text-align:center;font-size:12px}
+/* Detalle de jornada / reproducción */
+#detalle{position:absolute;left:10px;top:10px;z-index:950;width:min(380px,calc(100% - 20px));max-height:calc(100% - 20px);overflow:auto;border-radius:16px;padding:12px 14px}
+#detalle .cab{display:flex;align-items:center;gap:8px}
+#detalle .cab b{flex:1;font-family:var(--t);font-size:18px;letter-spacing:.8px}
+.x{background:none;border:1px solid var(--borde);border-radius:9px;width:30px;height:30px;cursor:pointer}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:13px;margin:8px 0}
+.play{display:grid;gap:6px;margin:8px 0;padding:8px;border:1px solid var(--borde);border-radius:12px;background:rgba(0,0,0,.2)}
+.play-res{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;font-size:11.5px;color:var(--tenue);text-align:center}
+.play-res b{display:block;color:var(--texto);font-family:var(--t);font-size:17px}
+.pulso-diag{animation:pulsoDiag 1s ease-out infinite}
+@keyframes pulsoDiag{0%{stroke-opacity:1;stroke-width:5}100%{stroke-opacity:.15;stroke-width:1}}
+.play .fila{display:flex;gap:6px;align-items:center}
+.play input[type=range]{flex:1;accent-color:var(--acento)}
+.play .reloj{font-family:var(--t);font-size:20px;min-width:70px;text-align:center}
+/* Fotos */
+#fotos{position:fixed;inset:0;z-index:6000;background:rgba(2,8,6,.9);display:flex;align-items:center;justify-content:center;padding:16px}
+#fotos .caja{width:min(980px,100%);max-height:92vh;overflow:auto;border-radius:18px;padding:14px}
+#fotos .g{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+#fotos img{width:100%;border-radius:10px;display:block;background:#000}
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:7000;background:#0b2a1f;border:1px solid var(--acento);border-radius:12px;padding:9px 14px;opacity:0;pointer-events:none;transition:opacity .25s;max-width:90vw}
+#toast.on{opacity:1}
+@media(max-width:900px){
+  header .empresa{padding:3px 7px}header .empresa img{height:20px}
+  #app{height:auto;min-height:100vh}
+  main{grid-template-columns:1fr;grid-template-rows:55vh auto;overflow:visible}
+  .mapaCaja{order:-1;min-height:55vh}
+  aside{border-right:0;border-top:1px solid var(--borde)}
+  #panel{overflow:visible}
+  header .nombre small{display:none}
+  #hdrUsuario,#chApi{display:none}
+  .leyenda{display:none}
+  .capas{font-size:12px;padding:6px 8px;gap:2px}
+  header{gap:8px;padding:8px 10px}
+  header .nombre{font-size:17px}
+  #detalle{top:auto;bottom:10px;max-height:70%}
+}
+</style>
+</head>
+<body>
+<div id="login">
+  <div class="caja glass">
+    <img src="__LOGO__" alt="Palmas de Tumaco">
+    <div class="marca-app"><img src="__APPLOGO__" alt="Logo Polinización"><h1 class="tit" style="margin:0">Visor Web</h1></div>
+    <p class="sub tenue">Polinización · Recorridos y diagnósticos sincronizados</p>
+    <form id="frmLogin" autocomplete="on">
+      <div><label class="campo" for="lgU">Usuario</label><input id="lgU" autocomplete="username" autocapitalize="none" required></div>
+      <div><label class="campo" for="lgC">Contraseña</label><input id="lgC" type="password" autocomplete="current-password" required></div>
+      <label style="display:flex;gap:8px;align-items:center;font-size:13.5px"><input type="checkbox" id="lgRec"> Recordar en este equipo</label>
+      <button class="btn prim" id="lgOk" style="padding:11px">INGRESAR</button>
+      <div id="lgMsg"></div>
+    </form>
+    <p class="tenue" style="font-size:12.5px;margin:6px 0 0">Acceso para administradores y supervisores. Requiere internet: los datos se leen del repositorio privado de GitHub.</p>
+    <div id="lgVer">VERSIÓN __VERSION__</div>
+  </div>
+</div>
+
+<div id="app" hidden>
+  <header>
+    <img class="app" src="__APPLOGO__" alt="Polinización">
+    <div class="nombre tit">Polinización<small>VISOR WEB DE CAMPO</small></div>
+    <div class="esp"></div>
+    <span class="chip" id="chDatos"><i></i><span id="chDatosTxt">Sin datos</span></span>
+    <span class="chip" id="chApi" title="Solicitudes restantes a GitHub en esta hora"><i></i><span id="chApiTxt">API</span></span>
+    <span class="empresa"><img src="__LOGO__" alt="Palmas de Tumaco"></span>
+    <span class="tenue" id="hdrUsuario"></span>
+    <button class="btn mini" id="btSalir">Salir</button>
+  </header>
+  <main>
+    <aside>
+      <div id="filtros">
+        <div class="fila">
+          <div><label class="campo" for="fDesde">Desde</label><input type="date" id="fDesde"></div>
+          <div><label class="campo" for="fHasta">Hasta</label><input type="date" id="fHasta"></div>
+        </div>
+        <div class="acc">
+          <div class="atajos"><button class="btn mini" data-dias="0">Hoy</button><button class="btn mini" data-dias="6">7 días</button><button class="btn mini" data-dias="29">30 días</button><button class="btn mini" data-mes="1">Este mes</button></div>
+          <button class="btn prim" id="btCargar" style="margin-left:auto">CARGAR</button>
+        </div>
+        <div class="fila4">
+          <div><label class="campo">Programa</label><div class="ms" data-k="prog"><button type="button" class="ms-bt" aria-haspopup="listbox">Todos</button></div></div>
+          <div><label class="campo">Operario</label><div class="ms" data-k="op"><button type="button" class="ms-bt" aria-haspopup="listbox">Todos</button></div></div>
+          <div><label class="campo">Lote</label><div class="ms" data-k="lote"><button type="button" class="ms-bt" aria-haspopup="listbox">Todos</button></div></div>
+          <div><label class="campo">Estado</label><div class="ms" data-k="est"><button type="button" class="ms-bt" aria-haspopup="listbox">Todos</button></div></div>
+        </div>
+        <div class="fila3" style="margin-top:8px">
+          <div><label class="campo">Enfermedad principal</label><div class="ms" data-k="n1"><button type="button" class="ms-bt" aria-haspopup="listbox">Todos</button></div></div>
+          <div><label class="campo">Opción enfermedad (si aplica)</label><div class="ms" data-k="n2"><button type="button" class="ms-bt" aria-haspopup="listbox">Todos</button></div></div>
+          <div><label class="campo">Tipo seguimiento</label><div class="ms" data-k="n3"><button type="button" class="ms-bt" aria-haspopup="listbox">Todos</button></div></div>
+        </div>
+        <div id="prog"><b></b></div>
+        <div id="progTxt" class="tenue"></div>
+      </div>
+      <nav class="tabs">
+        <button data-tab="resumen" class="on">RESUMEN</button><button data-tab="jornadas">JORNADAS</button><button data-tab="lotes">LOTES</button><button data-tab="secuencias">SECUENCIAS</button><button data-tab="operarios">OPERARIOS</button><button data-tab="diag">DIAGNÓSTICOS</button>
+      </nav>
+      <div id="panel"></div>
+    </aside>
+    <div class="mapaCaja">
+      <div id="mapa"></div>
+      <div class="capas glass">
+        <button class="btn mini prim btRep" id="btRep" title="Reproducir todas las jornadas filtradas">▶ Reproducir</button>
+        <label><input type="checkbox" id="cLotes" checked> Lotes</label>
+        <label><input type="checkbox" id="cVias" checked> Vías y senderos</label>
+        <label><input type="checkbox" id="cRec" checked> Recorridos</label>
+        <label><input type="checkbox" id="cDiag" checked> Diagnósticos</label>
+        <label><input type="checkbox" id="cPar" checked> Paradas</label>
+        <label><input type="checkbox" id="cPalmas"> Palmas (zoom 17+)</label>
+        <label style="margin-top:2px"><select id="cBase" style="padding:3px 6px;font-size:12.5px"><option value="dron">Ortofoto dron</option><option value="no">Sin fondo</option></select></label>
+      </div>
+      <div class="leyenda glass" id="leyenda"></div>
+      <div id="detalle" class="glass" hidden></div>
+      <div id="rep" class="glass" hidden></div>
+    </div>
+  </main>
+</div>
+<div id="fotos" hidden><div class="caja glass"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><b class="tit" id="fotosTit" style="flex:1;font-size:18px"></b><button class="x" id="fotosX">✕</button></div><div class="g" id="fotosG"></div></div></div>
+<div id="toast"></div>
+
+<script>/*LIB_LEAFLET*/</script>
+<script>/*LIB_JSZIP*/</script>
+<script>
+'use strict';
+/* =====================================================================
+   VISOR WEB · POLINIZACIÓN (Palmas de Tumaco S.A.S.)
+   Lee las jornadas sincronizadas por la app de campo en el repositorio
+   privado de GitHub. Ingreso con el mismo paquete cifrado de la app
+   (datos/acceso.json): solo usuarios con rol administrador o supervisor.
+   Los archivos de GitHub no cambian una vez escritos, por eso se guardan
+   en caché local por su huella (sha) y solo se descargan una vez.
+   ===================================================================== */
+const VERSION='__VERSION__';
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num=(n,d=0)=>Number(n||0).toLocaleString('es-CO',{minimumFractionDigits:d,maximumFractionDigits:d});
+const ordenNat=(a,b)=>String(a).localeCompare(String(b),'es',{numeric:true});
+const hoyISO=(d=new Date())=>{const z=new Date(d.getTime()-d.getTimezoneOffset()*60000);return z.toISOString().slice(0,10);};
+const hhmm=t=>{if(!t)return '—';const d=new Date(t);return isNaN(d)?'—':d.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit',hour12:false});};
+const minAh=m=>m==null?'—':(m>=60?Math.floor(m/60)+' h '+String(Math.round(m%60)).padStart(2,'0')+' min':Math.round(m)+' min');
+function toast(m,ms=3500){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('on'),ms);}
+const ESTADOS=[
+  {id:'sana',n:'Sana / sin novedad',c:'#2ecc71'},{id:'enferma',n:'Enferma (caso nuevo o activo)',c:'#ff4d4d'},{id:'tratamiento',n:'En recuperación / seguimiento',c:'#ff9f1c'},
+  {id:'alta',n:'De alta',c:'#7bed9f'},{id:'erradicada',n:'Erradicada',c:'#9e9e9e'},{id:'novedad',n:'Otra novedad (no fitosanitaria)',c:'#b388ff'},
+  {id:'muerta',n:'Muerta',c:'#1a1a1a',leg:1},{id:'faltante',n:'Sitio vacío / faltante',c:'#ffffff',leg:1},{id:'resiembra',n:'Resiembra',c:'#3fa9ff',leg:1}];
+const estadoDe=id=>ESTADOS.find(e=>e.id===id);
+const COLOR_N1={PC:'#e53935',PE:'#8e24aa',DBP:'#fb8c00',AR:'#ad1457',CER:'#795548',DEF:'#c0ca33',ESP:'#00acc1',HP:'#3949ab',MJ:'#f48fb1',ML:'#212121',MS:'#1e88e5',PA:'#827717',PEST:'#26a69a',RAYO:'#ffffff',YAR:'#33691e',BORO:'#ffb300',EV:'#cfd8dc'};
+const COLOR_ALTA='#00e676';
+/* Caso de PC para la incidencia: último diagnóstico de la palma con Nivel 1 = PC, excluidos los casos en recuperación
+   (y los dados de alta, que ya no son casos). Incidencia PC = casos de PC ÷ palmas totales del lote (existencia 0 y 1). */
+const esCasoPC=(c,n2,estado)=>c==='PC'&&!/RECUPERACI|DE ALTA/i.test(n2||'')&&estado!=='tratamiento'&&estado!=='alta';
+const codN1=d=>d.n1_codigo||String(d.problemas||'').split('|').filter(Boolean)[0]||'';
+function colorD(d){if(!d)return '#999';if(d.estado==='alta')return COLOR_ALTA;return COLOR_N1[codN1(d)]||(estadoDe(d.estado)||{c:'#ccc'}).c;}
+const PROBLEMAS={PC:'Pudrición de cogollo (PC)',PE:'Pudrición de estípite (PE)',DBP:'Desprendimiento de bases peciolares (DBP)',AR:'Anillo rojo (AR)',CER:'Cercospora',DEF:'Deficiencias',
+  ESP:'Espontánea',HP:'Hoja pequeña',MJ:'Mal de juventud (MJ)',ML:'Marchitez letal (ML)',MS:'Marchitez sorpresiva (MS)',PA:'Palma amarilla',PEST:'Pestalotia',RAYO:'Rayo',YAR:'Yarumo',
+  RP:'Rhynchophorus palmarum (picudo)',SA:'Strategus aloeus',LG:'Leptopharsa / Pestalotiopsis',OC:'Opsiphanes cassina',SV:'Sagalassa valida',DF:'Otros defoliadores',RT:'Daño por roedores',DN:'Deficiencia nutricional',OT:'Otro',BORO:'Deficiencia de boro',EV:'Espacio vacío'};
+const PALETA=['#22d39a','#2f93d5','#ee7633','#c77dff','#ffd166','#ef476f','#06d6a0','#90cdf1','#f4a261','#a7c957','#ff8fab','#4cc9f0','#e9c46a','#b5179e','#8ac926','#ff595e'];
+const colorOp=(()=>{const m=new Map();return u=>{if(!m.has(u))m.set(u,PALETA[m.size%PALETA.length]);return m.get(u);};})();
+
+/* ---------- Almacén local (IndexedDB) ---------- */
+let DBP=null;
+function db(){if(DBP)return DBP;DBP=new Promise((ok,mal)=>{const r=indexedDB.open('polinizacion_visor',1);
+  r.onupgradeneeded=()=>{const d=r.result;d.createObjectStore('kv');d.createObjectStore('cache');};r.onsuccess=()=>ok(r.result);r.onerror=()=>mal(r.error);});return DBP;}
+async function dget(st,k){const d=await db();return new Promise((ok,mal)=>{const q=d.transaction(st).objectStore(st).get(k);q.onsuccess=()=>ok(q.result);q.onerror=()=>mal(q.error);});}
+async function dput(st,k,v){const d=await db();return new Promise((ok,mal)=>{const tx=d.transaction(st,'readwrite');tx.objectStore(st).put(v,k);tx.oncomplete=()=>ok();tx.onerror=()=>mal(tx.error);});}
+async function ddel(st,k){const d=await db();return new Promise(ok=>{const tx=d.transaction(st,'readwrite');tx.objectStore(st).delete(k);tx.oncomplete=()=>ok();tx.onerror=()=>ok();});}
+
+/* ---------- Cifrado (mismo esquema de la app) ---------- */
+const ENC=new TextEncoder(),DEC=new TextDecoder();
+const deB64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const aB64=u=>{let s='';const b=new Uint8Array(u);for(let i=0;i<b.length;i+=32768)s+=String.fromCharCode.apply(null,b.subarray(i,i+32768));return btoa(s);};
+async function kekDe(clave,salt,iter){const base=await crypto.subtle.importKey('raw',ENC.encode(clave),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:iter,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['decrypt']);}
+async function aesDes(k,iv,ct){return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv},k,ct));}
+const desObj=(k,o)=>aesDes(k,deB64(o.iv),deB64(o.ct));
+let ACCESO=null,SES=null;
+async function llaveEquipo(){let k=await dget('kv','llave');if(!k){k=await crypto.subtle.generateKey({name:'AES-GCM',length:256},false,['encrypt','decrypt']);await dput('kv','llave',k);}return k;}
+async function abrirSesion(u,dkRaw,recordar){
+  const e=ACCESO.usuarios.find(x=>x.u===u);if(!e)throw new Error('El usuario ya no está autorizado.');
+  const dk=await crypto.subtle.importKey('raw',dkRaw,{name:'AES-GCM'},false,['decrypt']);
+  const meta=JSON.parse(DEC.decode(await desObj(dk,e.meta)));
+  if(meta.inactivo)throw new Error('Su usuario está suspendido. Comuníquese con el administrador.');
+  if(!['admin','superadmin','supervisor','analista'].includes(meta.rol))throw new Error('Su usuario es de operario. El visor web es solo para administradores, supervisores y analistas de datos.');
+  const token=DEC.decode(await desObj(dk,ACCESO.token));
+  SES={u,nombre:meta.nombre,rol:meta.rol,dk,token,repo:ACCESO.repo};
+  if(recordar){const k=await llaveEquipo();const iv=crypto.getRandomValues(new Uint8Array(12));
+    const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},k,ENC.encode(JSON.stringify({u,dk:aB64(dkRaw),paquete:ACCESO.id})));await dput('kv','sesion',{iv,ct});}
+}
+async function restaurarSesion(){
+  const r=await dget('kv','sesion');if(!r||!ACCESO)return false;
+  try{const k=await llaveEquipo();const p=JSON.parse(DEC.decode(await aesDes(k,r.iv,r.ct)));
+    if(p.paquete!==ACCESO.id){await ddel('kv','sesion');return false;}
+    await abrirSesion(p.u,deB64(p.dk),false);return true;}catch(e){await ddel('kv','sesion');return false;}
+}
+let intentos=0,bloqueo=0;
+$('#frmLogin').onsubmit=async ev=>{
+  ev.preventDefault();const m=$('#lgMsg'),b=$('#lgOk');
+  if(Date.now()<bloqueo){m.style.color='var(--rojo)';m.textContent=`Demasiados intentos. Espere ${Math.ceil((bloqueo-Date.now())/1000)} s.`;return;}
+  if(!ACCESO){m.style.color='var(--rojo)';m.textContent='No se pudo leer el paquete de acceso. Verifique la conexión y recargue la página.';return;}
+  b.disabled=true;b.textContent='VERIFICANDO…';m.textContent='';
+  try{
+    const u=$('#lgU').value.trim().toLowerCase();const e=ACCESO.usuarios.find(x=>x.u===u);
+    const kek=await kekDe($('#lgC').value,deB64(e?e.salt:'AAAAAAAAAAAAAAAAAAAAAA=='),ACCESO.kdf.iter);
+    if(!e)throw new Error('Usuario o contraseña incorrectos.');
+    let dkRaw;try{dkRaw=await aesDes(kek,deB64(e.iv),deB64(e.ct));}catch(_){throw new Error('Usuario o contraseña incorrectos.');}
+    await abrirSesion(u,dkRaw,$('#lgRec').checked);intentos=0;$('#lgC').value='';await entrar();
+  }catch(err){intentos++;if(intentos>=5){bloqueo=Date.now()+30000;intentos=0;}m.style.color='var(--rojo)';m.textContent=err.message;}
+  finally{b.disabled=false;b.textContent='INGRESAR';}
+};
+$('#btSalir').onclick=async()=>{await ddel('kv','sesion');location.reload();};
+
+/* ---------- GitHub (solo lectura) ---------- */
+const GHAPI='https://api.github.com';
+function errorGH(s,m){
+  if(s===401)return 'El token de GitHub no es válido o expiró. Renuévelo desde admin.html.';
+  if(s===403)return 'GitHub negó el acceso ('+m+').';
+  if(s===404)return 'No se encontró el repositorio o la carpeta de datos.';
+  return `Error de GitHub (${s}). ${m}`;
+}
+async function gh(ruta,accept='application/vnd.github+json'){
+  const g=SES.repo;let r;
+  try{r=await fetch(`${GHAPI}/repos/${encodeURIComponent(g.owner)}/${encodeURIComponent(g.repo)}${ruta}`,{cache:'no-store',
+    headers:{'Authorization':'Bearer '+SES.token,'Accept':accept,'X-GitHub-Api-Version':'2022-11-28'}});}
+  catch(e){throw new Error('No hay conexión con GitHub.');}
+  const rest=r.headers.get('x-ratelimit-remaining');if(rest!=null){const n=Number(rest);$('#chApiTxt').textContent='API '+num(n);$('#chApi').className='chip '+(n>1000?'':n>200?'med':'mal');}
+  if(!r.ok){let m='';try{m=(await r.json()).message||'';}catch(e){}const e=new Error(errorGH(r.status,m));e.status=r.status;throw e;}
+  return r;
+}
+/* Árbol por huella: inmutable, se guarda en caché. */
+async function arbol(sha){const k='t:'+sha;const c=await dget('cache',k);if(c)return c;
+  const t=await (await gh(`/git/trees/${sha}`)).json();const v=t.tree.map(x=>({path:x.path,sha:x.sha,type:x.type,size:x.size}));await dput('cache',k,v);return v;}
+async function blobTexto(sha){const k='b:'+sha;const c=await dget('cache',k);if(c)return c;
+  const t=await (await gh(`/git/blobs/${sha}`,'application/vnd.github.raw+json')).text();try{await dput('cache',k,t);}catch(e){}return t;}
+const ZIPS=new Map();
+function blobZip(sha){if(ZIPS.has(sha))return ZIPS.get(sha);
+  const bajar=async()=>{const buf=await (await gh(`/git/blobs/${sha}`,'application/vnd.github.raw+json')).arrayBuffer();return JSZip.loadAsync(buf);};
+  const pr=bajar().catch(()=>new Promise(r=>setTimeout(r,1500)).then(bajar)) // un reintento
+    .catch(e=>{ZIPS.delete(sha);throw e;});                                    // si falla, la próxima vez se vuelve a intentar
+  ZIPS.set(sha,pr);return pr;}
+async function enParalelo(items,n,fn){let i=0;const w=async()=>{while(i<items.length){const k=i++;await fn(items[k],k);}};await Promise.all(Array.from({length:Math.min(n,items.length)},w));}
+
+/* ---------- Mapa ---------- */
+const rend=L.canvas({padding:.5,tolerance:6});
+/* Palma «corona en remolino» (9 hojas arqueadas vistas desde arriba, dibujada en el lienzo) y operario como flecha de
+   navegación con haz de visión que gira hacia donde camina. */
+const HOJA_P=[[0,-1],[-1.6,-6],[1.4,-11],[6.2,-13],[3.6,-9],[2.6,-5],[0,-1]],PALMA_K=1.7;
+L.Canvas.include({_updatePalma(layer){if(!this._drawing||layer._empty())return;const p=layer._point,ctx=this._ctx,o=layer.options,k=Math.max(layer._radius,1.5)*PALMA_K/13;
+  ctx.beginPath();for(let i=0;i<9;i++){const a=i*Math.PI*2/9,c=Math.cos(a),s=Math.sin(a);const P=HOJA_P.map(([x,y])=>[p.x+k*(x*c-y*s),p.y+k*(x*s+y*c)]);
+    ctx.moveTo(P[0][0],P[0][1]);ctx.bezierCurveTo(P[1][0],P[1][1],P[2][0],P[2][1],P[3][0],P[3][1]);ctx.bezierCurveTo(P[4][0],P[4][1],P[5][0],P[5][1],P[6][0],P[6][1]);ctx.closePath();}
+  const fo=o.fillOpacity==null?1:o.fillOpacity,vacio=fo<.3;
+  if(o.fill!==false){ctx.globalAlpha=fo;ctx.fillStyle=o.fillColor||o.color;ctx.fill();}
+  ctx.globalAlpha=1;ctx.lineJoin='round';ctx.lineWidth=Math.max(.6,.8*k);ctx.strokeStyle=vacio?(o.color||'#b0bec5'):'#13240f';ctx.stroke();
+  if(!vacio){ctx.beginPath();ctx.arc(p.x,p.y,Math.max(1,2.4*k),0,Math.PI*2);ctx.fillStyle='#5a3d1e';ctx.fill();ctx.stroke();}}});
+const Palma=L.CircleMarker.extend({
+  _updateBounds(){const r=this._radius*PALMA_K+2+this._clickTolerance(),q=[r,r];this._pxBounds=new L.Bounds(this._point.subtract(q),this._point.add(q));},
+  _updatePath(){this._renderer._updatePalma?this._renderer._updatePalma(this):this._renderer._updateCircle(this);}});
+const palma=(ll,o)=>new Palma(ll,o);
+const D_PALMA=(()=>{let d='';for(let i=0;i<9;i++){const a=i*Math.PI*2/9,c=Math.cos(a),s=Math.sin(a),P=HOJA_P.map(([x,y])=>[(x*c-y*s).toFixed(2),(x*s+y*c).toFixed(2)]);
+  d+=`M${P[0]}C${P[1]} ${P[2]} ${P[3]}C${P[4]} ${P[5]} ${P[6]}Z`;}return d;})();
+const icoPalma=(c,vacio)=>`<svg class="ico-palma" width="16" height="16" viewBox="-14 -14 28 28" aria-hidden="true"><path d="${D_PALMA}" fill="${vacio?'none':c}" stroke="${vacio?c:'#13240f'}" stroke-width="1.1" stroke-linejoin="round"/>${vacio?'':'<circle r="2.4" fill="#5a3d1e" stroke="#13240f" stroke-width=".8"/>'}</svg>`;
+const SVG_FLECHA=(c,t)=>`<svg width="${t}" height="${t}" viewBox="-45 -45 90 90" aria-hidden="true"><path d="M0 0 L-15 -38 A41 41 0 0 1 15 -38 Z" fill="${c}" fill-opacity=".3"/><path d="M0 -15 L10.5 11 L0 5.5 L-10.5 11 Z" fill="${c}" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/></svg>`;
+function iconoFlecha(c){return L.divIcon({className:'flecha-ic',iconSize:[90,90],iconAnchor:[45,45],html:`<div class="flecha-op">${SVG_FLECHA(c,90)}</div>`});}
+function dist(a,b,c,d){const R=6371000,r=Math.PI/180;const dl=(c-a)*r,dg=(d-b)*r;const x=Math.sin(dl/2)**2+Math.cos(a*r)*Math.cos(c*r)*Math.sin(dg/2)**2;return 2*R*Math.asin(Math.sqrt(x));}
+/* Parada: etiqueta con símbolo de pausa y minutos (naranja sin actividad, azul con diagnóstico, gris sin señal GPS). */
+function paneParadas(){if(!mapa.getPane('paradas')){const pn=mapa.createPane('paradas');pn.style.zIndex=660;}return 'paradas';} // encima de las etiquetas de palmas
+function iconoParada(min,col){const txt=col==='#ff9f1c'?'#1a1200':'#fff';
+  return L.divIcon({className:'parada-ic',iconSize:[0,0],html:`<div class="parada-pill" style="background:${col};color:${txt}"><i></i><i></i><b>${Math.round(Number(min)||0)} min</b></div>`});}
+const pillParada=(col,t)=>`<span class="parada-pill mini" style="background:${col};color:${col==='#ff9f1c'?'#1a1200':'#fff'}"><i></i><i></i><b>${t}</b></span>`;
+/* Rumbo (grados desde el norte, sentido horario) entre dos posiciones. */
+function rumbo(a,b){const kx=Math.cos(a.lat*Math.PI/180);return (Math.atan2((b.lng-a.lng)*kx,b.lat-a.lat)*180/Math.PI+360)%360;}
+/* Gira la flecha por el camino más corto (sin dar la vuelta completa al pasar por el norte). */
+function girarFlecha(m,g){if(g==null||!m)return;const e=m.getElement&&m.getElement(),d=e&&e.querySelector('.flecha-op');if(!d)return;
+  if(m._rot==null){m._rot=g;}else{const dl=((g-((m._rot%360)+360)%360)+540)%360-180;m._rot+=dl;}d.style.transform=`rotate(${m._rot}deg)`;}
+
+const mapa=L.map('mapa',{preferCanvas:true,renderer:rend,zoomControl:false,maxZoom:22}).setView([1.6,-78.75],11);
+L.control.zoom({position:'bottomright'}).addTo(mapa);
+L.control.scale({imperial:false,position:'bottomright'}).addTo(mapa);
+const BASES={sat:()=>L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:22,maxNativeZoom:19,attribution:'Imágenes © Esri'}),
+  osm:()=>L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:22,maxNativeZoom:19,attribution:'© OpenStreetMap'})};
+let capaBase=null;
+/* Capa de la ortofoto del dron: zoom 12–17 en teselas sueltas; zoom 18–19 en paquetes (.bin) de 4 o 16 teselas
+   para que el sitio tenga pocos archivos. Formato del paquete: 'SVT1' + uint32 largo de cabecera + JSON {"x,y":[desplazamiento,largo]} + WebP. */
+let IND_ORTO=null;const IND_SETS=new Map();
+const IND_P=fetch('teselas/orto/indice.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{IND_ORTO=j;}).catch(()=>{});
+function existeOrto(z,x,y,PZ){const I=IND_ORTO;if(!I)return true;const s=z+'';
+  if(z<=PZ){if(!IND_SETS.has(s))IND_SETS.set(s,new Set(((I.teselas||{})[s]||[]).map(a=>a[0]+','+a[1])));return IND_SETS.get(s).has(x+','+y);}
+  const sh=z-PZ,kk='p'+z;if(!IND_SETS.has(kk))IND_SETS.set(kk,new Set(((I.paquetes||{})[z]||[]).map(a=>a[0]+','+a[1])));return IND_SETS.get(kk).has((x>>sh)+','+(y>>sh));}
+function capaOrto(base,v,bounds,PZ){
+  PZ=PZ||17;const mem=new Map();
+  const paquete=(z,X,Y)=>{const k=z+'/'+X+'_'+Y;if(mem.has(k))return mem.get(k);
+    const p=fetch(`${base}p${z}/${X}_${Y}.bin?v=${v}`).then(r=>r.ok?r.arrayBuffer():null).then(buf=>{
+      if(!buf)return null;const dv=new DataView(buf);if(dv.getUint32(0)!==0x53565431)return null;const hl=dv.getUint32(4);
+      return {buf,h:JSON.parse(new TextDecoder().decode(new Uint8Array(buf,8,hl))),o:8+hl};}).catch(()=>null);
+    p.then(x=>{if(!x)mem.delete(k);});mem.set(k,p);if(mem.size>48)mem.delete(mem.keys().next().value);return p;};
+  const C=L.GridLayer.extend({createTile(c,done){
+    const img=document.createElement('img');img.alt='';img.setAttribute('role','presentation');img.style.visibility='hidden'; // visible solo al cargar: nunca se ve un ícono de imagen rota
+    img.onload=()=>{if(img._u){URL.revokeObjectURL(img._u);img._u=null;}img.style.visibility='';done(null,img);};img.onerror=()=>{img.removeAttribute('src');done(null,img);};
+    IND_P.then(()=>{ // espera el índice: solo se piden teselas que existen
+      if(IND_ORTO&&!existeOrto(c.z,c.x,c.y,PZ)){done(null,img);return;}
+      if(c.z<=PZ)img.src=`${base}${c.z}/${c.x}/${c.y}.webp?v=${v}`;
+      else{const s=c.z-PZ;paquete(c.z,c.x>>s,c.y>>s).then(b=>{const e=b&&b.h[c.x+','+c.y];if(!e){done(null,img);return;}
+        img._u=URL.createObjectURL(new Blob([new Uint8Array(b.buf,b.o+e[0],e[1])],{type:'image/webp'}));img.src=img._u;});}});
+    return img;}});
+  return new C({maxZoom:22,maxNativeZoom:19,minNativeZoom:12,bounds,attribution:'Ortofoto dron Palmas de Tumaco'});
+}
+const ORTO_B=[[1.4563992,-78.8196864],[1.5846769,-78.7299481]];
+function ponerBase(){if(capaBase)mapa.removeLayer(capaBase);capaBase=null;const b=$('#cBase').value;
+  if(b==='dron'){capaBase=capaOrto('teselas/orto/','3',ORTO_B,17).addTo(mapa);capaBase.bringToBack();return;}
+  if(BASES[b]){capaBase=BASES[b]().addTo(mapa);capaBase.bringToBack();}}
+$('#cBase').onchange=ponerBase;
+const capaLotes=L.layerGroup().addTo(mapa),capaRec=L.layerGroup().addTo(mapa),capaDiag=L.layerGroup().addTo(mapa),capaPar=L.layerGroup().addTo(mapa),capaPalmas=L.layerGroup(),capaSel=L.layerGroup().addTo(mapa);
+const vis=(id,capa)=>{$(id).onchange=()=>{$(id).checked?capa.addTo(mapa):mapa.removeLayer(capa);if(id==='#cPalmas')dibujarPalmas();};};
+vis('#cLotes',capaLotes);vis('#cRec',capaRec);vis('#cDiag',capaDiag);vis('#cPar',capaPar);vis('#cPalmas',capaPalmas);
+/*VIAS_JS*/
+/*NUCLEO_JS*/
+$('#cVias').onchange=()=>mostrarVias($('#cVias').checked);
+mapa.on('zoomend moveend',()=>{mapa.getContainer().classList.toggle('sin-etq',mapa.getZoom()<14);dibujarPalmas();});
+function pintarLeyenda(){
+  $('#leyenda').innerHTML='<b class="tit" style="font-size:13px">Enfermedad principal</b>'+Object.entries(COLOR_N1).map(([k,c])=>`<div><span class="punto" style="background:${c}"></span>${esc(PROBLEMAS[k]||k)}</div>`).join('')+
+  `<div><span class="punto" style="background:${COLOR_ALTA}"></span>De alta</div><div><span class="punto" style="background:#4dd0e1"></span>Palma visitada (reproducción)</div><div><span style="display:inline-block;vertical-align:-5px;margin-right:4px">${SVG_FLECHA('#2f93d5',22)}</span>Operario y rumbo (reproducción)</div>`+
+  '<div style="margin-top:4px">'+pillParada('#ff9f1c','min')+'Parada sin actividad</div><div>'+pillParada('#2f93d5','min')+'Parada con diagnóstico</div><div class="tenue">Recorridos: un color por operario.</div>'+leyendaVias();
+}
+
+/* ---------- Cartografía (cifrada) ---------- */
+let LOTES=null,PALMASZIP=null,IND_LOTES={};const totalLote=l=>{const m=IND_LOTES[l];return m?Number(m.n)||0:0;};const CHUNK=new Map();const PROG=new Map();
+function enAnillo(x,y,r){let d=false;for(let i=0,j=r.length-1;i<r.length;j=i++){const [xi,yi]=r[i],[xj,yj]=r[j];if(((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi))d=!d;}return d;}
+function loteDe(lat,lng){if(!LOTES)return '';
+  for(const f of LOTES.features){let k=f._k;if(!k){let a=1e9,b=1e9,c=-1e9,d=-1e9;const ps=f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates;for(const p of ps)for(const [x,y] of p[0]){a=Math.min(a,x);b=Math.min(b,y);c=Math.max(c,x);d=Math.max(d,y);}k=f._k=[a,b,c,d];}
+    if(lng<k[0]||lng>k[2]||lat<k[1]||lat>k[3])continue;const ps=f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates;
+    for(const p of ps)if(enAnillo(lng,lat,p[0])&&!p.slice(1).some(h=>enAnillo(lng,lat,h)))return f.properties._lote;}
+  return '';}
+async function cargarCartografia(){
+  const c=ACCESO.carto;if(!c)return;
+  progreso(0.05,'Descargando la cartografía cifrada…');
+  const buf=new Uint8Array(await (await fetch('datos/'+(c.archivo||'carto.enc'))).arrayBuffer());
+  if(DEC.decode(buf.slice(0,4))!=='SPC1')throw new Error('El archivo de cartografía no es válido.');
+  const z=await JSZip.loadAsync(await aesDes(SES.dk,buf.slice(4,16),buf.slice(16)));
+  LOTES=JSON.parse(await z.file('lotes.geojson').async('string'));
+  PALMASZIP=await JSZip.loadAsync(await z.file('palmas.zip').async('arraybuffer'));
+  try{const fi=PALMASZIP.file('indice.json');if(fi)IND_LOTES=(JSON.parse(await fi.async('string')).lotes)||{};}catch(e){}
+  const nombre=p=>p.Lote||p.lote||p.LOTE||p.nombre||'';
+  L.geoJSON(LOTES,{renderer:rend,style:{color:'#90cdf1',weight:1.2,fillColor:'#90cdf1',fillOpacity:.04},
+    onEachFeature:(f,l)=>{const n=nombre(f.properties);f.properties._lote=n;l.bindTooltip(esc(n),{permanent:true,direction:'center',className:'etq-lote'});
+      l.on('click',e=>{L.DomEvent.stopPropagation(e);popupLote(n,e.latlng);});}}).addTo(capaLotes);
+  for(const f of LOTES.features){const p=f.properties;PROG.set(p._lote,p.Programa||p.programa||'');f._b=null;}
+  const progs=[...new Set([...PROG.values()].filter(Boolean))].sort(ordenNat);
+  msOpciones('prog',progs.map(x=>({v:x,t:x})));opcionesLote();
+  try{mapa.fitBounds(L.geoJSON(LOTES).getBounds(),{padding:[20,20],animate:false});}catch(e){}
+  mapa.getContainer().classList.toggle('sin-etq',mapa.getZoom()<14);
+}
+async function chunkLote(l){if(CHUNK.has(l))return CHUNK.get(l);const f=PALMASZIP&&PALMASZIP.file(`palmas/${l}.json`);
+  const d=f?JSON.parse(await f.async('string')).d:[];CHUNK.set(l,d);return d;}
+let palmasT=0;
+function dibujarPalmas(){clearTimeout(palmasT);palmasT=setTimeout(async()=>{
+  capaPalmas.clearLayers();if(!$('#cPalmas').checked||mapa.getZoom()<17||!LOTES)return;
+  const b=mapa.getBounds();const diag=new Map();for(const d of DIAGF)diag.set(String(d.palma_id),d);
+  for(const f of LOTES.features){const lb=f._b||(f._b=L.geoJSON(f).getBounds());if(!lb.intersects(b))continue;
+    for(const a of await chunkLote(f.properties._lote)){if(!b.contains([a[5],a[4]]))continue;const d=diag.get(String(a[0]));
+      L.circleMarker([a[5],a[4]],{renderer:rend,radius:mapa.getZoom()>=19?6:4,weight:1,color:'#3a2a00',fillColor:d?colorD(d):(a[3]===0?'#ffffff':'#ffc53d'),fillOpacity:a[3]===0?.2:.85,interactive:false}).addTo(capaPalmas);}}
+  diagAlFrente();
+},150);}
+
+/* ---------- Datos ---------- */
+let JOR=[];          // jornadas cargadas
+let JORF=[],DIAGF=[]; // filtradas
+let SEL=null;        // jornada seleccionada
+function progreso(f,txt){$('#prog b').style.width=Math.round(f*100)+'%';if(txt!=null)$('#progTxt').textContent=txt;}
+function fechasEntre(a,b){const out=[];let d=new Date(a+'T12:00:00');const fin=new Date(b+'T12:00:00');while(d<=fin){out.push(hoyISO(d));d=new Date(d.getTime()+86400000);}return out;}
+async function cargar(){
+  const d1=$('#fDesde').value,d2=$('#fHasta').value;
+  if(!d1||!d2||d1>d2){toast('Revise el rango de fechas.');return;}
+  if(fechasEntre(d1,d2).length>370){toast('El rango máximo es de un año.');return;}
+  $('#btCargar').disabled=true;cerrarDetalle();if(REP.on)detenerRep();
+  try{
+    progreso(0.02,'Consultando el índice de jornadas en GitHub…');
+    let raiz;try{raiz=await (await gh(`/contents/jornadas?ref=${encodeURIComponent(SES.repo.rama)}`)).json();}
+    catch(e){if(e.status===404){JOR=[];aplicarFiltros();progreso(1,'Aún no hay jornadas sincronizadas en el repositorio.');return;}throw e;}
+    const dias=(Array.isArray(raiz)?raiz:[]).filter(x=>x.type==='dir'&&x.name>=d1&&x.name<=d2).map(x=>({path:x.name,sha:x.sha})).sort((a,b)=>a.path.localeCompare(b.path));
+    // Índice diario (indice/AAAA-MM-DD.json): una sola descarga por día si está al día con la carpeta; si no, se leen las jornadas una por una
+    const deIndice=[];let idx={};
+    try{const l=await (await gh(`/contents/indice?ref=${encodeURIComponent(SES.repo.rama)}`)).json();for(const x of (Array.isArray(l)?l:[]))if(/\.json$/.test(x.name))idx[x.name.slice(0,-5)]=x.sha;}catch(e){idx={};}
+    const sinIndice=[];
+    await enParalelo(dias,4,async dia=>{const sha=idx[dia.path];if(!sha){sinIndice.push(dia);return;}
+      try{const I=JSON.parse(await blobTexto(sha));if(I.arbol!==dia.sha)throw new Error('índice desactualizado');for(const a of I.archivos||[])deIndice.push({a,dia:dia.path});}
+      catch(e){sinIndice.push(dia);}});
+    const archivos=[];
+    await enParalelo(sinIndice,6,async dia=>{for(const f of await arbol(dia.sha))archivos.push({...f,dia:dia.path});});
+    const geos=archivos.filter(f=>f.type==='blob'&&f.path.endsWith('.geojson'));
+    const viejas=archivos.filter(f=>f.type==='tree'); // formato anterior: una carpeta por jornada
+    const zips=new Map(archivos.filter(f=>f.path.endsWith('_fotos.zip')).map(f=>[f.dia+'/'+f.path,f.sha]));
+    const nuevas=[];let hechos=0;
+    for(const {a,dia} of deIndice){try{nuevas.push(normalizar(a.g,{path:a.path,sha:a.sha,dia},a.zip||undefined));}catch(e){console.warn('Jornada ilegible (índice)',a.path,e);}}
+    await enParalelo(geos,6,async f=>{
+      try{const g=JSON.parse(await blobTexto(f.sha));nuevas.push(normalizar(g,f,zips.get(f.dia+'/'+f.path.replace(/\.geojson$/,'_fotos.zip'))));}
+      catch(e){console.warn('Jornada ilegible',f.path,e);}
+      hechos++;progreso(.05+.95*hechos/(geos.length+viejas.length),`Leyendo jornadas: ${hechos} de ${geos.length+viejas.length}`);});
+    await enParalelo(viejas,4,async f=>{
+      try{const j=await jornadaCarpeta(f);if(j)nuevas.push(j);}catch(e){console.warn('Jornada (formato anterior) ilegible',f.path,e);}
+      hechos++;progreso(.05+.95*hechos/(geos.length+viejas.length),`Leyendo jornadas: ${hechos} de ${geos.length+viejas.length}`);});
+    JOR=nuevas.sort((a,b)=>String(b.inicio).localeCompare(String(a.inicio)));
+    progreso(.98,'Calculando secuencias por lote…');for(const j of JOR){try{await completarTiempos(j);}catch(e){console.warn('tiempos',j.id,e);}}
+    const ops=[...new Map(JOR.map(j=>[j.usuario||j.evaluador,j.evaluador])).entries()].sort((a,b)=>ordenNat(a[1],b[1]));
+    msOpciones('op',ops.map(([u,n])=>({v:u,t:n||u})));opcionesEnf();
+    progreso(1,`${num(JOR.length)} jornada(s) del ${d1} al ${d2} · ${num(dias.length)} día(s) con datos.`);
+    $('#chDatosTxt').textContent=`${num(JOR.length)} jornadas`;
+    aplicarFiltros(true);
+  }catch(e){progreso(0,'⚠ '+e.message);toast(e.message,6000);}
+  finally{$('#btCargar').disabled=false;}
+}
+/* Formato anterior (versiones 2.1–2.3): carpeta con jornada.json, registros.geojson, recorrido.geojson y fotos/. */
+async function jornadaCarpeta(f){
+  const t=await arbol(f.sha);const b=n=>t.find(x=>x.path===n&&x.type==='blob');
+  const jj=b('jornada.json');if(!jj)return null;
+  const h=JSON.parse(await blobTexto(jj.sha));
+  const reg=b('registros.geojson')?JSON.parse(await blobTexto(b('registros.geojson').sha)):{features:[]};
+  const rec=b('recorrido.geojson')?JSON.parse(await blobTexto(b('recorrido.geojson').sha)):{features:[]};
+  const feats=(reg.features||[]).map(x=>({...x,properties:{tipo:'diagnostico',...x.properties}}));
+  for(const x of rec.features||[])feats.push({...x,properties:{...x.properties,tipo:'recorrido'}});
+  const fd=t.find(x=>x.path==='fotos'&&x.type==='tree');
+  const ini=h.inicio,fin=h.fin;
+  const head={...h,usuario:h.usuario||'',fecha:f.dia,hora_inicio:hhmm(ini),hora_fin:hhmm(fin),duracion_min:ini&&fin?Math.round((Date.parse(fin)-Date.parse(ini))/60000):null,
+    lotes_seleccionados:h.seleccion||[],km:+(Number(h.km)||0).toFixed(3)};
+  const j=normalizar({jornada:head,features:feats},{path:f.path,dia:f.dia},null);
+  if(fd)j.fotosDir=fd.sha;j.formato='anterior';return j;
+}
+function normalizar(g,f,zipSha){
+  const h=g.jornada||{};const diags=[],paradas=[];let track=null;
+  for(const ft of g.features||[]){const p=ft.properties||{};
+    if(p.tipo==='diagnostico'&&ft.geometry)diags.push({...p,lng:ft.geometry.coordinates[0],lat:ft.geometry.coordinates[1]});
+    else if(p.tipo==='recorrido'&&ft.geometry){const c=ft.geometry.type==='LineString'?ft.geometry.coordinates:[ft.geometry.coordinates];track={c,t:(p.tiempos||[]).map(x=>Date.parse(x)),acc:p.precision_m||[]};}
+    else if(p.tipo==='parada'&&ft.geometry)paradas.push({...p,lng:ft.geometry.coordinates[0],lat:ft.geometry.coordinates[1]});}
+  const lotes=new Set([...(h.por_lote||[]).map(x=>x.lote),...(h.lotes_seleccionados||[]).map(x=>x.lote),...diags.map(d=>d.lote)].filter(Boolean));
+  return {id:h.id||f.path,ruta:f.dia+'/'+f.path,zipSha,fecha:h.fecha||f.dia,evaluador:h.evaluador||'—',usuario:h.usuario||h.evaluador||'—',dispositivo:h.dispositivo,
+    inicio:h.inicio,fin:h.fin,hora_inicio:h.hora_inicio||hhmm(h.inicio),hora_fin:h.hora_fin||hhmm(h.fin),duracion_min:h.duracion_min,km:Number(h.km)||0,
+    ha:Number(h.ha_recorridas)||0,palmas:Number(h.palmas_visitadas)||0,metodo:h.metodo||'buffer',comp:h.comparativo_buffer||null,
+    n_paradas:Number(h.n_paradas)||paradas.length,min_paradas:Number(h.minutos_paradas)||0,min_mov:h.minutos_movimiento,por_lote:h.por_lote||[],
+    densidad:h.densidad_palmas_ha||115,app:h.app||'',sincronizado:h.sincronizado,lotes,diags,paradas,track,header:h,secuencias:h.secuencias&&h.secuencias.length?h.secuencias:null,tiempos:h.tiempos||null,
+    vel:h.velocidad_kmh!=null?Number(h.velocidad_kmh):(()=>{const m=Number(h.minutos_movimiento)||0,k=Number(h.km)||0;return m>=1&&k>0?+(k/(m/60)).toFixed(2):null;})()};
+}
+/* ---------- Secuencias por lote ----------
+   La app las calcula al finalizar la jornada. Para jornadas antiguas se reconstruyen aquí con el recorrido y los polígonos
+   (sin palmas visitadas por secuencia). Tiempo efectivo = total − paradas; el desplazamiento entre lotes es tiempo efectivo. */
+const minHM=m=>{if(m==null||isNaN(m))return '—';m=Math.round(Number(m));return Math.floor(m/60)+':'+String(m%60).padStart(2,'0');};
+/* Jornadas sincronizadas con la versión anterior traen filas «Desplazamiento» sueltas: el primero pasa a Desplazamiento
+   inicial, el último a Desplazamiento final y los intermedios se suman como Despl. entre lotes al lote al que llegan. */
+function normSecuencias(ls){if(!ls||!ls.some(s=>s.tipo==='desplazamiento'))return ls||[];
+  const iL=ls.findIndex(s=>s.tipo==='lote'),fL=ls.length-1-[...ls].reverse().findIndex(s=>s.tipo==='lote');const N=v=>Number(v)||0;
+  const out=[];let pend=null;
+  ls.forEach((s,i)=>{
+    if(s.tipo==='desplazamiento'){if(iL<0||i<iL)out.push({...s,tipo:'desplazamiento_inicial',min_efectivo:null});else if(i>fL)out.push({...s,tipo:'desplazamiento_final',min_efectivo:null});else pend=s;return;}
+    if(s.tipo==='lote'&&pend){const d=pend;pend=null;
+      s={...s,inicio:d.inicio,hora_inicio:d.hora_inicio,inicio_labor:s.inicio,hora_inicio_labor:s.hora_inicio,min_desplazamiento:+N(d.min_total).toFixed(1),min_labor:s.min_total,
+        min_total:+(N(d.min_total)+N(s.min_total)).toFixed(1),min_paradas:+(N(d.min_paradas)+N(s.min_paradas)).toFixed(1),min_efectivo:+(N(d.min_efectivo)+N(s.min_efectivo)).toFixed(1),
+        paradas:N(d.paradas)+N(s.paradas),km:+(N(d.km)+N(s.km)).toFixed(3),diagnosticos:N(d.diagnosticos)+N(s.diagnosticos)};}
+    out.push(s);});
+  return out;}
+/* Tiempos por lote a partir de las secuencias: desplazamiento entre lotes (suma al efectivo del lote al que llega), total y efectivo. */
+const ordSec=(ls,l)=>{const i=(ls||[]).findIndex(s=>s.tipo==='lote'&&String(s.lote)===String(l));return i<0?1e9:i;}; // orden de los lotes según la jornada
+function tiemposPorLote(ls){const m=new Map();for(const s of ls||[])if(s.tipo==='lote'){const k=String(s.lote);const r=m.get(k)||{desp:0,tot:0,efe:0,par:0};
+  r.desp+=Number(s.min_desplazamiento)||0;r.tot+=Number(s.min_total)||0;r.efe+=Number(s.min_efectivo)||0;r.par+=Number(s.min_paradas)||0;m.set(k,r);}return m;}
+const ETQ_TIPO={desplazamiento_inicial:'Desplazamiento inicial',desplazamiento_final:'Desplazamiento final',desplazamiento:'Desplazamiento'};
+function secuenciasDe(j){
+  if(j.secuencias)return (j._secN||(j._secN=normSecuencias(j.secuencias)));
+  const tr=j.track;if(!tr||tr.t.length!==tr.c.length||tr.t.length<2||!LOTES)return [];
+  const ls=tr.c.map(c=>loteDe(c[1],c[0]));let runs=[];
+  ls.forEach((l,i)=>{const r=runs[runs.length-1];if(r&&r.l===l)r.i1=i;else runs.push({l,i0:i,i1:i});});
+  const t0=Date.parse(j.inicio)||tr.t[0],t1=Date.parse(j.fin)||tr.t[tr.t.length-1];
+  const ini=k=>k===0?Math.min(t0,tr.t[0]):tr.t[runs[k].i0],fin=k=>k===runs.length-1?Math.max(t1,tr.t[tr.t.length-1]):tr.t[runs[k+1].i0];
+  let cambio=true;while(cambio&&runs.length>1){cambio=false;for(let k=0;k<runs.length;k++){if(fin(k)-ini(k)>=60000)continue;if(k>0)runs[k-1].i1=runs[k].i1;else runs[1].i0=runs[0].i0;runs.splice(k,1);cambio=true;break;}
+    const m=[];for(const r of runs){const u=m[m.length-1];if(u&&u.l===r.l)u.i1=r.i1;else m.push(r);}runs=m;}
+  const par=j.paradas.map(p=>({a:Date.parse(p.inicio),b:Date.parse(p.fin)})).filter(p=>p.a&&p.b);let n=0;
+  const tv0=Date.parse((j.header||{}).t0_visita)||null;const tvs=[];for(const x of j.por_lote)(x.t_visita||[]).forEach(s=>{if(s!=null&&tv0)tvs.push(tv0+s*1000);});
+  const conPalmas=tvs.length>0||Number.isFinite(Number((j.header||{}).palmas_visitadas));
+  j.secuencias=runs.map((r,k)=>{const a=ini(k),b=fin(k);let pm=0,np=0;for(const p of par){const s=Math.max(a,p.a),e=Math.min(b,p.b);if(e>s){pm+=e-s;np++;}}
+    const dg=j.diags.filter(d=>{const t=Date.parse(d.creado);return t>=a&&t<=b;}).length;
+    return {secuencia:r.l?++n:null,tipo:r.l?'lote':'desplazamiento',lote:r.l||'',inicio:new Date(a).toISOString(),fin:new Date(b).toISOString(),hora_inicio:hhmm(a),hora_fin:hhmm(b),
+      min_total:+((b-a)/60000).toFixed(1),min_paradas:+(pm/60000).toFixed(1),min_efectivo:+((b-a-pm)/60000).toFixed(1),paradas:np,diagnosticos:dg,reconstruida:true,
+      ...(()=>{if(!conPalmas)return {palmas_visitadas:null,ha:null};const ult=k===runs.length-1;const pv=tvs.filter(t=>t>=a&&(t<b||(ult&&t<=b))).length;return {palmas_visitadas:pv,ha:+(pv/(j.densidad||115)).toFixed(2)};})()};});
+  j._secN=normSecuencias(j.secuencias);return j._secN;
+}
+/* Jornadas sincronizadas antes de la versión con secuencias: traen las palmas visitadas (ids) pero no el momento de la visita.
+   Se estima como el primer punto del recorrido a 12 m o menos de la palma (o el más cercano), para repartirlas por secuencia y para la reproducción. */
+async function completarTiempos(j){
+  const h=j.header||{};const tr=j.track;if(!tr||tr.t.length!==tr.c.length||tr.t.length<2)return;
+  if(j.por_lote.some(x=>x.t_visita)&&h.t0_visita)return;
+  const con=j.por_lote.filter(x=>(x.ids_palmas_visitadas||[]).length);if(!con.length)return;
+  const lat0=tr.c[0][1]*Math.PI/180,KX=111320*Math.cos(lat0),KY=111320;const P=tr.c.map(c=>[c[0]*KX,c[1]*KY]);const t0=tr.t[0];
+  for(const x of con){const pos=new Map();for(const a of await chunkLote(x.lote))pos.set(String(a[0]),[a[4]*KX,a[5]*KY]);
+    x.t_visita=x.ids_palmas_visitadas.map(id=>{const q=pos.get(String(id));if(!q)return null;let best=-1,bd=1e18;
+      for(let i=0;i<P.length;i++){const dx=P[i][0]-q[0],dy=P[i][1]-q[1],d=dx*dx+dy*dy;if(d<=144){best=i;break;}if(d<bd){bd=d;best=i;}}
+      return best>=0?Math.round((tr.t[best]-t0)/1000):null;});}
+  h.t0_visita=new Date(t0).toISOString();j.tiemposEstimados=true;
+}
+function filasSecuencias(){const hay=FIL.lote.size>0;const out=[];
+  for(const j of JORF)for(const s of secuenciasDe(j)){const esL=s.tipo==='lote';if(hay&&!esL)continue;if(hay&&!FIL.lote.has(s.lote))continue;if(esL&&!enProg(s.lote))continue;
+    out.push({_j:j,fecha:j.fecha,evaluador:j.evaluador,usuario:j.usuario,sec:s.secuencia??0,tipo:s.tipo,lote:esL?s.lote:(ETQ_TIPO[s.tipo]||'Desplazamiento'),ini:s.hora_inicio,ini_lab:esL?(s.hora_inicio_labor||s.hora_inicio):'',fin:s.hora_fin,
+      tot:Number(s.min_total)||0,desp:esL?Number(s.min_desplazamiento)||0:0,lab:esL?Number(s.min_labor??s.min_total)||0:0,par:Number(s.min_paradas)||0,efe:Number(s.min_efectivo)||0,vel:s.vel_kmh==null?null:Number(s.vel_kmh),km:Number(s.km)||0,palmas:s.palmas_visitadas,ha:s.ha,diag:s.diagnosticos||0,orden:Date.parse(s.inicio)||0});}
+  return out;}
+function aplicarFiltros(ajustar){
+  JORF=JOR.filter(j=>(!FIL.op.size||FIL.op.has(j.usuario))&&(!FIL.lote.size||[...j.lotes].some(l=>FIL.lote.has(l)))&&(!FIL.prog.size||[...j.lotes].some(enProg)));
+  DIAGF=[];for(const j of JORF)for(const d of j.diags)if(loteSel(d.lote)&&enProg(d.lote)&&(!FIL.est.size||FIL.est.has(d.estado))&&diagEnf(d))DIAGF.push({...d,_j:j});
+  if(SEL&&!JORF.includes(SEL))cerrarDetalle();
+  pintarMapa(ajustar);pintarPanel();dibujarPalmas();
+}
+/* ---------- Filtros de selección múltiple: nada marcado = Todos; «solo este» = una opción; casillas = varias ---------- */
+const FIL={prog:new Set(),op:new Set(),lote:new Set(),est:new Set(),n1:new Set(),n2:new Set(),n3:new Set()};
+const MSOP={},MSCB={};let MSK=null;
+const loteSel=l=>!FIL.lote.size||FIL.lote.has(l);
+const enProg=l=>!FIL.prog.size||FIL.prog.has(PROG.get(l));
+const diagEnf=d=>(!FIL.n1.size||FIL.n1.has(codN1(d)))&&(!FIL.n2.size||FIL.n2.has(d.nivel2||''))&&(!FIL.n3.size||FIL.n3.has(d.nivel3||''));
+function msTexto(k){const s=FIL[k];if(!s.size)return 'Todos';const o=MSOP[k]||[];if(s.size<=2)return [...s].map(v=>k==='n1'?v:(o.find(x=>x.v===v)||{t:v}).t).join(', ');return s.size+' seleccionados';}
+function msPintar(k){document.querySelectorAll(`.ms[data-k="${k}"]`).forEach(c=>{const b=c.querySelector('.ms-bt');b.textContent=msTexto(k);b.title=msTexto(k);c.classList.toggle('activo',FIL[k].size>0);});}   /* el filtro aparece en el visor y en Gerencia */
+function msOpciones(k,ops){MSOP[k]=ops;for(const v of [...FIL[k]])if(!ops.some(o=>o.v===v))FIL[k].delete(v);msPintar(k);if(MSK===k)msLista();}
+function msCerrar(){const p=$('#msPop');if(p)p.remove();MSK=null;}
+function msCambio(k){msPintar(k);(MSCB[k]||(()=>aplicarFiltros(true)))();}
+function msLista(){const p=$('#msPop');if(!p||!MSK)return;const k=MSK,q=($('#msQ').value||'').toLowerCase();
+  const ops=(MSOP[k]||[]).filter(o=>!q||o.t.toLowerCase().includes(q)||String(o.v).toLowerCase().includes(q));
+  $('#msL').innerHTML=ops.length?ops.map((o,i)=>`<div class="ms-it"><label><input type="checkbox" data-i="${i}" ${FIL[k].has(o.v)?'checked':''}><span>${esc(o.t)}</span></label><button type="button" class="solo" data-i="${i}">solo este</button></div>`).join(''):'<div class="vacio">Sin opciones.</div>';
+  p._ops=ops;}
+function msAbrir(k,el){if(MSK===k){msCerrar();return;}msCerrar();MSK=k;const r=el.getBoundingClientRect();
+  const p=document.createElement('div');p.id='msPop';p.setAttribute('role','listbox');
+  p.innerHTML=`<input type="text" id="msQ" placeholder="Buscar…" aria-label="Buscar opción"><div class="ms-acc"><button type="button" class="btn mini" id="msTodos">Todos</button><button type="button" class="btn mini" id="msVis">Marcar los visibles</button></div><div class="ms-lista" id="msL"></div>`;
+  document.body.appendChild(p);const w=280,x=Math.min(r.left,innerWidth-w-8),arriba=r.bottom+340>innerHeight&&r.top>360;
+  p.style.left=Math.max(8,x)+'px';if(arriba)p.style.bottom=(innerHeight-r.top+4)+'px';else p.style.top=(r.bottom+4)+'px';
+  msLista();setTimeout(()=>$('#msQ').focus(),0);
+  $('#msQ').oninput=msLista;
+  $('#msTodos').onclick=()=>{FIL[k].clear();msLista();msCambio(k);};
+  $('#msVis').onclick=()=>{for(const o of p._ops||[])FIL[k].add(o.v);msLista();msCambio(k);};
+  $('#msL').onclick=e=>{const b=e.target.closest('.solo');if(b){const o=p._ops[+b.dataset.i];FIL[k]=new Set([o.v]);msCerrar();msCambio(k);}}; // «solo este»: elige una y cierra
+  $('#msL').onchange=e=>{const c=e.target.closest('input[type=checkbox]');if(!c)return;const o=p._ops[+c.dataset.i];if(c.checked)FIL[k].add(o.v);else FIL[k].delete(o.v);msCambio(k);};}
+document.addEventListener('click',e=>{const b=e.target.closest('.ms-bt');if(b){msAbrir(b.parentNode.dataset.k,b);return;}if(MSK&&document.contains(e.target)&&!e.target.closest('#msPop'))msCerrar();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&MSK)msCerrar();});
+function msSolo(k,v){FIL[k]=v==null||v===''?new Set():new Set([v]);msPintar(k);}
+/* Opciones dependientes: lotes según el programa; enfermedad N2 según N1 y N3 según N2 (de los diagnósticos cargados). */
+function opcionesLote(){msOpciones('lote',LOTES?LOTES.features.map(f=>f.properties._lote).filter(l=>l&&enProg(l)).sort(ordenNat).map(l=>({v:l,t:l})):[]);}
+function opcionesEnf(){const ds=JOR.flatMap(j=>j.diags);const c1=new Set(ds.map(codN1).filter(Boolean));
+  msOpciones('n1',[...new Set([...Object.keys(PROBLEMAS),...c1])].filter(c=>c1.has(c)||PROBLEMAS[c]).sort((a,b)=>(c1.has(b)-c1.has(a))||ordenNat(a,b)).map(c=>({v:c,t:(PROBLEMAS[c]||c)+(c1.has(c)?'':' · sin registros')})));
+  const d2=ds.filter(d=>!FIL.n1.size||FIL.n1.has(codN1(d)));msOpciones('n2',[...new Set(d2.map(d=>d.nivel2).filter(Boolean))].sort(ordenNat).map(v=>({v,t:v})));
+  const d3=d2.filter(d=>!FIL.n2.size||FIL.n2.has(d.nivel2||''));msOpciones('n3',[...new Set(d3.map(d=>d.nivel3).filter(Boolean))].sort(ordenNat).map(v=>({v,t:v})));}
+MSCB.prog=()=>{opcionesLote();aplicarFiltros(true);};
+MSCB.n1=()=>{opcionesEnf();aplicarFiltros(true);};
+MSCB.n2=()=>{opcionesEnf();aplicarFiltros(true);};
+
+
+/* ---------- Cortes del GPS en el recorrido ----------
+   Un tramo de más de 90 s sin puntos no es camino recorrido: se dibuja punteado en gris con su duración y su causa
+   (la causa la anota la App desde la APK con registro protegido). */
+function partesTrack(j){
+  const tr=j.track;const ll=tr.c.map(c=>[c[1],c[0]]);const t=tr.t||[];const partes=[];const huecos=[];let cur=[ll[0]];
+  const causas=(j.header&&j.header.cortes_gps)||[];
+  for(let i=1;i<ll.length;i++){
+    if(t[i]&&t[i-1]&&t[i]-t[i-1]>90000){partes.push(cur);cur=[ll[i]];
+      const c=causas.find(x=>Math.abs(Date.parse(x.inicio)-t[i-1])<5000);
+      huecos.push({ll:[ll[i-1],ll[i]],min:Math.round((t[i]-t[i-1])/60000),a:hhmm(new Date(t[i-1]).toISOString()),b:hhmm(new Date(t[i]).toISOString()),causa:c?c.causa:''});}
+    else cur.push(ll[i]);}
+  partes.push(cur);
+  return {ll,partes:partes.filter(p=>p.length>1),huecos};
+}
+/* Bloque del detalle: cortes del GPS (más de 90 s sin puntos) y equipo con que se hizo la jornada. */
+function bloqueCortes(j){
+  if(!j.track||j.track.c.length<2)return '';const hs=partesTrack(j).huecos;const eq=(j.header&&j.header.equipo)||null;
+  const equipo=eq?`<div class="tenue" style="font-size:12px">Equipo: ${eq.modo==='navegador'?'Navegador'+(eq.navegador?' ('+esc(eq.navegador)+')':''):'APK '+esc(eq.apk||'')}${eq.fabricante||eq.modelo?' · '+esc([eq.fabricante,eq.modelo].filter(Boolean).join(' ')):''}${eq.android?' · Android API '+esc(eq.android):''}${eq.registro==='nativo'?' · registro protegido':eq.modo==='apk'?' · <b>sin registro protegido (APK antigua)</b>':''}${eq.ubicacion_siempre===false?' · <b>ubicación sin «todo el tiempo»</b>':''}</div>`:'';
+  if(!hs.length)return equipo?`<div style="margin-top:6px">${equipo}</div>`:'';
+  const tot=hs.reduce((a,h)=>a+h.min,0);
+  return `<div class="aviso" style="margin-top:8px"><b>⚠ ${hs.length} corte(s) del GPS · ${tot} min sin registro</b>
+    <div style="font-size:12.5px;margin-top:4px">${hs.map(h=>`${esc(h.a)}–${esc(h.b)} · ${h.min} min${h.causa?' · '+esc(h.causa):''}`).join('<br>')}</div>
+    <div class="tenue" style="font-size:11.5px;margin-top:4px">En el mapa se ven punteados en gris: no es camino recorrido y no cuenta palmas visitadas.</div>${equipo}</div>`;
+}
+function pintarHuecos(huecos,capa,j){
+  for(const h of huecos)L.polyline(h.ll,{renderer:rend,color:'#9e9e9e',weight:3,opacity:.95,dashArray:'2 7'}).addTo(capa)
+    .bindTooltip(`⚠ Sin GPS ${h.min} min · ${esc(h.a)}–${esc(h.b)}${h.causa?'<br>'+esc(h.causa):''}${j?'<br>'+esc(j.evaluador):''}`,{sticky:true});
+}
+/* ---------- Pintar en el mapa ---------- */
+function pintarMapa(ajustar){
+  capaRec.clearLayers();capaDiag.clearLayers();capaPar.clearLayers();
+  const caja=L.latLngBounds([]);const hayL=FIL.lote.size>0;
+  for(const j of JORF){
+    if(j.track&&j.track.c.length>1){const pt=partesTrack(j);
+      const pl=L.polyline(pt.partes.length?pt.partes:[pt.ll],{renderer:rend,color:colorOp(j.usuario),weight:3,opacity:.85}).addTo(capaRec);pintarHuecos(pt.huecos,capaRec,j);
+      pl.on('click',e=>{L.DomEvent.stopPropagation(e);abrirDetalle(j);});pl.bindTooltip(`${esc(j.evaluador)} · ${esc(j.fecha)} ${esc(j.hora_inicio)}–${esc(j.hora_fin)}`,{sticky:true});
+      if(!hayL)caja.extend(pl.getBounds());}
+    for(const p of j.paradas){if(hayL&&!FIL.lote.has(p.lote))continue;
+      L.marker([p.lat,p.lng],{icon:iconoParada(p.duracion_min,/diagn/i.test(p.clase||p.tipo||'')?'#2f93d5':/señal/i.test(p.clase||p.tipo||'')?'#9e9e9e':'#ff9f1c'),keyboard:false,zIndexOffset:500,pane:paneParadas()})
+        .bindPopup(`<b class="h">⏸ Parada ${esc(p.n||'')}</b><br>${esc(j.evaluador)} · ${esc(j.fecha)}<br>${esc(p.hora_inicio)}–${esc(p.hora_fin)} · <b>${esc(p.duracion_min)} min</b><br>Lote: ${esc(p.lote||'—')}${p.clase?'<br>'+esc(p.clase):''}`).addTo(capaPar);}
+  }
+  for(const d of DIAGF){
+    const m=L.circleMarker([d.lat,d.lng],{renderer:rend,radius:6,color:'#fff',weight:1.5,fillColor:colorD(d),fillOpacity:1}).addTo(capaDiag);
+    m.on('click',ev=>{L.DomEvent.stopPropagation(ev);popupDiag(d,ev.latlng);});caja.extend([d.lat,d.lng]);}
+  if(hayL&&LOTES)for(const f of LOTES.features)if(FIL.lote.has(f.properties._lote))caja.extend(L.geoJSON(f).getBounds());
+  if(ajustar&&caja.isValid()){mapa.stop();mapa.fitBounds(caja,{padding:[30,30],maxZoom:18,animate:false});}
+}
+function etiquetaDiag(d){return [d.lote,d.linea!=null&&d.linea!==''?'L'+d.linea:null,d.palma!=null&&d.palma!==''?'P'+d.palma:null].filter(Boolean).join(' · ');}
+function htmlDiag(d){const e=estadoDe(d.estado)||{c:'#ccc',n:d.estado_nombre||d.estado||'—'};
+  const probs=String(d.problemas||'').split('|').filter(Boolean).map(p=>PROBLEMAS[p]||p);
+  return `<b class="h">${esc(etiquetaDiag(d))}</b><br><span class="punto" style="background:${colorD(d)}"></span><b>${esc(e.n)}</b>
+    <div style="margin-top:6px;display:grid;gap:2px">
+    ${d.nivel1?`<div><b>Enfermedad principal:</b> ${esc(d.nivel1)}</div>${d.nivel2?`<div><b>Opción de la enfermedad:</b> ${esc(d.nivel2)}</div>`:''}${d.nivel3?`<div><b>Tipo de seguimiento:</b> ${esc(d.nivel3)}</div>`:''}`:(probs.length?`<div><b>Problemas:</b> ${esc(probs.join(', '))}</div>`:'')}
+    ${d.estado_hongo?`<div><b>Hongo:</b> ${esc(d.estado_hongo)}</div>`:''}${d.cirugia?`<div><b>Cirugía:</b> ${esc(d.cirugia)}</div>`:''}${d.produccion?`<div><b>Producción:</b> ${esc(d.produccion)}</div>`:''}
+    ${d.raices_buenas?`<div><b>Raíces buenas:</b> ${esc(d.raices_buenas)}</div>`:''}${d.transitabilidad?`<div><b>Transitabilidad:</b> ${esc(d.transitabilidad)}</div>`:''}
+    ${d.grado_pc?`<div><b>Grado PC:</b> ${esc(d.grado_pc)}</div>`:''}${d.severidad?`<div><b>Severidad:</b> ${esc(d.severidad)}</div>`:''}
+    ${d.sintomas?`<div><b>Síntomas:</b> ${esc(String(d.sintomas).split('|').join(' / '))}</div>`:''}${d.accion?`<div><b>Acción:</b> ${esc(d.accion)}</div>`:''}
+    ${d.observaciones?`<div><b>Observaciones:</b> ${esc(d.observaciones)}</div>`:''}
+    <div class="tenue">${esc(d.evaluador||'')} · ${esc(d._j?d._j.fecha:'')} ${esc(hhmm(d.creado))}${d.dist_gps_palma_m!=null?` · GPS a ${num(d.dist_gps_palma_m,1)} m`:''}</div></div>`;}
+/* Primera foto del diagnóstico (del _fotos.zip de la jornada o de la carpeta del formato anterior), con caché. */
+const FOTO1=new Map();
+async function fotoPrincipal(d){const k=d._j&&d._j.id+'|'+d.id;if(FOTO1.has(k))return FOTO1.get(k);
+  const n=String(d.fotos||'').split('|').filter(Boolean)[0];const j=d._j;let url=null;
+  if(n&&j){try{let ab=null;
+    if(j.zipSha){const z=await blobZip(j.zipSha);const f=z.file(n)||z.file(n.replace(/\.jpg$/,''));ab=f?await f.async('arraybuffer'):null;}
+    else if(j.fotosDir){const t=await arbol(j.fotosDir);const x=t.find(y=>y.path===n||y.path===n+'.jpg');ab=x?await (await gh(`/git/blobs/${x.sha}`,'application/vnd.github.raw+json')).arrayBuffer():null;}
+    if(ab)url=URL.createObjectURL(new Blob([ab],{type:'image/jpeg'}));}catch(e){fotoPrincipal.error=e.message||'error de descarga';return null;}}
+  FOTO1.set(k,url);return url;}
+/* Descarga anticipada de las fotos de una jornada (para que la foto ya esté cuando la reproducción llegue al diagnóstico). */
+function precargarFotos(j){if(j&&j.zipSha&&j.diags.some(d=>Number(d.n_fotos)>0))blobZip(j.zipSha).catch(()=>{});}
+/* Ficha del diagnóstico en el mapa: la primera foto se ve directamente (tocarla abre todas). */
+function popupDiag(d,ll){
+  if(!d._j){const j=(typeof JOR!=='undefined'?JOR:[]).find(x=>x.diags&&x.diags.includes(d))||(SEL&&SEL.diags&&SEL.diags.includes(d)?SEL:null);if(j)d={...d,_j:j};} // diagnóstico sin su jornada (p. ej. desde la reproducción)
+  const n=Number(d.n_fotos)||0;
+  const html=foto=>(n?`<div class="ppFoto">${foto}</div>`:'')+htmlDiag(d)+`<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+    ${n?`<button class="btn mini nar ppFotos">📷 Ver ${n} foto(s)</button>`:''}<button class="btn mini ppJor">Ver jornada</button><button class="btn mini ppHist">📋 Hoja de vida</button></div>`;
+  const pp=L.popup({maxWidth:340,minWidth:260}).setLatLng(ll||[d.lat,d.lng]).setContent(html('<span class="tenue">Cargando foto…</span>')).openOn(mapa);
+  const enlazar=()=>{const e=pp.getElement();if(!e)return;
+    e.querySelectorAll('.ppFotos,.ppFoto img').forEach(b=>b.onclick=()=>verFotos(d));
+    const j=e.querySelector('.ppJor');if(j)j.onclick=()=>{mapa.closePopup(pp);abrirDetalle(d._j);};
+    const h=e.querySelector('.ppHist');if(h)h.onclick=()=>{mapa.closePopup(pp);verHistoriaPalma(d);};};
+  setTimeout(enlazar,0);
+  if(!n)return Promise.resolve(pp);
+  fotoPrincipal.error=null;
+  return fotoPrincipal(d).then(u=>{if(!mapa.hasLayer(pp))return pp;
+    pp.setContent(html(u?`<img src="${u}" alt="Foto del diagnóstico">`:`<span class="tenue">Foto no disponible${fotoPrincipal.error?' ('+esc(fotoPrincipal.error)+'). Toque «Ver foto(s)» para reintentar':''}</span>`));setTimeout(enlazar,0);
+    if(u){const im=pp.getElement()&&pp.getElement().querySelector('.ppFoto img');if(im&&!im.complete)return new Promise(r=>{im.onload=im.onerror=()=>r(pp);});}
+    return pp;});
+}
+function popupLote(l,ll){
+  const fil=resumenLotes().find(x=>x.lote===l);
+  L.popup().setLatLng(ll).setContent(`<b class="h">Lote ${esc(l)}</b><br>`+(fil?`${num(fil.jornadas)} jornada(s) · ${num(fil.palmas)} palmas visitadas · <b>${num(fil.ha,2)} ha</b><br>${num(fil.diag)} diagnósticos · ${num(fil.enfermas)} enfermas`:'<span class="tenue">Sin recorridos en el periodo cargado.</span>')+
+    `<div style="margin-top:8px"><button class="btn mini" id="ppFil">Filtrar por este lote</button></div>`).openOn(mapa);
+  setTimeout(()=>{const b=$('#ppFil');if(b)b.onclick=()=>{msSolo('lote',l);mapa.closePopup();aplicarFiltros(true);};},0);
+}
+async function verFotos(d){
+  const lista=String(d.fotos||'').split('|').filter(Boolean);if(!lista.length)return;
+  const j=d._j;if(!j.zipSha&&!j.fotosDir){toast('No se encontró el archivo de fotos de esta jornada.');return;}
+  $('#fotosTit').textContent=etiquetaDiag(d)+' · '+(j.fecha||'');$('#fotosG').innerHTML='<div class="tenue">Descargando fotos de la jornada…</div>';$('#fotos').hidden=false;
+  try{const out=[];let leer;
+    if(j.zipSha){const z=await blobZip(j.zipSha);leer=async n=>{const f=z.file(n)||z.file(n.replace(/\.jpg$/,''));return f?f.async('arraybuffer'):null;};}
+    else{const t=await arbol(j.fotosDir);leer=async n=>{const x=t.find(y=>y.path===n||y.path===n+'.jpg');return x?(await gh(`/git/blobs/${x.sha}`,'application/vnd.github.raw+json')).arrayBuffer():null;};}
+    for(const n of lista){const ab=await leer(n);if(!ab)continue;const url=URL.createObjectURL(new Blob([ab],{type:'image/jpeg'}));
+      out.push(`<a href="${url}" download="${esc(etiquetaDiag(d).replace(/[^\w-]+/g,'_'))}_${esc(n)}"><img src="${url}" alt="Foto"></a>`);}
+    $('#fotosG').innerHTML=out.join('')||'<div class="tenue">Las fotos no están en el archivo de la jornada.</div>';}
+  catch(e){$('#fotosG').innerHTML=`<div class="aviso">${esc(e.message)}</div>`;}
+}
+$('#fotosX').onclick=()=>{$('#fotos').hidden=true;$$('#fotosG img').forEach(i=>URL.revokeObjectURL(i.src));};
+$('#fotos').onclick=e=>{if(e.target.id==='fotos')$('#fotosX').click();};
+
+/* ---------- Detalle de jornada y reproducción ---------- */
+const PLAY={on:false,raf:0,t:0,vel:60,idx:0,marca:null,estela:null};
+function abrirDetalle(j){
+  if(REP.on)detenerRep();
+  SEL=j;pararPlay();capaSel.clearLayers();
+  const tr=j.track;let caja=null;
+  if(tr&&tr.c.length){const pt=partesTrack(j),ll=pt.ll;
+    L.polyline(pt.partes.length?pt.partes:[ll],{renderer:rend,color:'#ffffff',weight:7,opacity:.35,interactive:false}).addTo(capaSel);pintarHuecos(pt.huecos,capaSel,null);
+    PLAY.estela=L.polyline([],{renderer:rend,color:'#00e5ff',weight:4,interactive:false}).addTo(capaSel);
+    PLAY.marca=L.marker(ll[0],{icon:iconoFlecha('#2f93d5'),interactive:false,keyboard:false,zIndexOffset:1000}).addTo(capaSel);
+    caja=L.latLngBounds(ll);}
+  for(const d of j.diags)caja?caja.extend([d.lat,d.lng]):(caja=L.latLngBounds([[d.lat,d.lng]]));
+  if(caja)mapa.fitBounds(caja,{padding:[40,40],maxZoom:19});
+  const conT=tr&&tr.t.length===tr.c.length&&tr.t.length>1;
+  const sq=secuenciasDe(j),tl=tiemposPorLote(sq),dI=sq.filter(s=>s.tipo==='desplazamiento_inicial'),dF=sq.filter(s=>s.tipo==='desplazamiento_final');
+  const filaD=(etq,a)=>a.length?`<tr class="tenue"><td><b>${etq}</b></td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">${minHM(a.reduce((s,x)=>s+(Number(x.min_paradas)||0),0))}</td><td class="n">—</td><td class="n">${minHM(a.reduce((s,x)=>s+(Number(x.min_total)||0),0))}</td><td class="n">—</td></tr>`:'';
+  const filas=filaD('Desplazamiento inicial',dI)+[...j.por_lote].sort((a,b)=>ordSec(sq,a.lote)-ordSec(sq,b.lote)).map(x=>{const t=tl.get(String(x.lote));const tot=x.palmas_total_lote||totalLote(x.lote);
+    return `<tr><td><b>${esc(x.lote)}</b>${x.tipo_lote&&x.tipo_lote!=='lineal'?` <span class="tenue">· ${esc(x.tipo_lote)}</span>`:''}</td><td class="n">${num(x.palmas_visitadas)}</td><td class="n">${tot?num(Number(x.palmas_visitadas)/tot*100,1)+' %':'—'}</td><td class="n">${num(x.ha,2)}</td><td class="n">${num(x.diagnosticos)}</td><td class="n">${t?minHM(t.par):num(x.paradas||0)}</td><td class="n">${t?minHM(t.desp):'—'}</td><td class="n">${t?minHM(t.tot):'—'}</td><td class="n"><b>${t?minHM(t.efe):'—'}</b></td></tr>`;}).join('')+filaD('Desplazamiento final',dF);
+  $('#detalle').innerHTML=`<div class="cab"><b>${esc(j.evaluador)}</b><button class="x" id="dX" title="Cerrar">✕</button></div>
+    <div class="tenue">${esc(j.fecha)} · ${esc(j.hora_inicio)} – ${esc(j.hora_fin)} · ${esc(minAh(j.duracion_min))}</div>
+    <div class="grid2"><div><b>Km:</b> ${num(j.km,2)}</div><div><b>Ha:</b> ${num(j.ha,2)}</div><div><b>Palmas visitadas:</b> ${num(j.palmas)}</div><div><b>Diagnósticos:</b> ${num(j.diags.length)}</div>
+      <div><b>Paradas:</b> ${num(j.n_paradas)} (${esc(minAh(j.min_paradas))})</div><div><b>En movimiento:</b> ${esc(minAh(j.min_mov))}</div>
+      <div><b>Vel. caminata:</b> ${j.vel==null?'—':num(j.vel,1)+' km/h'}</div>${j.tiempos?`<div><b>Labor:</b> ${esc(j.tiempos.hora_inicio_labor||'—')} – ${esc(j.tiempos.hora_fin_labor||'—')}</div>
+      <div><b>Despl. inicial:</b> ${minHM(j.tiempos.min_desplazamiento_inicial)}</div><div><b>Despl. entre lotes:</b> ${minHM(j.tiempos.min_desplazamiento_entre_lotes)}</div>
+      <div><b>Despl. final:</b> ${minHM(j.tiempos.min_desplazamiento_final)}</div><div><b>Efectivo en lotes:</b> ${minHM(j.tiempos.min_efectivo_labor)}</div>`:''}
+      <div><b>Método:</b> ${j.metodo==='calle_entre_lineas'?'Por calle':'Buffer'}</div><div>${j.comp?`<b>Buffer ${esc(j.comp.buffer_m)} m:</b> ${num(j.comp.palmas_visitadas)} palmas`:''}</div></div>
+    ${bloqueCortes(j)}
+    ${conT?`<div class="play"><div class="play-res"><span>Inicio <b>${esc(j.hora_inicio||hhmm(j.inicio))}</b></span><span>Fin <b>${esc(j.hora_fin||hhmm(j.fin))}</b></span><span>Ha <b>${num(j.ha,2)}</b></span><span>T. efectivo <b>${efecJ(j,sq)}</b></span></div>
+      <div class="fila"><button class="btn mini prim" id="pBt">▶</button><input type="range" id="pRg" min="0" max="1000" value="0"><span class="reloj" id="pRel">${esc(hhmm(tr.t[0]))}</span></div>
+      <div class="fila"><span class="tenue" style="font-size:12px">Velocidad</span><select id="pVel" style="padding:3px 6px;font-size:12.5px"><option value="30">×30</option><option value="60" selected>×60</option><option value="180">×180</option><option value="600">×600</option></select>
+      <label style="display:flex;gap:5px;align-items:center;font-size:12.5px"><input type="checkbox" id="pSeg" checked> Seguir al operario</label><label style="display:flex;gap:5px;align-items:center;font-size:12.5px"><input type="checkbox" id="pDiagAuto" checked> Mostrar diagnósticos</label>
+      <span class="tenue" style="font-size:12px;margin-left:auto">${num(tr.c.length)} puntos</span></div>
+      <div class="fila" style="font-size:13px"><span class="punto" style="background:#4dd0e1"></span>Palmas visitadas: <b id="pVis" style="font-family:var(--t);font-size:18px">0</b><span class="tenue" id="pVisTot" style="margin-left:4px"></span></div></div>`:'<div class="tenue" style="margin:6px 0">Recorrido sin tiempos: no se puede reproducir.</div>'}
+    <h3 style="margin-top:6px">Secuencias por lote</h3>
+    <div style="overflow-x:auto"><table class="t"><thead><tr><th>Sec.</th><th>Lote</th><th>Inicio</th><th>Inicio labor</th><th>Fin</th><th class="n">Despl.</th><th class="n">Labor</th><th class="n">Total</th><th class="n">Paradas</th><th class="n">Efectivo</th><th class="n">Vel.</th><th class="n">Palmas</th><th class="n">Ha</th></tr></thead><tbody>${
+      secuenciasDe(j).map(s=>`<tr${s.tipo!=='lote'?' class="tenue"':''}><td><b>${s.secuencia??'—'}</b></td><td><b>${s.tipo!=='lote'?ETQ_TIPO[s.tipo]||'Desplazamiento':esc(s.lote)}</b></td><td>${esc(s.hora_inicio)}</td><td>${s.tipo==='lote'?esc(s.hora_inicio_labor||s.hora_inicio):'—'}</td><td>${esc(s.hora_fin)}</td><td class="n">${s.tipo==='lote'&&s.min_desplazamiento!=null?minHM(s.min_desplazamiento):'—'}</td><td class="n">${s.tipo==='lote'?minHM(s.min_labor??s.min_total):'—'}</td><td class="n">${minHM(s.min_total)}</td><td class="n">${minHM(s.min_paradas)}</td><td class="n"><b>${s.min_efectivo==null?'—':minHM(s.min_efectivo)}</b></td><td class="n">${s.vel_kmh==null?'—':num(s.vel_kmh,1)}</td><td class="n">${s.palmas_visitadas==null?'—':num(s.palmas_visitadas)}</td><td class="n">${s.ha==null?'—':num(s.ha,2)}</td></tr>`).join('')||'<tr><td colspan="13" class="tenue">Sin recorrido con tiempos.</td></tr>'}</tbody></table></div>
+    <div class="tenue" style="font-size:11.5px">Despl. = desplazamiento entre lotes: va en la misma fila del lote al que llega, separado de la labor (Inicio = fin del lote anterior; Inicio labor = primera palma) y cuenta como efectivo. Total = Despl. + Labor. El desplazamiento inicial y el final no son tiempo efectivo de un lote. Vel. = km/h de caminata sin paradas.</div>
+    ${secuenciasDe(j).some(s=>s.reconstruida)?'<div class="tenue" style="font-size:11.5px">Jornada anterior a la versión con secuencias: se reconstruyeron con el recorrido; las palmas se asignan a la secuencia en que el operario pasó junto a ellas.</div>':''}
+    <h3 style="margin-top:6px">Por lote</h3>
+    <div style="overflow-x:auto"><table class="t"><thead><tr><th>Lote</th><th class="n">Palmas</th><th class="n">Avance</th><th class="n">Ha</th><th class="n">Diag.</th><th class="n">Paradas</th><th class="n">Despl. entre lotes</th><th class="n">T. total</th><th class="n">T. efectivo</th></tr></thead><tbody>${filas||'<tr><td colspan="9" class="tenue">Sin datos por lote.</td></tr>'}</tbody></table></div>
+    <div class="tenue" style="font-size:11.5px">Avance = palmas visitadas ÷ palmas totales del lote. Despl. entre lotes = tiempo desde el lote anterior; suma al T. efectivo del lote. Paradas y tiempos en horas:minutos.</div>
+    <div class="tenue" style="font-size:12px;margin-top:8px">${esc(j.app)} · Dispositivo ${esc(j.dispositivo||'—')} · Sincronizada ${esc(j.sincronizado?new Date(j.sincronizado).toLocaleString('es-CO'):'—')}</div>
+    <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><button class="btn mini" id="dGeo">⬇ GeoJSON de la jornada</button></div>`;
+  $('#detalle').hidden=false;$('#dX').onclick=cerrarDetalle;
+  $('#dGeo').onclick=()=>descargar(`jornada_${j.id}.geojson`,JSON.stringify(geoDeJornadas([j])),'application/geo+json');
+  precargarFotos(j);
+  PLAY.vis=[];PLAY.visN=0;PLAY.capaVis=L.layerGroup().addTo(capaSel);
+  PLAY.diags=j.diags.map(d=>({d,t:Date.parse(d.creado)})).filter(x=>!isNaN(x.t)).sort((a,b)=>a.t-b.t);PLAY.dN=0;PLAY.espera=0;
+  palmasVisitadasJ(j).then(v=>{if(SEL!==j)return;PLAY.vis=v;PLAY.visN=0;const e=$('#pVisTot');if(e)e.textContent=`de ${num(v.length)}`;if(conT)ponerT(PLAY.t);}).catch(()=>{});
+  if(conT){PLAY.t=tr.t[0];ponerT(tr.t[0]);
+    $('#pBt').onclick=()=>PLAY.on?pararPlay():iniciarPlay();
+    $('#pRg').oninput=e=>{pararPlay();ponerT(tr.t[0]+(tr.t[tr.t.length-1]-tr.t[0])*e.target.value/1000);};
+    $('#pVel').onchange=e=>{PLAY.vel=Number(e.target.value);};PLAY.vel=Number($('#pVel').value);}
+  marcarFila();
+}
+/* =====================================================================
+   REPRODUCCIÓN DE TODAS LAS JORNADAS FILTRADAS
+   · Todos a la vez: un reloj común; cada operario con su flecha y estela de color (varias fechas se superponen por hora del día).
+   · Uno a uno: cada jornada completa, en orden de inicio, y pasa sola a la siguiente (anterior / siguiente).
+   ===================================================================== */
+const REP={on:false,modo:'todos',js:[],T0:0,T1:0,T:0,run:false,raf:0,vel:300,i:0,capa:null,espera:0,ocultas:[]};
+const inicioDia=t=>{const d=new Date(t);d.setHours(0,0,0,0);return d.getTime();};
+const hms=ms=>{ms=Math.max(0,Math.round(ms/1000));return [Math.floor(ms/3600),Math.floor(ms/60)%60,ms%60].map(x=>String(x).padStart(2,'0')).join(':');};
+function jornadasRep(){return JORF.filter(j=>j.track&&j.track.c.length>1&&j.track.t.length===j.track.c.length&&j.track.t.every(Number.isFinite))
+  .sort((a,b)=>String(a.inicio).localeCompare(String(b.inicio)));}
+function abrirRep(modo){
+  const lista=jornadasRep();
+  if(!lista.length){toast('No hay jornadas con recorrido para reproducir en el filtro actual. Cargue fechas o ajuste los filtros.');return;}
+  cerrarDetalle();detenerRep(true);REP.on=true;REP.modo=modo||REP.modo;REP.lista=lista;REP.i=0;
+  // Mientras se reproduce, se ocultan los recorridos, diagnósticos y paradas estáticos
+  REP.ocultas=[capaRec,capaDiag,capaPar].filter(c=>mapa.hasLayer(c));REP.ocultas.forEach(c=>mapa.removeLayer(c));
+  REP.capa=L.layerGroup().addTo(mapa);REP.leyenda=!$('#leyenda').hidden;$('#leyenda').hidden=true; // la barra ocupa la parte baja del mapa
+  $('#rep').hidden=false;prepararRep();
+}
+/* Prepara las jornadas del modo actual: «todos» = todas con hora del día; «uno» = la jornada REP.i con su hora real. */
+function prepararRep(){
+  pausarRep();REP.capa.clearLayers();
+  const varias=new Set(REP.lista.map(j=>j.fecha)).size>1;
+  const sel=REP.modo==='todos'?REP.lista:[REP.lista[REP.i]];
+  const off=j=>REP.modo==='todos'&&varias?inicioDia(j.track.t[0]):0; // varias fechas: se alinean por hora del día
+  REP.varias=varias&&REP.modo==='todos';
+  REP.js=sel.map(j=>{const o=off(j),t=j.track.t.map(x=>x-o),ll=j.track.c.map(c=>[c[1],c[0]]),col=colorOp(j.usuario);
+    L.polyline(ll,{renderer:rend,color:col,weight:2,opacity:.25,dashArray:'4 6',interactive:false}).addTo(REP.capa);
+    const estela=L.polyline([],{renderer:rend,color:col,weight:4,opacity:.95,interactive:false}).addTo(REP.capa);
+    const marca=L.marker(ll[0],{icon:iconoFlecha(col),interactive:false,keyboard:false,zIndexOffset:1000}).addTo(REP.capa);
+    if(REP.modo==='todos')marca.bindTooltip(esc(nombreCorto(j.evaluador)),{permanent:true,direction:'right',offset:[16,0],className:'rep-etq'});
+    const diags=j.diags.map(d=>({d,t:Date.parse(d.creado)-o,m:null})).filter(x=>Number.isFinite(x.t)).sort((a,b)=>a.t-b.t);
+    const acum=[0];for(let q=1;q<ll.length;q++){const d=dist(ll[q-1][0],ll[q-1][1],ll[q][0],ll[q][1]);acum.push(acum[q-1]+(d<500?d:0));}
+    return {j,t,ll,col,estela,marca,k:-1,acum,diags,dN:0,activa:false};});
+  if(REP.modo==='uno'){precargarFotos(REP.lista[REP.i]);const jx=REP.lista[REP.i],ix=REP.i;REP.vis=null;
+    palmasVisitadasJ(jx).then(v=>{if(!REP.on||REP.modo!=='uno'||REP.i!==ix)return;REP.vis=v.filter(q=>Number.isFinite(q.t)).map(q=>q.t);REP.visTot=v.length;ponerRep(REP.T);}).catch(()=>{});}
+  REP.critUlt=null;
+  REP.T0=Math.min(...REP.js.map(x=>x.t[0]));REP.T1=Math.max(...REP.js.map(x=>x.t[x.t.length-1]));REP.T=REP.T0;
+  const caja=L.latLngBounds(REP.js.flatMap(x=>x.ll));try{mapa.fitBounds(caja,{padding:[40,40],maxZoom:REP.modo==='todos'?17:18});}catch(e){}
+  pintarBarraRep();ponerRep(REP.T0);
+}
+function pintarBarraRep(){
+  const uno=REP.modo==='uno',j=uno?REP.lista[REP.i]:null;
+  $('#rep').innerHTML=`<div class="r1"><b class="t">${uno?`${REP.i+1} de ${REP.lista.length} · ${esc(j.evaluador)} · ${esc(j.fecha)} ${esc(j.hora_inicio)}–${esc(j.hora_fin)}`:`${REP.lista.length} jornadas a la vez${REP.varias?' · '+new Set(REP.lista.map(x=>x.fecha)).size+' fechas superpuestas por hora':''}`}</b>
+      <span class="modo"><button data-m="todos" class="${uno?'':'on'}">Todos a la vez</button><button data-m="uno" class="${uno?'on':''}">Uno a uno</button></span>
+      <button class="btn mini" id="repX" title="Cerrar">✕</button></div>
+    <div class="r2">${uno?'<button class="btn mini" id="repAnt" title="Jornada anterior">⏮</button>':''}<button class="btn mini prim" id="repBt" style="min-width:44px">▶</button>${uno?'<button class="btn mini" id="repSig" title="Jornada siguiente">⏭</button>':''}
+      <input type="range" id="repRg" min="0" max="1000" value="0" aria-label="Avance de la reproducción"><span class="reloj" id="repReloj">--:--:--</span></div>
+    <div class="r3"><label>Velocidad <select id="repVel" style="padding:2px 6px;font-size:12.5px">${[60,180,300,600,1200,3600].map(v=>`<option value="${v}" ${v===REP.vel?'selected':''}>×${v}</option>`).join('')}</select></label>
+      ${uno?'<label><input type="checkbox" id="repSeg" checked> Seguir al operario</label><label><input type="checkbox" id="repDiag" checked> Mostrar diagnósticos</label>':''}
+      ${uno?'':'<span>Activos <b id="repAct">0</b></span><span>Diagnósticos <b id="repND">0</b></span><span>Km <b id="repKm">0.00</b></span><span class="tenue">Las horas son del día; cada color es un operario.</span>'}</div>
+    ${uno?`<div class="acu" id="repAcu"><div>Inicio<b>${esc(j.hora_inicio||'--')}</b></div><div>Fin<b>${esc(j.hora_fin||'--')}</b></div><div>Transcurrido<b id="rqTr">00:00:00</b></div><div>Km recorridos<b id="repKm">0.00</b></div>
+      <div>Velocidad prom.<b id="rqVel">0.0 km/h</b></div><div>Hectáreas<b id="rqHa">0.00</b></div><div>Palmas visitadas<b id="rqPal">0</b></div><div>Diagnósticos<b id="repND">0</b></div></div>`:''}
+    <div class="critRep" id="repCrit" title="Clic: ir al último caso crítico"></div>
+    ${uno?'':`<div class="ops" id="repOps">${REP.js.map((x,k)=>`<span data-k="${k}"><i class="punto" style="background:${x.col}"></i>${esc(nombreCorto(x.j.evaluador))} · ${esc(x.j.hora_inicio)}</span>`).join('')}</div>`}`;
+  $('#repX').onclick=()=>detenerRep();
+  $('#repBt').onclick=()=>REP.run?pausarRep():iniciarRep();
+  $('#repRg').oninput=e=>{pausarRep();ponerRep(REP.T0+(REP.T1-REP.T0)*e.target.value/1000);};
+  $('#repVel').onchange=e=>{REP.vel=Number(e.target.value);};
+  $$('#rep .modo button').forEach(b=>b.onclick=()=>{if(REP.modo===b.dataset.m)return;REP.modo=b.dataset.m;REP.vel=REP.modo==='todos'?Math.max(REP.vel,300):Math.min(REP.vel,300);prepararRep();});
+  if(uno){$('#repAnt').onclick=()=>{if(REP.i>0){REP.i--;prepararRep();iniciarRep();}};$('#repSig').onclick=()=>siguienteRep(true);}
+}
+function idxT(t,T){let lo=0,hi=t.length-1;if(T<t[0])return -1;while(lo<hi){const m=(lo+hi+1)>>1;if(t[m]<=T)lo=m;else hi=m-1;}return lo;}
+function ponerRep(T){REP.T=T;let act=0,nd=0,km=0;const uno=REP.modo==='uno';
+  for(const x of REP.js){const i=idxT(x.t,T);
+    if(i<0){x.estela.setLatLngs([]);x.marca.setOpacity(.35);x.marca.setLatLng(x.ll[0]);x.k=-1;x.activa=false;}
+    else{const a=x.ll[i],b=x.ll[Math.min(i+1,x.ll.length-1)],ta=x.t[i],tb=x.t[Math.min(i+1,x.t.length-1)];const f=tb>ta?Math.min(1,Math.max(0,(T-ta)/(tb-ta))):0;
+      const pos=[a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f];
+      if(x.k>=0&&i>=x.k){const L2=x.estela.getLatLngs();L2.pop();for(let q=x.k+1;q<=i;q++)L2.push(L.latLng(x.ll[q]));L2.push(L.latLng(pos));x.estela.setLatLngs(L2);} // avance: solo se agregan los puntos nuevos
+      else x.estela.setLatLngs(x.ll.slice(0,i+1).concat([pos]));                                                                                     // retroceso o inicio: se rehace
+      x.k=i;x.marca.setLatLng(pos);x.activa=T<=x.t[x.t.length-1];x.marca.setOpacity(x.activa?1:.45);if(x.activa)act++;
+      let j2=i;while(j2<x.ll.length-1&&dist(x.ll[j2][0],x.ll[j2][1],x.ll[j2+1][0],x.ll[j2+1][1])<1)j2++;let h0=i;while(h0>0&&dist(x.ll[h0][0],x.ll[h0][1],x.ll[j2][0],x.ll[j2][1])<1)h0--;
+      if(j2>h0)girarFlecha(x.marca,rumbo({lat:x.ll[h0][0],lng:x.ll[h0][1]},{lat:x.ll[j2][0],lng:x.ll[j2][1]}));
+      km+=x.acum[i]/1000;}
+    // Diagnósticos que van apareciendo
+    let k=x.dN;const nuevos=[];
+    while(k<x.diags.length&&x.diags[k].t<=T){const q=x.diags[k];const cr=typeof criticoDe==='function'?criticoDe(q.d):null;
+      q.m=cr&&typeof iconoCritico==='function'?L.marker([q.d.lat,q.d.lng],{icon:iconoCritico(cr),zIndexOffset:2000,keyboard:false}).addTo(REP.capa)
+        :L.circleMarker([q.d.lat,q.d.lng],{renderer:rend,radius:6,color:'#fff',weight:1.5,fillColor:colorD(q.d),fillOpacity:1}).addTo(REP.capa);
+      if(cr&&REP.run)avisoCritRep(q,x,cr);
+      q.m.on('click',ev=>{L.DomEvent.stopPropagation(ev);popupDiag({...q.d,_j:x.j},ev.latlng);});nuevos.push(q);k++;}
+    while(k>0&&x.diags[k-1].t>T){k--;const q=x.diags[k];if(q.m){REP.capa.removeLayer(q.m);q.m=null;}}
+    x.dN=k;nd+=k;
+    if(uno&&REP.run&&nuevos.length&&$('#repDiag')&&$('#repDiag').checked){const q=nuevos[nuevos.length-1];REP.espera=Date.now()+5000;
+      if(mapa.getZoom()<19)mapa.setView([q.d.lat,q.d.lng],19,{animate:true});else mapa.panTo([q.d.lat,q.d.lng]);pausaConFoto(REP,popupDiag({...q.d,_j:x.j},[q.d.lat,q.d.lng]));}
+    if(uno&&REP.run&&x.activa&&!nuevos.length&&$('#repSeg')&&$('#repSeg').checked&&Date.now()>REP.espera)seguirOperario(x.marca.getLatLng());}
+  const e=$('#repReloj');if(e)e.textContent=REP.modo==='todos'&&REP.varias?hms(T):(()=>{const d=new Date(T);return [d.getHours(),d.getMinutes(),d.getSeconds()].map(v=>String(v).padStart(2,'0')).join(':');})();
+  const rg=$('#repRg');if(rg)rg.value=Math.round(1000*(T-REP.T0)/Math.max(1,REP.T1-REP.T0));
+  if($('#repAct'))$('#repAct').textContent=act;if($('#repND'))$('#repND').textContent=nd;if($('#repKm'))$('#repKm').textContent=km.toFixed(2);
+  $$('#repOps span').forEach(s=>{const x=REP.js[+s.dataset.k];s.classList.toggle('inact',!x||!x.activa);});
+  pintarCritRep();if(uno)acumuladosRep(T,km,nd);
+}
+/* Uno a uno: datos acumulados de la jornada hasta el instante T. */
+function acumuladosRep(T,km,nd){const x=REP.js[0];if(!x)return;const j=x.j,t0=x.t[0],tf=x.t[x.t.length-1],ms=Math.max(0,Math.min(T,tf)-t0),h=ms/3600000;
+  const kmT=x.acum[x.acum.length-1]/1000,haT=Number(j.ha)||0;let pal=null,ha;
+  if(REP.vis&&REP.vis.length){pal=0;for(const t of REP.vis)if(t<=T)pal++;ha=REP.visTot?haT*pal/REP.visTot:0;}
+  else ha=kmT>0?haT*Math.min(1,km/kmT):0;
+  if(pal==null)pal=Math.round((Number(j.palmas)||0)*(kmT>0?Math.min(1,km/kmT):0));
+  const s=(id,v)=>{const e=$('#'+id);if(e)e.textContent=v;};
+  s('rqTr',hms(ms));s('rqVel',(h>0.005?km/h:0).toFixed(1)+' km/h');s('rqHa',ha.toFixed(2));s('rqPal',num(pal));}
+/* Casos críticos (PE partida y PC cráter) que van apareciendo en la reproducción. */
+function pintarCritRep(){const e=$('#repCrit');if(!e)return;let np=0,nc=0;
+  for(const x of REP.js)for(let k=0;k<x.dN;k++){const c=typeof criticoDe==='function'?criticoDe(x.diags[k].d):null;if(c==='PE_PARTIDA')np++;else if(c==='CRATER')nc++;}
+  const txt=(np?`✝ ${np} PE PARTIDA (palma${np>1?'s':''} muerta${np>1?'s':''})`:'')+(np&&nc?' · ':'')+(nc?`⚠ ${nc} PC CRÁTER (erradicar)`:'');
+  const u=REP.critUlt;const h=`<span style="font-size:17px">🚨</span><span>${txt}</span>${u?`<span style="font-weight:600">· último: ${esc(nombreCorto(u.op))} · lote ${esc(u.d.lote)} L${esc(u.d.linea)} P${esc(u.d.palma)}</span>`:''}`;
+  if(e.dataset.h!==h){e.dataset.h=h;e.innerHTML=h;}e.classList.toggle('on',np+nc>0);
+  e.onclick=()=>{const q=REP.critUlt;if(q){mapa.setView([q.d.lat,q.d.lng],19,{animate:true});popupDiag({...q.d,_j:q.j},[q.d.lat,q.d.lng]);}};}
+function avisoCritRep(q,x,cr){REP.critUlt={d:q.d,j:x.j,op:x.j.evaluador};const e=$('#repCrit');
+  if(e){e.classList.remove('nuevo');void e.offsetWidth;e.classList.add('nuevo');}
+}
+function iniciarRep(){if(!REP.on)return;if(REP.T>=REP.T1)ponerRep(REP.T0);REP.run=true;const b=$('#repBt');if(b)b.textContent='❚❚';
+  let prev=performance.now();const paso=now=>{if(!REP.run)return;const dt=now-prev;prev=now;
+    if(Date.now()<REP.espera){REP.raf=requestAnimationFrame(paso);return;}
+    const T=Math.min(REP.T1,REP.T+dt*REP.vel);ponerRep(T);
+    if(T>=REP.T1){pausarRep();if(REP.modo==='uno')setTimeout(()=>{if(REP.on&&!REP.run&&REP.T>=REP.T1)siguienteRep(false);},1500);return;}
+    REP.raf=requestAnimationFrame(paso);};REP.raf=requestAnimationFrame(paso);}
+function pausarRep(){REP.run=false;cancelAnimationFrame(REP.raf);const b=$('#repBt');if(b)b.textContent='▶';}
+function siguienteRep(manual){if(REP.i<REP.lista.length-1){REP.i++;prepararRep();iniciarRep();}else if(manual)toast('Era la última jornada del filtro.');else toast('✅ Terminó la reproducción de las '+REP.lista.length+' jornadas.');}
+function detenerRep(silencioso){pausarRep();if(REP.capa){mapa.removeLayer(REP.capa);REP.capa=null;}(REP.ocultas||[]).forEach(c=>c.addTo(mapa));REP.ocultas=[];if(REP.on&&REP.leyenda)$('#leyenda').hidden=false;REP.on=false;REP.js=[];
+  if(!silencioso)$('#rep').hidden=true;mapa.closePopup();}
+$('#btRep').onclick=()=>abrirRep(REP.modo);
+/* Palmas visitadas de una jornada con el instante de su primera visita (t_visita, desde la versión con secuencias). */
+async function palmasVisitadasJ(j){
+  const h=j.header||{};const t0=Date.parse(h.t0_visita)||null;const out=[];
+  for(const x of j.por_lote){const ids=x.ids_palmas_visitadas||[];if(!ids.length)continue;const tv=x.t_visita||[];
+    const pos=new Map();for(const a of await chunkLote(x.lote))pos.set(String(a[0]),[a[5],a[4]]);
+    ids.forEach((id,k)=>{const c=pos.get(String(id));if(c)out.push({t:t0&&tv[k]!=null?t0+tv[k]*1000:-Infinity,ll:c,m:null});});}
+  return out.sort((a,b)=>a.t-b.t);
+}
+function diagAlFrente(){capaDiag.eachLayer(l=>{if(l.bringToFront)l.bringToFront();});}
+function cerrarDetalle(){pararPlay();SEL=null;capaSel.clearLayers();$('#detalle').hidden=true;marcarFila();}
+function ponerT(t){const tr=SEL&&SEL.track;if(!tr)return;PLAY.t=t;
+  let i=0;while(i<tr.t.length-1&&tr.t[i+1]<=t)i++;
+  const a=tr.c[i],b=tr.c[Math.min(i+1,tr.c.length-1)];const ta=tr.t[i],tb=tr.t[Math.min(i+1,tr.t.length-1)];const k=tb>ta?Math.min(1,Math.max(0,(t-ta)/(tb-ta))):0;
+  const pos=[a[1]+(b[1]-a[1])*k,a[0]+(b[0]-a[0])*k];
+  PLAY.marca.setLatLng(pos);{let j=i;while(j<tr.c.length-1&&dist(tr.c[j][1],tr.c[j][0],tr.c[j+1][1],tr.c[j+1][0])<1)j++;let h0=i;while(h0>0&&dist(tr.c[h0][1],tr.c[h0][0],tr.c[j][1],tr.c[j][0])<1)h0--;
+    if(j>h0)girarFlecha(PLAY.marca,rumbo({lat:tr.c[h0][1],lng:tr.c[h0][0]},{lat:tr.c[j][1],lng:tr.c[j][0]}));}
+  PLAY.estela.setLatLngs(tr.c.slice(0,i+1).map(c=>[c[1],c[0]]).concat([pos]));
+  const sg=$('#pSeg');if(PLAY.on&&sg&&sg.checked)seguirOperario(pos);
+  if(PLAY.vis&&PLAY.capaVis){let k=PLAY.visN;const rv=mapa.getZoom()>=19?6:mapa.getZoom()>=18?4.5:3;
+    while(k<PLAY.vis.length&&PLAY.vis[k].t<=t){const q=PLAY.vis[k];q.m=L.circleMarker(q.ll,{renderer:rend,radius:rv,color:'#0b3d44',weight:1,fillColor:'#4dd0e1',fillOpacity:.95,interactive:false}).addTo(PLAY.capaVis);k++;}
+    while(k>0&&PLAY.vis[k-1].t>t){k--;const q=PLAY.vis[k];if(q.m){PLAY.capaVis.removeLayer(q.m);q.m=null;}}
+    if(k>PLAY.visN)diagAlFrente(); // los diagnósticos siempre por encima de las palmas visitadas
+    PLAY.visN=k;const e=$('#pVis');if(e)e.textContent=num(k);}
+  if(PLAY.diags){let k=PLAY.dN;const nuevos=[];while(k<PLAY.diags.length&&PLAY.diags[k].t<=t){nuevos.push(PLAY.diags[k]);k++;}while(k>0&&PLAY.diags[k-1].t>t)k--;PLAY.dN=k;
+    const au=$('#pDiagAuto');if(PLAY.on&&nuevos.length&&(!au||au.checked))mostrarDiagPlay(nuevos[nuevos.length-1]);}
+  const r=$('#pRel');if(r)r.textContent=hhmm(t);const rg=$('#pRg');if(rg&&!PLAY.arrastre)rg.value=Math.round(1000*(t-tr.t[0])/Math.max(1,tr.t[tr.t.length-1]-tr.t[0]));
+}
+/* Seguir al operario en la reproducción: lo mantiene centrado en la parte visible del mapa (a la derecha del panel de detalle). */
+function seguirOperario(pos){if(mapa.getZoom()<18){mapa.setView(pos,18,{animate:false});}
+  const s=mapa.getSize(),mr=mapa.getContainer().getBoundingClientRect(),d=$('#detalle');let x0=0;
+  if(d&&!d.hidden){const r=d.getBoundingClientRect();if(r.right>mr.left&&r.right<mr.right-120&&r.bottom>mr.top+s.y*.6)x0=r.right-mr.left;}
+  const obj=L.point((x0+s.x)/2,s.y/2),c=mapa.latLngToContainerPoint(pos);
+  if(c.distanceTo(obj)>Math.min(s.x-x0,s.y)*.15)mapa.panBy(c.subtract(obj),{animate:true,duration:.4});}
+function iniciarPlay(){const tr=SEL&&SEL.track;if(!tr)return;precargarFotos(SEL);if(PLAY.t>=tr.t[tr.t.length-1])PLAY.t=tr.t[0];PLAY.on=true;$('#pBt').textContent='❚❚';
+  let prev=performance.now();const paso=ahora=>{if(!PLAY.on)return;const dt=ahora-prev;prev=ahora;if(Date.now()<PLAY.espera){PLAY.raf=requestAnimationFrame(paso);return;}const t=Math.min(tr.t[tr.t.length-1],PLAY.t+dt*PLAY.vel);ponerT(t);
+    if(t>=tr.t[tr.t.length-1]){pararPlay();return;}PLAY.raf=requestAnimationFrame(paso);};PLAY.raf=requestAnimationFrame(paso);}
+/* Al pasar por un diagnóstico: pausa 5 s, centra la palma y abre su ficha. */
+function mostrarDiagPlay(x){const d=x.d;PLAY.espera=Date.now()+5000;
+  if(mapa.getZoom()<19)mapa.setView([d.lat,d.lng],19,{animate:true});else mapa.panTo([d.lat,d.lng],{animate:true});
+  const anillo=L.circleMarker([d.lat,d.lng],{renderer:rend,radius:16,color:'#ffd54f',weight:3,fill:false,interactive:false,className:'pulso-diag'}).addTo(capaSel);
+  setTimeout(()=>{try{capaSel.removeLayer(anillo);}catch(e){}},5200);
+  pausaConFoto(PLAY,popupDiag(d,[d.lat,d.lng]));}
+/* Pausa de la reproducción en un diagnóstico: espera a que la foto se vea (máx. 30 s) y luego 5 s más. */
+function pausaConFoto(st,pr){const id=(st.pausaId=(st.pausaId||0)+1);st.espera=Date.now()+30000;
+  Promise.resolve(pr).catch(()=>{}).then(()=>{if(st.pausaId===id)st.espera=Date.now()+5000;});}
+/* Tiempo efectivo de la jornada (labor en lotes, sin paradas). */
+function efecJ(j,sq){const m=j.tiempos&&j.tiempos.min_efectivo_labor!=null?Number(j.tiempos.min_efectivo_labor):(sq||[]).filter(x=>x.tipo==='lote').reduce((a,x)=>a+(Number(x.min_efectivo)||0),0);return m?minHM(m):'—';}
+function pararPlay(){PLAY.on=false;cancelAnimationFrame(PLAY.raf);const b=$('#pBt');if(b)b.textContent='▶';}
+
+/* ---------- Agregados ---------- */
+function resumenLotes(){
+  const m=new Map();const fila=l=>{if(!m.has(l))m.set(l,{lote:l,tipo:'',jornadas:0,operarios:new Set(),palmas:0,ha:0,diag:0,enfermas:0,paradas:0,min_par:0,ids:new Set(),sinIds:0});return m.get(l);};
+  for(const j of JORF)for(const x of j.por_lote){if(!loteSel(x.lote)||!enProg(x.lote))continue;const f=fila(x.lote);f.jornadas++;f.operarios.add(j.usuario);f.palmas+=Number(x.palmas_visitadas)||0;f.ha+=Number(x.ha)||0;
+    const ids=x.ids_palmas_visitadas||[];if(ids.length)ids.forEach(id=>f.ids.add(String(id)));else f.sinIds+=Number(x.palmas_visitadas)||0;
+    f.paradas+=Number(x.paradas)||0;f.min_par+=Number(x.minutos_paradas)||0;if(x.tipo_lote)f.tipo=x.tipo_lote;}
+  for(const d of DIAGF){const f=fila(d.lote||'—');f.diag++;if(d.estado==='enferma')f.enfermas++;}
+  // casos de PC: último diagnóstico de cada palma (todas las jornadas filtradas, sin el filtro de estado)
+  const ult=new Map();for(const j of JORF)for(const d of j.diags){if(!loteSel(d.lote)||!enProg(d.lote))continue;const k=d.palma_id??(d.lote+'|'+d.linea+'|'+d.palma);const u=ult.get(k);if(!u||String(d.creado)>String(u.creado))ult.set(k,d);}
+  for(const d of ult.values())if(esCasoPC(codN1(d),d.nivel2,d.estado)&&!(typeof VAJ!=='undefined'&&VAJ.has(String(d.palma_id))))fila(d.lote||'—').pc=(fila(d.lote||'—').pc||0)+1;   // sin palmas erradicadas aprobadas
+  // Avance = palmas distintas visitadas (sin repetir entre jornadas) ÷ palmas totales del lote
+  return [...m.values()].map(f=>{const tl=totalLote(f.lote),vis=Math.min(tl||Infinity,f.ids.size+f.sinIds);return {...f,ids:undefined,operarios:f.operarios.size,ha:+f.ha.toFixed(2),distintas:vis,total_lote:tl,avance:tl?+(vis/tl*100).toFixed(1):null,pc:f.pc||0,incid_pc:tl?+((f.pc||0)/tl*100).toFixed(2):null};});
+}
+function resumenOperarios(){
+  const m=new Map();
+  for(const j of JORF){let f=m.get(j.usuario);if(!f)m.set(j.usuario,f={usuario:j.usuario,evaluador:j.evaluador,jornadas:0,dias:new Set(),km:0,ha:0,palmas:0,diag:0,min:0,min_par:0,min_efe:0,d_ini:0,d_ent:0,d_fin:0,secs:0,lotes:new Set()});
+    const ss=secuenciasDe(j);const tot=ss.length?ss.reduce((a,s)=>a+(Number(s.min_total)||0),0):Number(j.duracion_min)||0;const pm=ss.length?ss.reduce((a,s)=>a+(Number(s.min_paradas)||0),0):j.min_paradas;
+    f.jornadas++;f.dias.add(j.fecha);f.km+=j.km;f.ha+=j.ha;f.palmas+=j.palmas;f.diag+=j.diags.length;f.min+=tot;f.min_par+=pm;f.min_efe+=ss.length?ss.reduce((a,s)=>a+(Number(s.min_efectivo)||0),0):tot-pm;f.secs+=ss.filter(s=>s.tipo==='lote').length;
+    for(const s of ss){if(s.tipo==='desplazamiento_inicial')f.d_ini+=Number(s.min_total)||0;else if(s.tipo==='desplazamiento_final')f.d_fin+=Number(s.min_total)||0;else if(s.tipo==='lote')f.d_ent+=Number(s.min_desplazamiento)||0;}j.lotes.forEach(l=>f.lotes.add(l));}
+  return [...m.values()].map(f=>({...f,dias:f.dias.size,lotes:f.lotes.size,km:+f.km.toFixed(2),ha:+f.ha.toFixed(2),ha_dia:f.dias.size?+(f.ha/f.dias.size).toFixed(2):0,horas:+(f.min/60).toFixed(1),min:Math.round(f.min),min_par:Math.round(f.min_par),min_efe:Math.round(f.min_efe),d_ini:Math.round(f.d_ini),d_ent:Math.round(f.d_ent),d_fin:Math.round(f.d_fin),vel:f.min-f.min_par>=1&&f.km>0?+(f.km/((f.min-f.min_par)/60)).toFixed(2):null}));
+}
+
+/* ---------- Panel lateral ---------- */
+let TAB='resumen';const ORD={};
+$$('nav.tabs button').forEach(b=>b.onclick=()=>{TAB=b.dataset.tab;$$('nav.tabs button').forEach(x=>x.classList.toggle('on',x===b));pintarPanel();});
+function tabla(id,cols,filas,onFila){
+  const o=ORD[id]||(ORD[id]={k:cols[0].k,asc:cols[0].asc!==false&&!cols[0].n});
+  const v=filas.slice().sort((a,b)=>{const x=a[o.k],y=b[o.k];const r=typeof x==='number'&&typeof y==='number'?x-y:ordenNat(x==null?'':x,y==null?'':y);return o.asc?r:-r;});
+  const html=`<table class="t" id="${id}"><thead><tr>${cols.map(c=>`<th data-k="${c.k}" class="${c.n?'n':''} ${o.k===c.k?'ord'+(o.asc?' asc':''):''}">${esc(c.t)}</th>`).join('')}</tr></thead>
+    <tbody>${v.map((f,i)=>`<tr data-i="${i}" ${f._sel?'class="sel"':''}>${cols.map(c=>`<td class="${c.n?'n':''}">${c.f?c.f(f):esc(f[c.k])}</td>`).join('')}</tr>`).join('')||`<tr><td colspan="${cols.length}" class="vacio">Sin datos para los filtros elegidos.</td></tr>`}</tbody></table>`;
+  setTimeout(()=>{const t=$('#'+id);if(!t)return;
+    t.querySelectorAll('th').forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(o.k===k)o.asc=!o.asc;else{o.k=k;o.asc=!cols.find(c=>c.k===k).n;}pintarPanel();});
+    if(onFila)t.querySelectorAll('tbody tr[data-i]').forEach(tr=>tr.onclick=()=>onFila(v[Number(tr.dataset.i)]));},0);
+  return {html,v};
+}
+function barraEstados(){
+  const c=new Map();for(const d of DIAGF)c.set(d.estado,(c.get(d.estado)||0)+1);const tot=DIAGF.length||1;
+  return ESTADOS.filter(e=>c.get(e.id)).map(e=>`<div class="barra"><span><span class="punto" style="background:${e.c}"></span>${esc(e.n)}</span><span class="b"><i style="width:${100*c.get(e.id)/tot}%;background:${e.c}"></i></span><span class="n">${num(c.get(e.id))}</span></div>`).join('')||'<div class="tenue">Sin diagnósticos.</div>';
+}
+function barraProblemas(){
+  const c=new Map();for(const d of DIAGF)for(const p of String(d.problemas||'').split('|').filter(Boolean))c.set(p,(c.get(p)||0)+1);
+  const v=[...c.entries()].sort((a,b)=>b[1]-a[1]).slice(0,8);const mx=v.length?v[0][1]:1;
+  return v.map(([p,n])=>`<div class="barra"><span title="${esc(PROBLEMAS[p]||p)}"><span class="punto" style="background:${COLOR_N1[p]||'#ee7633'}"></span>${esc(PROBLEMAS[p]?(PROBLEMAS[p].length>16?p:PROBLEMAS[p]):p)}</span><span class="b"><i style="width:${100*n/mx}%;background:${COLOR_N1[p]||'var(--naranja)'}"></i></span><span class="n">${num(n)}</span></div>`).join('')||'<div class="tenue">Sin problemas registrados.</div>';
+}
+function pintarPanel(){
+  const P=$('#panel');
+  if(!JOR.length){P.innerHTML=`<div class="vacio">Elija el rango de fechas y pulse <b>CARGAR</b> para ver los recorridos sincronizados.</div>`;return;}
+  if(TAB==='resumen'){
+    const km=JORF.reduce((a,j)=>a+j.km,0),ha=JORF.reduce((a,j)=>a+j.ha,0),pal=JORF.reduce((a,j)=>a+j.palmas,0),mp=JORF.reduce((a,j)=>a+j.min_paradas,0);
+    const ops=new Set(JORF.map(j=>j.usuario)).size,lotes=new Set(JORF.flatMap(j=>j.por_lote.map(x=>x.lote))).size;
+    const enf=DIAGF.filter(d=>d.estado==='enferma').length,fotos=DIAGF.reduce((a,d)=>a+(Number(d.n_fotos)||0),0);
+    const comp=JORF.filter(j=>j.comp);const pc=comp.reduce((a,j)=>a+j.palmas,0),pb=comp.reduce((a,j)=>a+(Number(j.comp.palmas_visitadas)||0),0);
+    P.innerHTML=`<div class="kpis">
+      <div class="kpi"><b>${num(JORF.length)}</b><span>Jornadas</span></div><div class="kpi"><b>${num(ops)}</b><span>Operarios</span></div><div class="kpi"><b>${num(lotes)}</b><span>Lotes</span></div>
+      <div class="kpi"><b>${num(ha,2)}</b><span>Ha recorridas</span></div><div class="kpi"><b>${num(pal)}</b><span>Palmas visitadas</span></div><div class="kpi"><b>${num(km,1)}</b><span>Km</span></div>
+      <div class="kpi"><b>${num(DIAGF.length)}</b><span>Diagnósticos</span></div><div class="kpi"><b style="color:var(--rojo)">${num(enf)}</b><span>Enfermas</span></div><div class="kpi"><b>${num(fotos)}</b><span>Fotos</span></div></div>
+      ${(()=>{const rl=resumenLotes().filter(x=>x.total_lote);const cp=rl.reduce((a,x)=>a+x.pc,0),tp=rl.reduce((a,x)=>a+x.total_lote,0);
+        return `<div class="kpis" style="grid-template-columns:1fr 1fr"><div class="kpi"><b style="color:var(--rojo)">${tp?num(cp/tp*100,2)+' %':'—'}</b><span>Incidencia PC (${num(cp)} casos ÷ ${num(tp)} palmas de ${num(rl.length)} lote(s))</span></div><div class="kpi"><b>${num(cp)}</b><span>Casos de PC activos</span></div></div>`;})()}
+      <div class="kpis" style="grid-template-columns:1fr 1fr"><div class="kpi"><b>${esc(minAh(mp))}</b><span>Tiempo en paradas</span></div><div class="kpi"><b>${ops?num(ha/Math.max(1,new Set(JORF.map(j=>j.usuario+'|'+j.fecha)).size),2):'0'}</b><span>Ha por operario-día</span></div></div>
+      <h3>Diagnósticos por estado</h3>${barraEstados()}
+      <h3>Enfermedades más frecuentes (enfermedad principal)</h3>${barraProblemas()}
+      ${comp.length?`<h3>Método por calle frente a buffer</h3><div class="tenue" style="font-size:13px">En ${num(comp.length)} jornada(s) con comparativo: por calle <b style="color:var(--texto)">${num(pc)}</b> palmas; buffer <b style="color:var(--texto)">${num(pb)}</b> palmas (${pb?(pc>=pb?'+':'')+num(100*(pc-pb)/pb,1)+' %':'—'}).</div>`:''}
+      <div style="margin-top:14px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn mini" id="xGeo">⬇ GeoJSON filtrado</button><button class="btn mini" id="xJor">⬇ CSV jornadas</button><button class="btn mini" id="xDiag">⬇ CSV diagnósticos</button></div>`;
+    $('#xGeo').onclick=()=>descargar(`polinizacion_${$('#fDesde').value}_${$('#fHasta').value}.geojson`,JSON.stringify(geoDeJornadas(JORF)),'application/geo+json');
+    $('#xJor').onclick=()=>csvJornadas();$('#xDiag').onclick=()=>csvDiag();
+  }else if(TAB==='jornadas'){
+    const filas=JORF.map(j=>({_j:j,_sel:j===SEL,fecha:j.fecha,evaluador:j.evaluador,ini:j.hora_inicio,fin:j.hora_fin,dur:Number(j.duracion_min)||0,km:j.km,ha:j.ha,palmas:j.palmas,diag:j.diags.length,par:j.n_paradas,vel:j.vel,lotes:[...j.lotes].sort(ordenNat).join(', ')}));
+    const t=tabla('tJor',[{k:'fecha',t:'Fecha',asc:false},{k:'evaluador',t:'Operario'},{k:'ini',t:'Inicio'},{k:'fin',t:'Fin'},{k:'dur',t:'Duración',n:1,f:x=>esc(minAh(x.dur))},{k:'km',t:'Km',n:1,f:x=>num(x.km,2)},{k:'vel',t:'Vel. km/h',n:1,f:x=>x.vel==null?'—':num(x.vel,1)},{k:'ha',t:'Ha',n:1,f:x=>num(x.ha,2)},{k:'palmas',t:'Palmas',n:1,f:x=>num(x.palmas)},{k:'diag',t:'Diag.',n:1},{k:'par',t:'Paradas',n:1},{k:'lotes',t:'Lotes'}],filas,f=>abrirDetalle(f._j));
+    P.innerHTML=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><button class="btn mini prim btRep" id="btRepT">▶ Reproducir todas a la vez</button><button class="btn mini btRep" id="btRepU">▶ Reproducir una a una</button></div><div class="tenue" style="margin-bottom:6px;font-size:12.5px">Toque una jornada para verla en el mapa y reproducir solo ese recorrido.</div>`+t.html+`<div style="margin-top:10px"><button class="btn mini" id="xJor">⬇ CSV jornadas</button></div>`;$('#xJor').onclick=()=>csvJornadas();$('#btRepT').onclick=()=>abrirRep('todos');$('#btRepU').onclick=()=>abrirRep('uno');
+  }else if(TAB==='lotes'){
+    const t=tabla('tLot',[{k:'lote',t:'Lote'},{k:'pc',t:'Casos PC',n:1},{k:'incid_pc',t:'Incid. PC',n:1,f:x=>x.incid_pc==null?'—':'<b>'+num(x.incid_pc,2)+' %</b>'},{k:'tipo',t:'Tipo'},{k:'jornadas',t:'Jornadas',n:1},{k:'operarios',t:'Operarios',n:1},{k:'palmas',t:'Palmas visitadas',n:1,f:x=>num(x.palmas)},{k:'distintas',t:'Palmas distintas',n:1,f:x=>num(x.distintas)},{k:'total_lote',t:'Total lote',n:1,f:x=>x.total_lote?num(x.total_lote):'—'},{k:'avance',t:'Avance',n:1,f:x=>x.avance==null?'—':'<b>'+num(x.avance,1)+' %</b>'},{k:'ha',t:'Ha',n:1,f:x=>num(x.ha,2)},{k:'diag',t:'Diag.',n:1},{k:'enfermas',t:'Enfermas',n:1},{k:'min_par',t:'Min. paradas',n:1}],
+      resumenLotes(),f=>{msSolo('lote',f.lote);aplicarFiltros(true);});
+    P.innerHTML=`<div class="tenue" style="margin-bottom:6px;font-size:12.5px">Toque un lote para filtrar por él. <b>Avance</b> = palmas distintas visitadas (sin repetir entre jornadas) ÷ palmas totales del lote. <b>Incid. PC</b> = casos de PC (último diagnóstico de cada palma, sin casos en recuperación ni dados de alta) ÷ palmas totales del lote (existencia 0 y 1).</div>`+t.html+`<div style="margin-top:10px"><button class="btn mini" id="xLot">⬇ CSV lotes</button></div>`;
+    $('#xLot').onclick=()=>csv(`lotes_${$('#fDesde').value}_${$('#fHasta').value}.csv`,['lote','tipo','jornadas','operarios','palmas','distintas','total_lote','avance','ha','diag','enfermas','pc','incid_pc','paradas','min_par'],resumenLotes());
+  }else if(TAB==='secuencias'){
+    const filas=filasSecuencias();
+    const t=tabla('tSec',[{k:'orden',t:'Fecha',asc:false,f:x=>esc(x.fecha)},{k:'evaluador',t:'Operario'},{k:'sec',t:'Sec.',n:1,f:x=>x.sec||'—'},{k:'lote',t:'Lote',f:x=>x.tipo!=='lote'?'<span class="tenue">'+esc(x.lote)+'</span>':'<b>'+esc(x.lote)+'</b>'},{k:'ini',t:'Inicio'},{k:'ini_lab',t:'Inicio labor',f:x=>x.tipo==='lote'?esc(x.ini_lab):'—'},{k:'fin',t:'Fin'},
+      {k:'desp',t:'Despl. entre lotes',n:1,f:x=>x.tipo==='lote'?minHM(x.desp):'—'},{k:'lab',t:'T. labor',n:1,f:x=>x.tipo==='lote'?minHM(x.lab):'—'},{k:'tot',t:'T. total',n:1,f:x=>minHM(x.tot)},{k:'par',t:'Paradas',n:1,f:x=>minHM(x.par)},{k:'efe',t:'T. efectivo',n:1,f:x=>x.tipo==='lote'||x.tipo==='desplazamiento'?'<b>'+minHM(x.efe)+'</b>':'—'},{k:'vel',t:'Vel. km/h',n:1,f:x=>x.vel==null?'—':num(x.vel,1)},{k:'palmas',t:'Palmas',n:1,f:x=>x.palmas==null?'—':num(x.palmas)},{k:'ha',t:'Ha',n:1,f:x=>x.ha==null?'—':num(x.ha,2)},{k:'diag',t:'Diag.',n:1}],filas,f=>abrirDetalle(f._j));
+    const s=k=>filas.reduce((a,x)=>a+(Number(x[k])||0),0);
+    P.innerHTML=`<div class="kpis" style="grid-template-columns:repeat(3,1fr)"><div class="kpi"><b>${minHM(s('tot'))}</b><span>Tiempo total</span></div><div class="kpi"><b>${minHM(s('par'))}</b><span>Paradas</span></div><div class="kpi"><b style="color:var(--acento)">${minHM(s('efe'))}</b><span>Tiempo efectivo</span></div></div>
+      <div class="tenue" style="margin-bottom:6px;font-size:12.5px">Cada bloque de trabajo en un lote abre una secuencia (1 RI01, 2 RI02, 3 RI01…). <b>Desplazamiento inicial</b>: del inicio de la jornada a la primera calle trabajada. <b>Desplazamiento entre lotes</b>: se suma a la secuencia del lote al que llega y cuenta como efectivo. <b>Desplazamiento final</b>: de la última palma al fin de la jornada. T. efectivo = T. total − paradas. Tiempos en horas:minutos. Toque una fila para ver la jornada.</div>`+t.html+
+      `<div style="margin-top:10px"><button class="btn mini" id="xSec">⬇ CSV secuencias</button></div>`;
+    $('#xSec').onclick=()=>csv(`secuencias_${$('#fDesde').value}_${$('#fHasta').value}.csv`,['fecha','usuario','evaluador','sec','tipo','lote','ini','ini_lab','fin','desp','lab','tot','par','efe','km','vel','palmas','ha','diag'],filas.map(x=>({...x,sec:x.sec||'',vel:x.vel==null?'':x.vel})));
+  }else if(TAB==='operarios'){
+    const t=tabla('tOp',[{k:'evaluador',t:'Operario'},{k:'jornadas',t:'Jorn.',n:1},{k:'secs',t:'Sec.',n:1},{k:'min',t:'T. total',n:1,f:x=>minHM(x.min)},{k:'min_par',t:'Paradas',n:1,f:x=>minHM(x.min_par)},{k:'min_efe',t:'T. efectivo',n:1,f:x=>'<b>'+minHM(x.min_efe)+'</b>'},{k:'d_ini',t:'Despl. inicial',n:1,f:x=>minHM(x.d_ini)},{k:'d_ent',t:'Despl. entre lotes',n:1,f:x=>minHM(x.d_ent)},{k:'d_fin',t:'Despl. final',n:1,f:x=>minHM(x.d_fin)},{k:'km',t:'Km',n:1,f:x=>num(x.km,2)},{k:'vel',t:'Vel. km/h',n:1,f:x=>x.vel==null?'—':num(x.vel,1)},{k:'ha',t:'Ha',n:1,f:x=>num(x.ha,2)},{k:'ha_dia',t:'Ha/día',n:1,f:x=>num(x.ha_dia,2)},{k:'palmas',t:'Palmas',n:1,f:x=>num(x.palmas)},{k:'diag',t:'Diag.',n:1},{k:'lotes',t:'Lotes',n:1}],
+      resumenOperarios(),f=>{msSolo('op',f.usuario);aplicarFiltros(true);});
+    P.innerHTML=`<div class="tenue" style="margin-bottom:6px;font-size:12.5px">Toque un operario para filtrar sus recorridos.</div>`+t.html+`<div style="margin-top:10px"><button class="btn mini" id="xOp">⬇ CSV operarios</button></div>`;
+    $('#xOp').onclick=()=>csv(`operarios_${$('#fDesde').value}_${$('#fHasta').value}.csv`,['usuario','evaluador','jornadas','dias','secs','min','min_par','min_efe','d_ini','d_ent','d_fin','km','vel','ha','ha_dia','palmas','diag','lotes'],resumenOperarios().map(x=>({...x,vel:x.vel==null?'':x.vel})));
+  }else{
+    const filas=DIAGF.map(d=>({_d:d,fecha:d._j.fecha,hora:hhmm(d.creado),palma:etiquetaDiag(d),lote:d.lote,estado:(estadoDe(d.estado)||{n:d.estado_nombre||d.estado}).n,_c:colorD(d),problemas:d.nivel1?[d.n1_codigo||d.nivel1,d.nivel2,d.nivel3].filter(Boolean).join(' › '):String(d.problemas||'').split('|').filter(Boolean).join(', '),evaluador:d.evaluador,fotos:Number(d.n_fotos)||0}));
+    const t=tabla('tDiag',[{k:'fecha',t:'Fecha',asc:false},{k:'hora',t:'Hora'},{k:'palma',t:'Palma'},{k:'estado',t:'Estado',f:x=>`<span class="punto" style="background:${x._c}"></span>${esc(x.estado)}`},{k:'problemas',t:'Diagnóstico'},{k:'evaluador',t:'Operario'},{k:'fotos',t:'Fotos',n:1}],
+      filas,f=>{mapa.setView([f._d.lat,f._d.lng],Math.max(mapa.getZoom(),19));popupDiag(f._d);});
+    P.innerHTML=`<div class="tenue" style="margin-bottom:6px;font-size:12.5px">${num(DIAGF.length)} diagnóstico(s). Toque uno para ubicarlo y ver sus fotos.</div>`+t.html+`<div style="margin-top:10px"><button class="btn mini" id="xDiag">⬇ CSV diagnósticos</button></div>`;$('#xDiag').onclick=()=>csvDiag();
+  }
+}
+function marcarFila(){if(TAB==='jornadas')pintarPanel();}
+
+/* ---------- Exportación ---------- */
+function descargar(nombre,contenido,tipo){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([contenido],{type:tipo}));a.download=nombre;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
+function csv(nombre,cols,filas){const q=v=>{if(v==null)return '';const s=typeof v==='number'?String(v).replace('.',','):String(v);return /[;"\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
+  descargar(nombre,'﻿'+cols.join(';')+'\r\n'+filas.map(f=>cols.map(c=>q(f[c])).join(';')).join('\r\n'),'text/csv;charset=utf-8');}
+function csvJornadas(){csv(`jornadas_${$('#fDesde').value}_${$('#fHasta').value}.csv`,['id','fecha','usuario','evaluador','hora_inicio','hora_fin','duracion_min','km','ha','palmas','diagnosticos','n_paradas','min_paradas','velocidad_kmh','inicio_labor','fin_labor','min_despl_inicial','min_despl_entre_lotes','min_despl_final','metodo','palmas_buffer','lotes'],
+  JORF.map(j=>({id:j.id,fecha:j.fecha,usuario:j.usuario,evaluador:j.evaluador,hora_inicio:j.hora_inicio,hora_fin:j.hora_fin,duracion_min:j.duracion_min,km:j.km,ha:j.ha,palmas:j.palmas,diagnosticos:j.diags.length,n_paradas:j.n_paradas,min_paradas:j.min_paradas,velocidad_kmh:j.vel==null?'':j.vel,inicio_labor:(j.tiempos||{}).hora_inicio_labor||'',fin_labor:(j.tiempos||{}).hora_fin_labor||'',min_despl_inicial:(j.tiempos||{}).min_desplazamiento_inicial??'',min_despl_entre_lotes:(j.tiempos||{}).min_desplazamiento_entre_lotes??'',min_despl_final:(j.tiempos||{}).min_desplazamiento_final??'',metodo:j.metodo,palmas_buffer:j.comp?j.comp.palmas_visitadas:'',lotes:[...j.lotes].sort(ordenNat).join(',')})));}
+function csvDiag(){const cols=['id','jornada_id','fecha','creado','evaluador','lote','linea','palma','palma_id','estado','estado_nombre','rama','n1_codigo','nivel1','nivel2','nivel3','sintomas','estado_hongo','cirugia','produccion','raices_buenas','transitabilidad','observaciones','problemas','grado_pc','severidad','accion','n_fotos','fotos','lat','lng','dist_gps_palma_m'];
+  csv(`diagnosticos_${$('#fDesde').value}_${$('#fHasta').value}.csv`,cols,DIAGF.map(d=>({...d,fecha:d._j.fecha})));}
+function geoDeJornadas(js){const feats=[];
+  for(const j of js){
+    if(j.track&&j.track.c.length)feats.push({type:'Feature',properties:{tipo:'recorrido',jornada_id:j.id,fecha:j.fecha,usuario:j.usuario,evaluador:j.evaluador,hora_inicio:j.hora_inicio,hora_fin:j.hora_fin,km:j.km,ha:j.ha,palmas_visitadas:j.palmas,diagnosticos:j.diags.length,n_paradas:j.n_paradas},
+      geometry:j.track.c.length>1?{type:'LineString',coordinates:j.track.c}:{type:'Point',coordinates:j.track.c[0]}});
+    for(const d of j.diags){const {_j,lat,lng,...p}=d;feats.push({type:'Feature',properties:{...p,fecha:j.fecha},geometry:{type:'Point',coordinates:[lng,lat]}});}
+    for(const p of j.paradas){const {lat,lng,...q}=p;feats.push({type:'Feature',properties:{...q,jornada_id:j.id,evaluador:j.evaluador,fecha:j.fecha},geometry:{type:'Point',coordinates:[lng,lat]}});}}
+  return {type:'FeatureCollection',name:'polinizacion_visor',features:feats};}
+
+/* ---------- Fechas ---------- */
+function ponerRango(dias,mes){const h=new Date();$('#fHasta').value=hoyISO(h);
+  $('#fDesde').value=mes?hoyISO(new Date(h.getFullYear(),h.getMonth(),1,12)):hoyISO(new Date(h.getTime()-dias*86400000));}
+$$('.atajos button').forEach(b=>b.onclick=()=>{ponerRango(Number(b.dataset.dias||0),!!b.dataset.mes);cargar();});
+$('#btCargar').onclick=cargar;
+
+/* ---------- Arranque ---------- */
+async function entrar(){
+  $('#login').hidden=true;$('#app').hidden=false;mapa.invalidateSize();cargarRamasVisor();
+  $('#hdrUsuario').textContent=`${SES.nombre} · ${({admin:'Administrador',superadmin:'Super administrador',supervisor:'Supervisor',analista:'Analista de datos'})[SES.rol]||'Supervisor'}`;
+  if(typeof aplicarPermisosGer==='function')aplicarPermisosGer();
+  try{await cargarCartografia();}catch(e){toast('No se pudo cargar la cartografía: '+e.message,6000);}
+  try{await cargarAjustesVisor();}catch(e){}
+  try{await cargarVias();}catch(e){}
+  ponerRango(6);await cargar();
+}
+/*CIRUGIA_VISOR_JS*/
+/*GERENCIA_VISOR_JS*/
+/*ERRADICACION_VISOR_JS*/
+/*PLAGAS_VISOR_JS*/
+/*ENFERMEDADES_VISOR_JS*/
+/*HOJA_VIDA_VISOR_JS*/
+(async()=>{
+  ponerBase();pintarLeyenda();
+  msOpciones('est',ESTADOS.map(e=>({v:e.id,t:e.n})));
+  try{const r=await fetch('datos/acceso.json',{cache:'no-store'});if(r.ok){const j=await r.json();if(j.formato==='polinizacion-acceso-1')ACCESO=j;}}catch(e){}
+  if(!ACCESO){$('#lgMsg').style.color='var(--rojo)';$('#lgMsg').textContent='No se pudo leer el paquete de acceso. Verifique la conexión a internet.';return;}
+  if(await restaurarSesion())await entrar();else setTimeout(()=>$('#lgU').focus(),200);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+{
+  "appId": "co.palmasdetumaco.polinizacion",
+  "appName": "Polinización",
+  "webDir": "www",
+  "server": {
+    "url": "https://didpalmares.github.io/Polinizacion/",
+    "allowNavigation": [
+      "didpalmares.github.io"
+    ],
+    "errorPath": "sin-conexion.html"
+  },
+  "android": {
+    "useLegacyBridge": true,
+    "backgroundColor": "#06140f",
+    "allowMixedContent": false,
+    "captureInput": false,
+    "webContentsDebuggingEnabled": false,
+    "appendUserAgent": "PolinizacionAPK/1"
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_tracking",
+      "iconColor": "#22d39a"
+    }
+  }
+}

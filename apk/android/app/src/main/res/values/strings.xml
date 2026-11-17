@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Polinización</string>
+    <string name="title_activity_main">Polinización</string>
+    <string name="package_name">co.palmasdetumaco.polinizacion</string>
+    <string name="custom_url_scheme">co.palmasdetumaco.polinizacion</string>
+    <string name="capacitor_background_geolocation_notification_channel_name">Registro del recorrido</string>
+    <string name="capacitor_background_geolocation_notification_icon">drawable/ic_tracking</string>
+</resources>
