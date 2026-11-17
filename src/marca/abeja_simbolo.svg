@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <!-- Abeja de Polinización (diseño propio) -->
+  <!-- Alas -->
+  <g opacity=".92">
+    <ellipse cx="150" cy="118" rx="62" ry="44" transform="rotate(-32 150 118)" fill="#E6F6FF" stroke="#2F6F8F" stroke-width="7"/>
+    <ellipse cx="236" cy="112" rx="66" ry="46" transform="rotate(28 236 112)" fill="#E6F6FF" stroke="#2F6F8F" stroke-width="7"/>
+    <path d="M128 112q22-14 44 0M214 104q24-14 48 2" fill="none" stroke="#9FD3EC" stroke-width="6" stroke-linecap="round"/>
+  </g>
+  <!-- Aguijón -->
+  <path d="M318 262l40 12-38 14z" fill="#1E1E1E"/>
+  <!-- Cuerpo -->
+  <ellipse cx="236" cy="246" rx="98" ry="78" fill="#FFC928" stroke="#1E1E1E" stroke-width="8"/>
+  <clipPath id="cuerpo"><ellipse cx="236" cy="246" rx="94" ry="74"/></clipPath>
+  <g clip-path="url(#cuerpo)" fill="#1E1E1E">
+    <rect x="214" y="160" width="26" height="180" rx="6" transform="rotate(8 227 250)"/>
+    <rect x="266" y="160" width="26" height="180" rx="6" transform="rotate(8 279 250)"/>
+    <rect x="316" y="160" width="40" height="180" rx="6" transform="rotate(8 336 250)"/>
+  </g>
+  <ellipse cx="226" cy="206" rx="40" ry="14" fill="#FFF3B8" opacity=".7"/>
+  <!-- Antenas -->
+  <path d="M112 152q-14-50-46-62M150 142q4-54 34-74" fill="none" stroke="#1E1E1E" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="62" cy="88" r="13" fill="#1E1E1E"/><circle cx="188" cy="66" r="13" fill="#1E1E1E"/>
+  <!-- Cabeza -->
+  <circle cx="134" cy="226" r="78" fill="#FFD54A" stroke="#1E1E1E" stroke-width="8"/>
+  <!-- Ojos -->
+  <ellipse cx="108" cy="214" rx="21" ry="26" fill="#fff" stroke="#1E1E1E" stroke-width="5"/>
+  <ellipse cx="164" cy="214" rx="21" ry="26" fill="#fff" stroke="#1E1E1E" stroke-width="5"/>
+  <circle cx="113" cy="220" r="12" fill="#1E1E1E"/><circle cx="169" cy="220" r="12" fill="#1E1E1E"/>
+  <circle cx="117" cy="214" r="4.5" fill="#fff"/><circle cx="173" cy="214" r="4.5" fill="#fff"/>
+  <!-- Mejillas y sonrisa -->
+  <ellipse cx="84" cy="258" rx="14" ry="9" fill="#FF8A65" opacity=".75"/>
+  <ellipse cx="188" cy="258" rx="14" ry="9" fill="#FF8A65" opacity=".75"/>
+  <path d="M112 262q24 26 48 0" fill="none" stroke="#1E1E1E" stroke-width="7" stroke-linecap="round"/>
+  <!-- Polen -->
+  <circle cx="300" cy="336" r="10" fill="#FFB300"/><circle cx="330" cy="352" r="7" fill="#FFB300"/><circle cx="270" cy="356" r="6" fill="#FFB300"/>
+</svg>
