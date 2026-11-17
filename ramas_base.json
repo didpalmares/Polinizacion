@@ -5,7 +5,7 @@
   {
    "r": 1,
    "c": "A",
-   "n1": "A · ANTESIS",
+   "n1": "A: Inflorescencia en Antesis",
    "n2": null,
    "n3": null,
    "s": [],
@@ -20,7 +20,7 @@
   {
    "r": 2,
    "c": "P",
-   "n1": "P · POST-ANTESIS",
+   "n1": "P: Inflorescencia en Post-Antesis",
    "n2": null,
    "n3": null,
    "s": [],
@@ -35,7 +35,7 @@
   {
    "r": 3,
    "c": "B",
-   "n1": "B · BALÓN",
+   "n1": "B: Balón (Post-Antesis pasada)",
    "n2": null,
    "n3": null,
    "s": [],
@@ -50,7 +50,7 @@
   {
    "r": 4,
    "c": "R",
-   "n1": "R · RANCHO / TAPADA",
+   "n1": "R: Palma Rancho / Tapada",
    "n2": null,
    "n3": null,
    "s": [],
@@ -65,7 +65,7 @@
   {
    "r": 5,
    "c": "V",
-   "n1": "V · AVISPAS",
+   "n1": "V: Palma con Avispas",
    "n2": null,
    "n3": null,
    "s": [],

@@ -685,14 +685,16 @@ svg.leaflet-image-layer.leaflet-interactive path {
 .ic-oficina{background:none;border:0}
 .ic-oficina svg{filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))}
 #polBar{position:fixed;left:8px;right:8px;bottom:calc(var(--dock) + var(--inf) + 10px);z-index:950;border-radius:16px;padding:8px}
-#polInfo{font-size:13px;margin:0 4px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pol-bts{display:grid;grid-template-columns:repeat(5,1fr) .8fr;gap:6px}
-.pol-bts button{height:58px;border-radius:12px;border:0;font:700 26px/1 Rajdhani,system-ui,sans-serif;color:#111;cursor:pointer}
+.pol-cab{display:flex;align-items:center;gap:6px;height:34px;margin:0 2px 6px}
+#polInfo{flex:1;min-width:0;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pol-bts{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.pol-bts button{min-height:66px;border-radius:12px;border:0;padding:4px 6px;color:#111;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-family:Rajdhani,system-ui,sans-serif}
+.pol-bts button b{font-size:28px;line-height:1}.pol-bts button small{font-size:12.5px;font-weight:700;line-height:1.1;text-align:center}
 .pol-bts button:active{transform:scale(.94)}
 .cA{background:#00c853}.cP{background:#ffab00}.cB{background:#d84315;color:#fff!important}.cR{background:#8d6e63;color:#fff!important}.cV{background:#e53935;color:#fff!important}
 .pol-bts .deshacer{background:#37474f;color:#fff}
-#polFin{margin-top:6px}
-body.con-polbar #flot{bottom:calc(var(--dock) + var(--inf) + 190px)}body.con-polbar #btLeyenda,body.con-polbar #leyenda{bottom:calc(var(--dock) + var(--inf) + 150px)}
+#polFin{flex:none;min-height:0;height:32px;padding:0 10px;font-size:13px;white-space:nowrap}
+body.con-polbar #flot{bottom:calc(var(--dock) + var(--inf) + 250px)}body.con-polbar #btLeyenda,body.con-polbar #leyenda{bottom:calc(var(--dock) + var(--inf) + 205px)}
 .pol-cont{display:grid;grid-template-columns:auto 1fr 52px 48px 52px;align-items:center;gap:8px;margin:8px 0}
 .pol-cont output{text-align:center;font:700 26px Rajdhani,system-ui}.pol-cont .btn{min-height:46px;font-size:24px;padding:0}
 .pol-cod{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:9px;font-weight:800;color:#111}
@@ -1033,7 +1035,7 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
   <div class="tit">POLINIZACIÓN<small>CENSO FITOSANITARIO GEORREFERENCIADO</small></div>
   <div class="carga"><i></i></div>
   <div id="splashMsg">Iniciando…</div>
-  <div id="splashVer">VERSIÓN 20261117:1841</div>
+  <div id="splashVer">VERSIÓN 20261117:1853</div>
 </div>
 
 <div id="login" hidden>
@@ -1048,7 +1050,7 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
     <p class="tenue" id="lgMsg"></p>
   </form>
   <p id="lgRed"></p>
-  <div id="lgVer2">VERSIÓN 20261117:1841</div>
+  <div id="lgVer2">VERSIÓN 20261117:1853</div>
   <button type="button" class="btn" id="lgAct" style="margin-top:4px;font-size:13px;padding:7px 12px">⟳ BUSCAR ACTUALIZACIÓN</button>
   <button type="button" class="btn" id="lgInstalar" hidden>📲 INSTALAR EN ESTE CELULAR</button>
 </div>
@@ -1082,9 +1084,8 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
   <button id="btSeguir" class="glass" aria-label="Pantalla fija"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="13.5" cy="3.6" r="2.3" fill="currentColor"/><path d="M12.6 7.2 9.4 9.3 8 13.2M12.6 7.2l-1.4 6 3.3 3.1 1.1 5.2M11.2 13.2l-2.6 3.2-3 4.6M12.6 7.2l2.3 3.3 3.2 1.1" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><small>FIJA</small></button>
 </div>
 <div id="polBar" class="glass" hidden>
-  <div id="polInfo">—</div>
-  <div class="pol-bts"><button data-c="A" class="cA" aria-label="Sumar antesis">A</button><button data-c="P" class="cP" aria-label="Sumar post-antesis">P</button><button data-c="B" class="cB" aria-label="Sumar balón">B</button><button data-c="R" class="cR" aria-label="Rancho o tapada">R</button><button data-c="V" class="cV" aria-label="Avispas">V</button><button id="polDeshacer" class="deshacer" aria-label="Deshacer">↶</button></div>
-  <button id="polFin" class="btn ancho" hidden>Finalizar lote (transitabilidad de salida)</button>
+  <div class="pol-cab"><div id="polInfo">—</div><button id="polFin" class="btn" hidden>Finalizar lote</button></div>
+  <div class="pol-bts"><button data-c="A" class="cA" aria-label="A: Inflorescencia en Antesis"><b>A</b><small>Inflorescencia en Antesis</small></button><button data-c="P" class="cP" aria-label="P: Inflorescencia en Post-Antesis"><b>P</b><small>Inflorescencia en Post-Antesis</small></button><button data-c="B" class="cB" aria-label="B: Balón (Post-Antesis pasada)"><b>B</b><small>Balón (Post-Antesis pasada)</small></button><button data-c="R" class="cR" aria-label="R: Palma Rancho / Tapada"><b>R</b><small>Palma Rancho / Tapada</small></button><button data-c="V" class="cV" aria-label="V: Palma con Avispas"><b>V</b><small>Palma con Avispas</small></button><button id="polDeshacer" class="deshacer" aria-label="Deshacer el último registro"><b>↶</b><small>Deshacer</small></button></div>
 </div>
 <button id="btLeyenda" class="glass">LEYENDA</button>
 <div id="leyenda" class="glass" hidden></div>
@@ -1170,7 +1171,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
    Censo fitosanitario georreferenciado sin conexión, con jornadas,
    registro del recorrido y sincronización con GitHub.
    ===================================================================== */
-const VERSION='20261117:1841';
+const VERSION='20261117:1853';
 /* Ejecutándose dentro de la APK de Android (Capacitor) o en el navegador. */
 const NATIVO=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
 /* APK sin puente nativo (copia guardada antigua): con internet se recarga una vez para recibirlo. */
@@ -1206,7 +1207,7 @@ function colorReg(r){if(!r)return '#999';if(r.estado==='alta')return COLOR_ALTA;
 /* Formulario de polinizacion · Ramificación V6 (Palmas de Tumaco). Una fila por combinación Nivel 1 → Nivel 2 → Nivel 3.
    r: rama · c: código · n1/n2/n3: niveles · s: síntomas (Nivel 4, selección múltiple) · h: estados del hongo (si aplica)
    cir/prod/rai/tra/obs: si aplican Cirugía, Producción, Raíces buenas, Transitabilidad y Observación · f: fuente. */
-const RAMAS=[{"r":1,"c":"A","n1":"A · ANTESIS","n2":null,"n3":null,"s":[],"h":null,"cir":false,"prod":false,"rai":false,"tra":false,"obs":true,"f":""},{"r":2,"c":"P","n1":"P · POST-ANTESIS","n2":null,"n3":null,"s":[],"h":null,"cir":false,"prod":false,"rai":false,"tra":false,"obs":true,"f":""},{"r":3,"c":"B","n1":"B · BALÓN","n2":null,"n3":null,"s":[],"h":null,"cir":false,"prod":false,"rai":false,"tra":false,"obs":true,"f":""},{"r":4,"c":"R","n1":"R · RANCHO / TAPADA","n2":null,"n3":null,"s":[],"h":null,"cir":false,"prod":false,"rai":false,"tra":false,"obs":true,"f":""},{"r":5,"c":"V","n1":"V · AVISPAS","n2":null,"n3":null,"s":[],"h":null,"cir":false,"prod":false,"rai":false,"tra":false,"obs":true,"f":""}];
+const RAMAS=[{"r":1,"c":"A","n1":"A: Inflorescencia en Antesis","n2":null,"n3":null,"s":[],"h":null,"cir":false,"prod":false,"rai":false,"tra":false,"obs":true,"f":""},{"r":2,"c":"P","n1":"P: Inflorescencia en Post-Antesis","n2":null,"n3":null,"s":[],"h":null,"cir":false,"prod":false,"rai":false,"tra":false,"obs":true,"f":""},{"r":3,"c":"B","n1":"B: Balón (Post-Antesis pasada)","n2":null,"n3":null,"s":[],"h":null,"cir":false,"prod":false,"rai":false,"tra":false,"obs":true,"f":""},{"r":4,"c":"R","n1":"R: Palma Rancho / Tapada","n2":null,"n3":null,"s":[],"h":null,"cir":false,"prod":false,"rai":false,"tra":false,"obs":true,"f":""},{"r":5,"c":"V","n1":"V: Palma con Avispas","n2":null,"n3":null,"s":[],"h":null,"cir":false,"prod":false,"rai":false,"tra":false,"obs":true,"f":""}];
 const SIN_NOVEDAD={c:'SN',n1:'SIN NOVEDAD (PALMA SANA)'}; // solo para leer registros antiguos
 const MSJ_INICIO='Buenos días. Hoy inicia una nueva jornada. Gracias por hacer bien su trabajo: su esfuerzo y dedicación hacen grande a esta empresa. Arranque con toda la actitud, porque hay vida y salud. Que Dios le bendiga y le proteja a usted y a su familia. Palmas de Tumaco le desea un excelente día.';
 const MSJ_FIN='Muchas gracias por su labor. Feliz resto de día.';
@@ -1663,7 +1664,7 @@ function resaltar(lat,lng){
   resalte=L.circleMarker([lat,lng],{radius:radioPalma()+6,color:'#00e5ff',weight:3,fill:false,interactive:false}).addTo(capaGps);
 }
 function pintarLeyenda(){
-  $('#leyenda').innerHTML='<div style="font-weight:700;margin-bottom:2px">Registro de polinización</div>'+N1S.map(x=>`<div><span class="punto" style="background:${COLOR_N1[x.c]||'#999'}"></span>${esc((probDe(x.c)||{n:x.n1}).n)}</div>`).join('')+
+  $('#leyenda').innerHTML='<div style="font-weight:700;margin-bottom:2px">Registro de polinización</div>'+N1S.map(x=>`<div><span class="punto" style="background:${COLOR_N1[x.c]||'#999'}"></span><b>${esc(x.c)}:</b> ${esc(nombreCod(x.c))}</div>`).join('')+
   `<div><span class="punto" style="background:${COLOR_ALTA}"></span>De alta</div>`+
   `<div><span class="punto" style="background:${SIN_EVALUAR}"></span>Pendiente por registrar</div>
    <div><span class="punto" style="background:#4dd0e1"></span>Visitada por el recorrido (sin diagnóstico)</div>
@@ -2605,10 +2606,11 @@ function abrirPalma(id,dm){
    A = inflorescencia en antesis · P = inflorescencia en post-antesis · B = balón (post-antesis pasada).
    R = palma rancho / tapada y V = palma con avispas: no se aplica; van solas (no se combinan con A, P ni B).
    Solo se registran palmas con existencia 1, a radioSel (10 m) o menos del operario. */
-const COD_INF=[{c:'A',n:'Antesis',k:'a'},{c:'P',n:'Post-Antesis',k:'p'},{c:'B',n:'Balón',k:'b'}];
-const COD_NO=[{c:'R',n:'Rancho / Tapada'},{c:'V',n:'Avispas'}];
+const COD_INF=[{c:'A',n:'Inflorescencia en Antesis',k:'a'},{c:'P',n:'Inflorescencia en Post-Antesis',k:'p'},{c:'B',n:'Balón (Post-Antesis pasada)',k:'b'}];
+const COD_NO=[{c:'R',n:'Palma Rancho / Tapada'},{c:'V',n:'Palma con Avispas'}];
+const nombreCod=c=>((COD_INF.find(x=>x.c===c)||COD_NO.find(x=>x.c===c)||{}).n)||c;
 const NOMBRE_COD={A:'antesis',P:'post antesis',B:'balón',R:'rancho o tapada',V:'avispas'};
-function textoPol(r){if(!r)return '';if(r.cond)return r.cond+' · '+((COD_NO.find(x=>x.c===r.cond)||{}).n||'');
+function textoPol(r){if(!r)return '';if(r.cond)return r.cond+': '+nombreCod(r.cond);
   return COD_INF.filter(x=>(r[x.k]||0)>0).map(x=>r[x.k]+x.c).join(' + ');}
 function codigosPol(r){return r.cond?[r.cond]:COD_INF.filter(x=>(r[x.k]||0)>0).map(x=>x.c);}
 /* Deriva los campos que leen el mapa, el visor y la gerencia (n1_codigo, problemas, estado). */
@@ -2760,7 +2762,7 @@ async function abrirFormulario(base){
       <div class="banda-form" style="--bf:#1b6e52"><span>1</span><b>INFLORESCENCIAS</b></div>
       <div id="secInf">${COD_INF.map(cont).join('')}</div>
       <div class="banda-form" style="--bf:#7a5a12"><span>2</span><b>NO SE PUEDE APLICAR</b></div>
-      <div class="chips">${COD_NO.map(x=>`<label class="chip-op"><input type="checkbox" name="cond" value="${x.c}" ${r.cond===x.c?'checked':''}><span>${x.c} · ${esc(x.n)}</span></label>`).join('')}</div>
+      <div class="chips">${COD_NO.map(x=>`<label class="chip-op"><input type="checkbox" name="cond" value="${x.c}" ${r.cond===x.c?'checked':''}><span><b>${x.c}:</b> ${esc(x.n)}</span></label>`).join('')}</div>
       <div class="tenue" style="font-size:12px">R y V van solas: al marcarlas, los conteos quedan en cero.</div>
       <div class="banda-form" style="--bf:#4e3a78"><span>3</span><b>OBSERVACIÓN Y FOTO (OPCIONALES)</b></div>
       <textarea name="observaciones" placeholder="Observación (opcional)">${esc(r.observaciones)}</textarea>
