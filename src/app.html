@@ -1481,8 +1481,8 @@ async function indiceVisita(l){
    de las palmas vivas, los sitios de existencia 0 del tramo (vacíos / palmas muertas) también cuentan como visitados: la labor no
    exige llegar a ellos, pero suman a la hectárea.
    Terrazas (lotes terraza y sectores terraza de lotes mixtos): sin confirmación; cuenta toda palma a <= buffer del recorrido dentro del polígono. */
-const RUN_MIN=3,RUN_LARGO=8,RUN_VIVA=90000,RUN_ABIERTA=600000,REGLA_EX=0.8; // RUN_LARGO: metros que el operario avanza A LO LARGO de la calle
-function nuevoEstadoVisita(densidad,buffer,metodo,bufTer){return {set:new Set(),lotes:new Map(),densidad:Number(densidad)||115,buffer:Number(buffer)||5,bufTer:Number(bufTer)||Number(buffer)||5,metodo:metodo||'calle',maxLat:3,ult:null,
+const RUN_MIN=6,RUN_LARGO=22,RUN_VIVA=90000,RUN_ABIERTA=600000,REGLA_EX=0.8; // RUN_LARGO: metros que el operario avanza A LO LARGO de la calle
+function nuevoEstadoVisita(densidad,buffer,metodo,bufTer){return {set:new Set(),lotes:new Map(),densidad:Number(densidad)||115,buffer:Number(buffer)||5,bufTer:Number(bufTer)||Number(buffer)||5,metodo:metodo||'calle',maxLat:6,ult:null,
   runs:new Map(),prov:new Set(),abiertas:new Map(),conf:[],linEx:new Map(),regla:new Set(),grids:new Map()};}
 const LFEAT=new Map(),LMET=new Map();
 function featLote(l){if(!LFEAT.size&&S.lotes)for(const f of S.lotes.features)LFEAT.set(String(f.properties._lote),f);return LFEAT.get(String(l));}
@@ -1535,7 +1535,7 @@ function marcarVisita(E,l,q,nuevos,t,porRegla){if(E.set.has(q.id))return;E.set.a
   for(const z of ln.cero)if(z.p!=null&&z.p>=lo&&z.p<=hi&&!E.set.has(z.id))marcarVisita(E,l,z,nuevos,t,true);}
 /* Método por calle, evaluado en un punto (sx,sy) en metros. */
 function marcarCalle(E,grids,sx,sy,cands){
-  const R=8,R2=R*R;const porLinea=new Map();const sinLinea=[]; // radio de búsqueda de la calle (polinización: 8 m)
+  const R=14,R2=R*R;const porLinea=new Map();const sinLinea=[];
   for(const [l,grid] of grids){
     const i0=Math.floor((sx-R)/CV),i1=Math.floor((sx+R)/CV),j0=Math.floor((sy-R)/CV),j1=Math.floor((sy+R)/CV);
     for(let i=i0;i<=i1;i++)for(let j=j0;j<=j1;j++){const g=grid.get(i+','+j);if(!g)continue;
@@ -1569,14 +1569,11 @@ function marcarCalle(E,grids,sx,sy,cands){
     }else L2=vec.sort((u,v)=>u.lat-v.lat)[0];
     if(L2&&L2.lat>12)L2=null;
   }
-  // Polinización: una palma solo cuenta si el operario llega a ella (a 3 m o menos de su línea y a 3 m o menos a lo largo).
-  // La línea vecina cuenta solo si el operario también pasa a 3 m o menos de ella; si no, la calle se confirma por la línea a la que llega.
-  if(L2&&L2.lat>E.maxLat)L2=null;
   const g1=E.grids.get(L1.lote),nl=ln=>{const r=g1&&g1.lineas&&g1.lineas.get(ln);return r?r.n:0;};
   const key=L2?`${L1.lote}|${Math.min(L1.ln,L2.ln)}|${Math.max(L1.ln,L2.ln)}`:`${L1.lote}|${L1.ln}|`,tot=nl(L1.ln)+(L2?nl(L2.ln):0);
   let dx=L1.ux!=null?L1.ux:L2&&L2.ux!=null?L2.ux:null,dy=L1.ux!=null?L1.uy:L2&&L2.ux!=null?L2.uy:null;
   if(dx!=null&&(dx<0||(dx===0&&dy<0))){dx=-dx;dy=-dy;} // sentido único de la dirección de la línea
-  const marcar=lin=>{const ux=lin.ux!=null?lin.ux:L1.ux,uy=lin.ux!=null?lin.uy:L1.uy;const medio=3; // polinización: solo la palma a 3 m o menos a lo largo de la línea (el operario debe llegar a la palma)
+  const marcar=lin=>{const ux=lin.ux!=null?lin.ux:L1.ux,uy=lin.ux!=null?lin.uy:L1.uy;const medio=Math.min(6,Math.max(3,(lin.paso||9)/2));
     for(const {q} of lin.arr){const along=ux!=null?Math.abs((q.x-sx)*ux+(q.y-sy)*uy):Math.hypot(q.x-sx,q.y-sy);if(along<=medio&&Math.hypot(q.x-sx,q.y-sy)<=11)cands.push({key,l:lin.lote,q,tot,sx,sy,ux:dx,uy:dy});}};
   marcar(L1);if(L2)marcar(L2);E.calle=L2?{lote:L1.lote,a:L1.ln,b:L2.ln}:null;
 }
