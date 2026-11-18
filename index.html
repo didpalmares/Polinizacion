@@ -1045,7 +1045,7 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
   <div class="tit">POLINIZACIÓN<small>REGISTRO DE POLINIZACIÓN GEORREFERENCIADO</small></div>
   <div class="carga"><i></i></div>
   <div id="splashMsg">Iniciando…</div>
-  <div id="splashVer">VERSIÓN 20261118:1157</div>
+  <div id="splashVer">VERSIÓN 20261118:1440</div>
 </div>
 
 <div id="login" hidden>
@@ -1060,7 +1060,7 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
     <p class="tenue" id="lgMsg"></p>
   </form>
   <p id="lgRed"></p>
-  <div id="lgVer2">VERSIÓN 20261118:1157</div>
+  <div id="lgVer2">VERSIÓN 20261118:1440</div>
   <button type="button" class="btn" id="lgAct" style="margin-top:4px;font-size:13px;padding:7px 12px">⟳ BUSCAR ACTUALIZACIÓN</button>
   <button type="button" class="btn" id="lgInstalar" hidden>📲 INSTALAR EN ESTE CELULAR</button>
 </div>
@@ -1191,7 +1191,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
    Registro de polinización georreferenciado sin conexión, con jornadas,
    registro del recorrido y sincronización con GitHub.
    ===================================================================== */
-const VERSION='20261118:1157';
+const VERSION='20261118:1440';
 /* Ejecutándose dentro de la APK de Android (Capacitor) o en el navegador. */
 const NATIVO=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
 /* APK sin puente nativo (copia guardada antigua): con internet se recarga una vez para recibirlo. */
@@ -2268,12 +2268,12 @@ function nuevoEstadoVisita(densidad,buffer,metodo,bufTer){return {set:new Set(),
 const LFEAT=new Map(),LMET=new Map();
 function featLote(l){if(!LFEAT.size&&S.lotes)for(const f of S.lotes.features)LFEAT.set(String(f.properties._lote),f);return LFEAT.get(String(l));}
 /* ¿El punto (en metros) está dentro del polígono del lote? Tolerancia de 2 m al borde por el error del GPS. */
-function dentroLote(l,sx,sy){const f=featLote(l);if(!f)return true;const lng=sx/KX,lat=sy/KY,k=f._caja,tol=2/KY;
+function dentroLote(l,sx,sy,tolM=2){const f=featLote(l);if(!f)return true;const lng=sx/KX,lat=sy/KY,k=f._caja,tol=tolM/KY;
   if(k&&(lng<k[0]-tol||lng>k[2]+tol||lat<k[1]-tol||lat>k[3]+tol))return false;
   const polys=f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates;
   for(const p of polys)if(enPoligono(lng,lat,p))return true;
   let m=LMET.get(l);if(!m){m=[];for(const p of polys)for(const r of p)m.push(r.map(c=>[c[0]*KX,c[1]*KY]));LMET.set(l,m);}
-  for(const r of m)for(let i=1;i<r.length;i++)if(dSeg(sx,sy,r[i-1][0],r[i-1][1],r[i][0],r[i][1])<=2)return true;
+  for(const r of m)for(let i=1;i<r.length;i++)if(dSeg(sx,sy,r[i-1][0],r[i-1][1],r[i][0],r[i][1])<=tolM)return true;
   return false;}
 /* Polinización: una calle cuenta como trabajada si se recorre despacio (VEL_TRABAJO) o si tiene al menos un registro (A, P, B, R o V). */
 const VEL_TRABAJO=3/3.6; // 3 km/h en m/s
@@ -2285,7 +2285,7 @@ function anotarLineaRegistro(E,r){if(!E||!r||!r.lote||r.linea==null||r.linea==='
 function reconfirmarCalles(E,nuevos,t){for(const [k,r] of [...E.runs])if(r.ok&&calleConRegistro(E,k))confirmarCalle(E,k,r,nuevos,t);}
 
 /* ---------- Senderos y vías: a 6 m o menos de su eje no se cuentan palmas (el operario va de paso) ---------- */
-const SENDERO_M=6;let SEND_IDX=null,SEND_GJ=null;
+/* BORDE_M: metros por fuera del lote para trabajar una línea de borde */ const SENDERO_M=6,BORDE_M=8;let SEND_IDX=null,SEND_GJ=null;
 function indiceSenderos(){
   const gj=typeof VIAS!=='undefined'&&VIAS.gj;if(!gj||!gj.features)return null;if(SEND_IDX&&SEND_GJ===gj)return SEND_IDX;
   prepK();const idx=new Map(),C=20;
@@ -2350,7 +2350,7 @@ function marcarCalle(E,grids,sx,sy,cands){
         const k=l+'|'+q.ln;let arr=porLinea.get(k);if(!arr)porLinea.set(k,arr=[]);arr.push({q,d2});}}
   }
   const B2=E.bufTer*E.bufTer,dl=new Map(),dentro=l=>{if(!dl.has(l))dl.set(l,dentroLote(l,sx,sy));return dl.get(l);};
-  for(const [l,q,d2] of sinLinea)if(d2<=B2&&dentro(l))cands.push({key:l+'|T',l,q,tot:1e9,sx,sy,ux:null,uy:null}); // terrazas / sin línea: buffer
+  for(const [l,q,d2] of sinLinea)if(d2<=B2&&!E._send&&dentro(l))cands.push({key:l+'|T',l,q,tot:1e9,sx,sy,ux:null,uy:null}); // terrazas / sin línea: buffer
   if(!porLinea.size)return;
   const lineas=[];
   for(const [k,arr] of porLinea){
@@ -2361,7 +2361,6 @@ function marcarCalle(E,grids,sx,sy,cands){
   }
   lineas.sort((u,v)=>u.lat-v.lat);
   const L1=lineas[0];if(L1.lat>E.maxLat)return; // fuera de las calles del cultivo
-  if(!dentro(L1.lote))return; // sendero o borde fuera del polígono del lote: desplazamiento
   let L2=null;const vec=lineas.filter(x=>x.lote===L1.lote&&Math.abs(x.ln-L1.ln)===1);
   const prev=E.calle;let otra=null;
   if(prev&&prev.lote===L1.lote&&L1.lat<1.5&&(prev.a===L1.ln||prev.b===L1.ln))otra=vec.find(x=>x.ln===(prev.a===L1.ln?prev.b:prev.a))||null;
@@ -2375,6 +2374,12 @@ function marcarCalle(E,grids,sx,sy,cands){
     }else L2=vec.sort((u,v)=>u.lat-v.lat)[0];
     if(L2&&L2.lat>12)L2=null;
   }
+  /* Una sola línea (bordes del lote y esquinas: no hay otra línea del lote del lado del operario): se admite trabajarla desde
+     fuera del polígono (hasta BORDE_M) o desde el sendero/vía que bordea el lote. Con dos líneas (calle interna), fuera del lote
+     o sobre un sendero es desplazamiento. La calle se confirma igual: despacio o con un registro. */
+  const sola=!L2;
+  if(!dentro(L1.lote)&&!(sola&&dentroLote(L1.lote,sx,sy,BORDE_M)))return;
+  if(E._send&&!sola)return;
   const g1=E.grids.get(L1.lote),nl=ln=>{const r=g1&&g1.lineas&&g1.lineas.get(ln);return r?r.n:0;};
   const key=L2?`${L1.lote}|${Math.min(L1.ln,L2.ln)}|${Math.max(L1.ln,L2.ln)}`:`${L1.lote}|${L1.ln}|`,tot=nl(L1.ln)+(L2?nl(L2.ln):0);
   let dx=L1.ux!=null?L1.ux:L2&&L2.ux!=null?L2.ux:null,dy=L1.ux!=null?L1.uy:L2&&L2.ux!=null?L2.uy:null;
@@ -2418,7 +2423,7 @@ async function visitarTramo(E,p){
     const grids=[];for(const l of lotesCercanos(ax,ay,bx,by,14))if(CARTO.lotes[l]&&enProgramacion(E,l)){const g=await indiceVisita(l);grids.push([l,g]);E.grids.set(l,g);(E.tipos||(E.tipos=new Map())).set(l,g.tipo);}
     if(!grids.length){proponer(E,[],p.t,nuevos);return nuevos;}
     const n=Math.max(1,Math.ceil(Math.hypot(bx-ax,by-ay)/2));const cands=[];
-    for(let k=(a===p?n:0);k<=n;k++){const t=k/n,sx=ax+(bx-ax)*t,sy=ay+(by-ay)*t;if(enSendero(sx,sy))continue;marcarCalle(E,grids,sx,sy,cands);}
+    for(let k=(a===p?n:0);k<=n;k++){const t=k/n,sx=ax+(bx-ax)*t,sy=ay+(by-ay)*t;E._send=enSendero(sx,sy);marcarCalle(E,grids,sx,sy,cands);}
     proponer(E,cands,p.t,nuevos);
     return nuevos;
   }
