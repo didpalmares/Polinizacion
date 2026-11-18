@@ -1,36 +1,26 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#0F3D2E"/><circle cx="256" cy="268" r="190" fill="#16573F"/><g transform="translate(26.0 26.0) scale(1.15)">
-  <!-- Abeja de Polinización (diseño propio) -->
-  <!-- Alas -->
-  <g opacity=".92">
-    <ellipse cx="150" cy="118" rx="62" ry="44" transform="rotate(-32 150 118)" fill="#E6F6FF" stroke="#2F6F8F" stroke-width="7"/>
-    <ellipse cx="236" cy="112" rx="66" ry="46" transform="rotate(28 236 112)" fill="#E6F6FF" stroke="#2F6F8F" stroke-width="7"/>
-    <path d="M128 112q22-14 44 0M214 104q24-14 48 2" fill="none" stroke="#9FD3EC" stroke-width="6" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#0F3D2E"/><g transform="translate(56.0 56.0) scale(1.0)">
+  <!-- Polinización · Palmas de Tumaco: abeja geométrica vista desde arriba dentro de un panal (diseño propio) -->
+  <!-- Panal -->
+  <polygon points="200,22 354,111 354,289 200,378 46,289 46,111" fill="none" stroke="#F2B705" stroke-width="14" stroke-linejoin="round"/>
+  <!-- Alas (dos pares, translúcidas) -->
+  <g fill="#E8F3EE" fill-opacity=".9" stroke="#F6F4EC" stroke-width="4">
+    <path d="M192 166 C150 120 92 112 78 140 C66 166 120 184 192 178 Z"/>
+    <path d="M208 166 C250 120 308 112 322 140 C334 166 280 184 208 178 Z"/>
+    <path d="M192 186 C152 192 108 214 112 236 C116 254 164 236 194 198 Z" fill-opacity=".75"/>
+    <path d="M208 186 C248 192 292 214 288 236 C284 254 236 236 206 198 Z" fill-opacity=".75"/>
   </g>
-  <!-- Aguijón -->
-  <path d="M318 262l40 12-38 14z" fill="#1E1E1E"/>
-  <!-- Cuerpo -->
-  <ellipse cx="236" cy="246" rx="98" ry="78" fill="#FFC928" stroke="#1E1E1E" stroke-width="8"/>
-  <clipPath id="cuerpo"><ellipse cx="236" cy="246" rx="94" ry="74"/></clipPath>
-  <g clip-path="url(#cuerpo)" fill="#1E1E1E">
-    <rect x="214" y="160" width="26" height="180" rx="6" transform="rotate(8 227 250)"/>
-    <rect x="266" y="160" width="26" height="180" rx="6" transform="rotate(8 279 250)"/>
-    <rect x="316" y="160" width="40" height="180" rx="6" transform="rotate(8 336 250)"/>
-  </g>
-  <ellipse cx="226" cy="206" rx="40" ry="14" fill="#FFF3B8" opacity=".7"/>
   <!-- Antenas -->
-  <path d="M112 152q-14-50-46-62M150 142q4-54 34-74" fill="none" stroke="#1E1E1E" stroke-width="8" stroke-linecap="round"/>
-  <circle cx="62" cy="88" r="13" fill="#1E1E1E"/><circle cx="188" cy="66" r="13" fill="#1E1E1E"/>
-  <!-- Cabeza -->
-  <circle cx="134" cy="226" r="78" fill="#FFD54A" stroke="#1E1E1E" stroke-width="8"/>
-  <!-- Ojos -->
-  <ellipse cx="108" cy="214" rx="21" ry="26" fill="#fff" stroke="#1E1E1E" stroke-width="5"/>
-  <ellipse cx="164" cy="214" rx="21" ry="26" fill="#fff" stroke="#1E1E1E" stroke-width="5"/>
-  <circle cx="113" cy="220" r="12" fill="#1E1E1E"/><circle cx="169" cy="220" r="12" fill="#1E1E1E"/>
-  <circle cx="117" cy="214" r="4.5" fill="#fff"/><circle cx="173" cy="214" r="4.5" fill="#fff"/>
-  <!-- Mejillas y sonrisa -->
-  <ellipse cx="84" cy="258" rx="14" ry="9" fill="#FF8A65" opacity=".75"/>
-  <ellipse cx="188" cy="258" rx="14" ry="9" fill="#FF8A65" opacity=".75"/>
-  <path d="M112 262q24 26 48 0" fill="none" stroke="#1E1E1E" stroke-width="7" stroke-linecap="round"/>
-  <!-- Polen -->
-  <circle cx="300" cy="336" r="10" fill="#FFB300"/><circle cx="330" cy="352" r="7" fill="#FFB300"/><circle cx="270" cy="356" r="6" fill="#FFB300"/>
+  <path d="M190 104 C182 82 170 70 154 64 M210 104 C218 82 230 70 246 64" fill="none" stroke="#F6F4EC" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="152" cy="63" r="8" fill="#F2B705"/><circle cx="248" cy="63" r="8" fill="#F2B705"/>
+  <!-- Cabeza y tórax -->
+  <circle cx="200" cy="122" r="22" fill="#1F2A24"/>
+  <ellipse cx="200" cy="172" rx="30" ry="28" fill="#F2B705"/>
+  <!-- Abdomen con franjas -->
+  <path d="M200 196 C238 196 252 240 246 272 C240 304 222 326 200 340 C178 326 160 304 154 272 C148 240 162 196 200 196 Z" fill="#F2B705"/>
+  <clipPath id="abd"><path d="M200 196 C238 196 252 240 246 272 C240 304 222 326 200 340 C178 326 160 304 154 272 C148 240 162 196 200 196 Z"/></clipPath>
+  <g clip-path="url(#abd)" fill="#1F2A24">
+    <rect x="140" y="226" width="120" height="16"/>
+    <rect x="140" y="260" width="120" height="16"/>
+    <rect x="140" y="294" width="120" height="16"/>
+  </g>
 </g></svg>
