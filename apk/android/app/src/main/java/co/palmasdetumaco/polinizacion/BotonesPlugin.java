@@ -29,6 +29,7 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 public class BotonesPlugin extends Plugin {
     static BotonesPlugin instancia;
     static volatile boolean capturar = false;
+    static volatile boolean jornada = false; // pantalla encendida durante la jornada (el NFC solo lee con la pantalla encendida)
     private static final long LARGO_MS = 2000L;
     private final Handler h = new Handler(Looper.getMainLooper());
     private boolean presionado = false;
@@ -95,6 +96,9 @@ public class BotonesPlugin extends Plugin {
         getActivity().runOnUiThread(() -> {
             try {
                 Window w = getActivity().getWindow();
+                jornada = on;
+                if (on) w.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                else w.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
                 if (Build.VERSION.SDK_INT >= 30) {
                     WindowInsetsController c = w.getInsetsController();
                     if (c != null) {
@@ -121,7 +125,7 @@ public class BotonesPlugin extends Plugin {
                 WindowManager.LayoutParams lp = w.getAttributes();
                 if (nivel < 0) {
                     lp.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE;
-                    w.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                    if (!jornada) w.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON); // en jornada la pantalla sigue encendida
                 } else {
                     lp.screenBrightness = (float) Math.max(0.01, Math.min(1.0, nivel));
                     w.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);

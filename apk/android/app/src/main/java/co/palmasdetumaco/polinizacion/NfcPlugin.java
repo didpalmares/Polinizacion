@@ -8,6 +8,7 @@ import android.nfc.NdefRecord;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
 import android.nfc.tech.Ndef;
+import android.nfc.tech.NdefFormatable;
 import android.os.Bundle;
 import android.provider.Settings;
 
@@ -36,6 +37,9 @@ public class NfcPlugin extends Plugin implements NfcAdapter.ReaderCallback {
     private static final int BANDERAS = NfcAdapter.FLAG_READER_NFC_A | NfcAdapter.FLAG_READER_NFC_B
             | NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS;
     private volatile boolean activo = false;
+    // Grabación pendiente: la próxima tarjeta que se acerque se graba con este código (texto + marca de la app)
+    private volatile PluginCall grabarCall = null;
+    private volatile String grabarTexto = null;
 
     @Override
     public void load() {
@@ -94,6 +98,57 @@ public class NfcPlugin extends Plugin implements NfcAdapter.ReaderCallback {
         if (act != null) act.getWindow().getDecorView().postDelayed(this::encender, 250);
         else encender();
         call.resolve(estadoObj());
+    }
+
+    /** Graba la próxima tarjeta que se acerque con un registro de texto (A, P, B, R o V) y la marca de Android de la app (AAR).
+     *  Responde {ok, id} con el número único de la tarjeta, o un error. cancelarGrabacion() la anula. */
+    @PluginMethod
+    public void grabar(PluginCall call) {
+        String texto = call.getString("texto", "");
+        if (texto == null || texto.trim().isEmpty()) { call.reject("Falta el código a grabar."); return; }
+        if (adaptador() == null) { call.reject("Este celular no tiene NFC."); return; }
+        if (grabarCall != null) { try { grabarCall.reject("Reemplazada por otra grabación."); } catch (Exception ignored) { } }
+        grabarTexto = texto.trim();
+        grabarCall = call;
+        activo = true;
+        encender();
+    }
+
+    @PluginMethod
+    public void cancelarGrabacion(PluginCall call) {
+        PluginCall g = grabarCall; grabarCall = null; grabarTexto = null;
+        if (g != null) { try { g.reject("Cancelada."); } catch (Exception ignored) { } }
+        call.resolve();
+    }
+
+    private void escribir(Tag tag) {
+        PluginCall g = grabarCall; String texto = grabarTexto;
+        grabarCall = null; grabarTexto = null;
+        if (g == null) return;
+        try {
+            NdefMessage msg = new NdefMessage(new NdefRecord[]{
+                    NdefRecord.createTextRecord("es", texto),
+                    NdefRecord.createApplicationRecord(getContext().getPackageName())});
+            Ndef ndef = Ndef.get(tag);
+            if (ndef != null) {
+                try {
+                    ndef.connect();
+                    if (!ndef.isWritable()) throw new Exception("La tarjeta está bloqueada contra escritura.");
+                    if (ndef.getMaxSize() < msg.toByteArray().length) msg = new NdefMessage(new NdefRecord[]{NdefRecord.createTextRecord("es", texto)});
+                    ndef.writeNdefMessage(msg);
+                } finally { try { ndef.close(); } catch (Exception ignored) { } }
+            } else {
+                NdefFormatable f = NdefFormatable.get(tag);
+                if (f == null) throw new Exception("Esta tarjeta no admite NDEF. Use tarjetas NTAG213/215/216.");
+                try { f.connect(); f.format(msg); } finally { try { f.close(); } catch (Exception ignored) { } }
+            }
+            vibrar(new long[]{0, 150});
+            JSObject r = new JSObject(); r.put("ok", true); r.put("id", hex(tag.getId())); r.put("texto", texto);
+            g.resolve(r);
+        } catch (Exception e) {
+            vibrar(new long[]{0, 60, 80, 60, 80, 60});
+            g.reject(e.getMessage() != null ? e.getMessage() : "No se pudo grabar. Acerque la tarjeta y déjela quieta.");
+        }
     }
 
     @PluginMethod
@@ -162,6 +217,7 @@ public class NfcPlugin extends Plugin implements NfcAdapter.ReaderCallback {
     public void onTagDiscovered(Tag tag) { entregar(tag, false); }
 
     private void entregar(Tag tag, boolean retener) {
+        if (grabarCall != null && !retener) { escribir(tag); return; } // modo grabar: esta tarjeta se graba, no se registra
         final String id = hex(tag.getId());
         String texto = "";
         String motivo = "";

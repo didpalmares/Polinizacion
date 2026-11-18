@@ -1048,7 +1048,7 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
   <div class="tit">POLINIZACIÓN<small>REGISTRO DE POLINIZACIÓN GEORREFERENCIADO</small></div>
   <div class="carga"><i></i></div>
   <div id="splashMsg">Iniciando…</div>
-  <div id="splashVer">VERSIÓN 20261118:1807</div>
+  <div id="splashVer">VERSIÓN 20261118:1825</div>
 </div>
 
 <div id="login" hidden>
@@ -1063,7 +1063,7 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
     <p class="tenue" id="lgMsg"></p>
   </form>
   <p id="lgRed"></p>
-  <div id="lgVer2">VERSIÓN 20261118:1807</div>
+  <div id="lgVer2">VERSIÓN 20261118:1825</div>
   <button type="button" class="btn" id="lgAct" style="margin-top:4px;font-size:13px;padding:7px 12px">⟳ BUSCAR ACTUALIZACIÓN</button>
   <button type="button" class="btn" id="lgInstalar" hidden>📲 INSTALAR EN ESTE CELULAR</button>
 </div>
@@ -1195,7 +1195,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
    Registro de polinización georreferenciado sin conexión, con jornadas,
    registro del recorrido y sincronización con GitHub.
    ===================================================================== */
-const VERSION='20261118:1807';
+const VERSION='20261118:1825';
 /* Ejecutándose dentro de la APK de Android (Capacitor) o en el navegador. */
 const NATIVO=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
 /* APK sin puente nativo (copia guardada antigua): con internet se recarga una vez para recibirlo. */
@@ -3298,19 +3298,29 @@ function nfcNativoDisponible(){try{return !!(NATIVO&&window.Capacitor&&typeof Ca
 /* «A», «a», «pol:A», «POL://B» → código; null si la tarjeta no es de polinización. */
 function codigoNfc(t){const m=String(t??'').trim().toUpperCase().match(/^(?:POL:(?:\/\/)?)?\s*([APBRV])\s*$/);return m?m[1]:null;}
 /* Lectura de una tarjeta (la llaman el plugin nativo y Web NFC). Devuelve 'ok', 'repetida' o 'desconocida'. */
-function nfcLeido(ev){ev=ev||{};NFC.ultLect=Date.now();const ahora=Date.now(),texto=String(ev.texto??''),clave=ev.id?'id:'+ev.id:'tx:'+texto;
+function nfcLeido(ev){ev=ev||{};if(NFC.verificar&&typeof NFC.verificar==='function'){const f=NFC.verificar;NFC.verificar=null;f(ev);return 'verificada';}NFC.ultLect=Date.now();const ahora=Date.now(),texto=String(ev.texto??''),clave=ev.id?'id:'+ev.id:'tx:'+texto;
   const st=statsNfc();st.lecturas++;
   const u=NFC.ult;
   if(u&&u.clave===clave&&!u.retirada&&ahora-u.t<NFC_REPOSO){st.repetidas++;return 'repetida';} // rebote de la misma pasada
   NFC.ult={clave,t:ahora,retirada:false};
+  // Tarjeta conocida por su número único (UID): si el contenido no alcanzó a leerse, el número basta
+  let texto2=texto;if(!texto2&&ev.id){const c0=uidsNfc()[ev.id];if(c0){texto2=c0;st.por_uid=(st.por_uid||0)+1;}}
+  if(texto2&&!texto)return nfcCodigo(texto2,st,ev);
   if(!texto){
     if(ev.motivo==='sin_ndef'){st.en_blanco++;avisoPol('Tarjeta en blanco: grábela en Administración, Grabar tarjetas NFC.',true);return 'desconocida';}
     st.fallidas++;NFC.ult=null;avisoPol('No se leyó bien la tarjeta. Acérquela de nuevo y déjela quieta un segundo.',true);return 'fallida';}
+  return nfcCodigo(texto,st,ev);}
+function nfcCodigo(texto,st,ev){
   const c=codigoNfc(texto);
   if(!c){st.desconocidas++;avisoPol(`Tarjeta no reconocida (${texto.slice(0,20)}). Use tarjetas A, P, B, R o V.`,true);return 'desconocida';}
+  if(ev&&ev.id)aprenderUid(ev.id,c);
   st.ok++;pintarNfc();NFC.cola=NFC.cola.then(()=>sumarEnCola(c,'nfc')).catch(e=>console.warn(e));return 'ok';}
+/* Tarjetas aprendidas en este celular: número único (UID) → código. Se aprende con cada lectura completa; si una tarjeta se regraba,
+   la siguiente lectura completa actualiza su código. */
+function uidsNfc(){if(!NFC.uids){try{NFC.uids=JSON.parse(localStorage.getItem('pol_nfc_uid')||'{}')||{};}catch(e){NFC.uids={};}}return NFC.uids;}
+function aprenderUid(id,c){const m=uidsNfc();if(m[id]===c)return;m[id]=c;try{localStorage.setItem('pol_nfc_uid',JSON.stringify(m));}catch(e){}}
 /* Conteo de lecturas NFC de la jornada (se guarda con la jornada y llega al repositorio de datos para revisar fallas). */
-function statsNfc(){const j=S.jornada;const base={lecturas:0,ok:0,repetidas:0,fallidas:0,en_blanco:0,desconocidas:0};
+function statsNfc(){const j=S.jornada;const base={lecturas:0,ok:0,repetidas:0,fallidas:0,en_blanco:0,desconocidas:0,por_uid:0};
   if(!j)return NFC.statsSueltas||(NFC.statsSueltas=base);if(!j.nfc)j.nfc=base;
   clearTimeout(NFC.tGuardar);NFC.tGuardar=setTimeout(()=>{try{if(S.jornada===j)dbPut('jornadas',j);}catch(e){}},3000);return j.nfc;}
 function nfcRetirada(ev){const id=ev&&ev.id;if(NFC.ult&&id&&NFC.ult.clave==='id:'+id)NFC.ult.retirada=true;}
@@ -3339,6 +3349,49 @@ async function iniciarNfc(gesto){
     }else NFC.estado=EN_APK?'viejo':'no';
   }catch(e){NFC.estado=/NotAllowed/i.test(String(e&&e.name||e))?'activar':'error';if(gesto)toast('NFC: '+String(e&&e.message||e),5000);}
   pintarNfc();}
+/* ---------- Grabar tarjetas NFC desde la app (administrador, analista de datos y super administrador) ----------
+   APK: el lector nativo graba la próxima tarjeta (texto + marca de Android de la app) y devuelve su número único, que la app
+   aprende de inmediato. Navegador Chrome en Android: Web NFC. «Verificar» lee una tarjeta sin registrar nada. */
+const NFC_GRAB={c:null,activo:false};
+function panelGrabarNfc(){
+  if(!esAdminSES()){toast('Solo administradores, analistas de datos y super administradores pueden grabar tarjetas.');return;}
+  const cods=[...COD_INF.map(x=>({c:x.c,n:x.n})),...COD_NO];
+  abrirHoja('Grabar tarjetas NFC',`
+    <p class="tenue">Elija el código, toque <b>GRABAR</b> y acerque la tarjeta a la parte trasera del celular. Sirve para tarjetas nuevas o para cambiar el código de una tarjeta.</p>
+    <div class="pol-bts" id="grbCods">${cods.map(x=>`<button type="button" data-g="${x.c}" class="c${x.c}" aria-label="${x.c}: ${esc(x.n)}"><b>${x.c}</b><small>${esc(x.n)}</small></button>`).join('')}</div>
+    <div id="grbMsg" class="aviso" style="margin-top:12px">Elija un código.</div>
+    <div class="fila" style="margin-top:12px"><button type="button" class="btn prim grande" id="grbOk">GRABAR</button><button type="button" class="btn" id="grbVer">Verificar tarjeta</button></div>
+    <button type="button" class="btn ancho" id="grbCancel" style="margin-top:8px" hidden>Cancelar</button>`,{alCerrar:cancelarGrabacionNfc});
+  const msg=(h,cl)=>{const m=$('#grbMsg');if(m){m.innerHTML=h;m.className=cl==='ok'?'candado':'aviso';}};
+  const pintar=()=>{document.querySelectorAll('#grbCods [data-g]').forEach(b=>b.style.outline=b.dataset.g===NFC_GRAB.c?'3px solid #fff':'none');
+    $('#grbCancel').hidden=!NFC_GRAB.activo;$('#grbOk').disabled=NFC_GRAB.activo;$('#grbVer').disabled=NFC_GRAB.activo;};
+  document.querySelectorAll('#grbCods [data-g]').forEach(b=>b.onclick=()=>{if(NFC_GRAB.activo)return;NFC_GRAB.c=b.dataset.g;pintar();
+    msg(`Código <b>${NFC_GRAB.c}</b>: ${esc(nombreCod(NFC_GRAB.c))}. Toque GRABAR.`);});
+  $('#grbCancel').onclick=()=>{cancelarGrabacionNfc();pintar();msg('Grabación cancelada.');};
+  $('#grbVer').onclick=async()=>{if(NFC.estado!=='listo')await iniciarNfc(true);
+    msg('📶 Acerque la tarjeta para verificarla (no se registra nada)…');
+    NFC.verificar=ev=>{const c=codigoNfc(ev.texto)||(ev.id&&uidsNfc()[ev.id])||null;
+      msg(c?`✅ Esta tarjeta es <b>${c}</b>: ${esc(nombreCod(c))}${ev.id?` · número ${esc(ev.id)}`:''}.`:`⚠️ Tarjeta sin código de polinización${ev.texto?` (contiene «${esc(String(ev.texto).slice(0,20))}»)`:' (en blanco)'}.`,c?'ok':'');};};
+  $('#grbOk').onclick=async()=>{const c=NFC_GRAB.c;if(!c){msg('Primero elija el código (A, P, B, R o V).');return;}
+    NFC_GRAB.activo=true;pintar();msg(`📶 Acerque ahora la tarjeta para grabar <b>${c}</b> · ${esc(nombreCod(c))}… (déjela quieta 1 segundo)`);
+    try{const r=await grabarTarjeta(c);if(r&&r.id)aprenderUid(r.id,c);
+      try{navigator.vibrate&&navigator.vibrate(150);}catch(e){}if(HAY_VOZ())hablar(`Tarjeta grabada: ${NOMBRE_COD[c]}`,true);
+      msg(`✅ Tarjeta grabada con <b>${c}</b> (${esc(nombreCod(c))})${r&&r.id?` · número ${esc(r.id)}`:''}. Márquela con la letra ${c}. Para grabar otra, toque GRABAR.`,'ok');}
+    catch(e){if(NFC_GRAB.activo)msg('⚠️ '+esc(String(e&&e.message||e))+' Intente de nuevo sin mover la tarjeta.');}
+    finally{NFC_GRAB.activo=false;pintar();}};
+  pintar();
+}
+async function grabarTarjeta(c){
+  if(nfcNativoDisponible()){const N=NAT_N();if(typeof N.grabar!=='function')throw new Error('Actualice la APK para grabar tarjetas desde la app.');
+    if(NFC.estado!=='listo')await iniciarNfc(false);return await N.grabar({texto:c});}
+  if('NDEFReader' in window){const recs=[{recordType:'text',lang:'es',data:c}];NFC_GRAB.ctrl=new AbortController();
+    try{await new NDEFReader().write({records:[...recs,{recordType:'android.com:pkg',data:new TextEncoder().encode('co.palmasdetumaco.polinizacion')}]},{overwrite:true,signal:NFC_GRAB.ctrl.signal});}
+    catch(e1){if(e1&&e1.name==='AbortError')throw new Error('Cancelada.');await new NDEFReader().write({records:recs},{overwrite:true,signal:NFC_GRAB.ctrl.signal});}
+    return {ok:true};}
+  throw new Error('Este celular o navegador no puede grabar tarjetas NFC. Use la APK de Polinización en un celular Android con NFC.');}
+function cancelarGrabacionNfc(){if(!NFC_GRAB.activo&&!NFC.verificar)return;NFC_GRAB.activo=false;NFC.verificar=null;
+  try{if(nfcNativoDisponible()&&typeof NAT_N().cancelarGrabacion==='function')NAT_N().cancelarGrabacion();}catch(e){}
+  try{NFC_GRAB.ctrl&&NFC_GRAB.ctrl.abort();}catch(e){}}
 async function tocarNfc(){if(NFC.estado==='apagado'&&NFC.modo==='nativo'){try{await NAT_N().abrirAjustes();}catch(e){}return;}await iniciarNfc(true);}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&NFC.modo==='nativo')asegurarNfc('volver');});
 /* Mantiene el lector NFC activo durante la jornada: al iniciarla, al volver a la app, al cerrar los avisos de transitabilidad
@@ -4287,6 +4340,7 @@ function menu(){
       ${SES&&(esAdminSES()||SES.rol==='supervisor')?mos('mVisor','mapa','Visor web','Todos los recorridos sincronizados'):''}
       ${mos('mAct','sync',VERSION_NUEVA?'¡Nueva versión!':'Actualizar versión',VERSION_NUEVA?'Instalar '+VERSION_NUEVA:'Actual: '+VERSION)}
       ${mos('mApk','instalar',apkNueva()?'¡Nueva APK!':'App Android (APK)',`<span id="mApkTxt">Instalada: ${esc(textoApkInst())} · Última: ${esc(APK.ultima||'…')}</span>`)}
+      ${esAdminSES()?mos('mNfcG','palma','Grabar tarjetas NFC','Grabar o cambiar A, P, B, R, V'):''}
       ${mos('mCfg','config','Configuración',esAdminSES()?'Mapa, voz, cartografía':'Mapa y voz')}
       ${mos('mSalir','candado','Cerrar sesión',SES?esc(SES.nombre):'')}
       ${estaInstalada()?'':mos('mInst','instalar','Instalar app','En este celular')}
@@ -4299,6 +4353,7 @@ function menu(){
     if(apkNueva()){const b=$('#mApk');if(b&&b.querySelector('b'))b.querySelector('b').textContent='¡Nueva APK!';}}});
   on('#mBD',()=>{cerrarHoja();abrirBD('diag');});on('#mRec',()=>{cerrarHoja();abrirBD('jor');});on('#mRes',()=>{cerrarHoja();abrirBD('res');});
   on('#mAct',()=>{cerrarHoja();buscarActualizacion(true);});
+  on('#mNfcG',()=>{cerrarHoja();setTimeout(panelGrabarNfc,250);});
   on('#mSync',panelSync);on('#mSalir',cerrarSesion);on('#mExp',menuExportar);on('#mHist',panelHistorial);on('#mZona',()=>{cerrarHoja();setTimeout(guardarZona,300);});on('#mCfg',abrirConfig);on('#mBg',()=>{cerrarHoja();setTimeout(()=>revisarSegundoPlano(true),300);});
   on('#mVisor',()=>{cerrarHoja();window.open('visor.html','_blank');});
   on('#mInst',()=>{cerrarHoja();instalarApp();});
