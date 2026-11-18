@@ -878,7 +878,7 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
       <div id="lgMsg"></div>
     </form>
     <p class="tenue" style="font-size:12.5px;margin:6px 0 0">Acceso para administradores y supervisores. Requiere internet: los datos se leen del repositorio privado de GitHub.</p>
-    <div id="lgVer">VERSIÓN 20261118:1125</div>
+    <div id="lgVer">VERSIÓN 20261118:1134</div>
   </div>
 </div>
 
@@ -968,7 +968,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
    Los archivos de GitHub no cambian una vez escritos, por eso se guardan
    en caché local por su huella (sha) y solo se descargan una vez.
    ===================================================================== */
-const VERSION='20261118:1125';
+const VERSION='20261118:1134';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const num=(n,d=0)=>Number(n||0).toLocaleString('es-CO',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -1251,14 +1251,16 @@ function reestilarVias(){for(const {pl,c} of VIAS.partes)pl.setStyle(estiloParte
 mapa.on('zoomend',()=>{if(VIAS.partes.length)reestilarVias();});
 function mostrarVias(on){VIAS.visible=on!==false;dibujarVias();}
 /* Descarga y descifra datos/vias.enc (mismo formato SPC1 de la cartografía). guardar/leer: almacenamiento local opcional para uso sin conexión. */
-async function cargarVias(guardar,leer){
-  const v=ACCESO&&ACCESO.vias;if(!v||!SES||!SES.dk)return false;
+async function cargarVias(guardar,leer,leerRepo){
+  const v=ACCESO&&ACCESO.vias;if(!SES)return false;
   let gj=null;
-  try{const r=await fetch('datos/'+(v.archivo||'vias.enc'),{cache:'no-cache'});if(!r.ok)throw new Error('HTTP '+r.status);
+  // 1) Paquete cifrado (datos/vias.enc) si existe; 2) si no, cartografia/vias.geojson del repositorio privado de datos; 3) sin conexión, la copia guardada.
+  if(v&&SES.dk)try{const r=await fetch('datos/'+(v.archivo||'vias.enc'),{cache:'no-cache'});if(!r.ok)throw new Error('HTTP '+r.status);
     const buf=new Uint8Array(await r.arrayBuffer());if(new TextDecoder().decode(buf.slice(0,4))!=='SPC1')throw new Error('formato');
-    gj=JSON.parse(new TextDecoder().decode(await aesDes(SES.dk,buf.slice(4,16),buf.slice(16))));
-    if(guardar)try{await guardar({version:v.version,gj});}catch(e){}}
-  catch(e){if(leer)try{const c=await leer();if(c&&c.gj)gj=c.gj;}catch(_){}}
+    gj=JSON.parse(new TextDecoder().decode(await aesDes(SES.dk,buf.slice(4,16),buf.slice(16))));}catch(e){gj=null;}
+  if(!gj&&leerRepo&&navigator.onLine)try{const g=await leerRepo();if(g&&Array.isArray(g.features))gj=g;}catch(e){gj=null;}
+  if(gj){if(guardar)try{await guardar({version:v?v.version:'datos',gj});}catch(e){}}
+  else if(leer)try{const c=await leer();if(c&&c.gj)gj=c.gj;}catch(_){}
   if(!gj)return false;VIAS.gj=gj;dibujarVias();return true;
 }
 function leyendaVias(){
@@ -2159,7 +2161,7 @@ async function entrar(){
   $('#hdrUsuario').textContent=`${SES.nombre} · ${({admin:'Administrador',superadmin:'Super administrador',supervisor:'Supervisor',analista:'Analista de datos'})[SES.rol]||'Supervisor'}`;
   if(typeof aplicarPermisosGer==='function')aplicarPermisosGer();
   try{await cargarCartografia();}catch(e){toast('No se pudo cargar la cartografía: '+e.message,6000);}
-  try{await cargarVias();}catch(e){}
+  try{await cargarVias(null,null,async()=>(await gh(`/contents/cartografia/vias.geojson?ref=${encodeURIComponent(SES.repo.rama)}`,'application/vnd.github.raw')).json());}catch(e){}
   ponerRango(6);await cargar();
 }
 /* ---------- Utilidades comunes del visor (usuarios del paquete, carpetas por día y escritura en el repositorio de datos) ---------- */

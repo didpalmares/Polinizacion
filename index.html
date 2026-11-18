@@ -1045,7 +1045,7 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
   <div class="tit">POLINIZACIÓN<small>REGISTRO DE POLINIZACIÓN GEORREFERENCIADO</small></div>
   <div class="carga"><i></i></div>
   <div id="splashMsg">Iniciando…</div>
-  <div id="splashVer">VERSIÓN 20261118:1125</div>
+  <div id="splashVer">VERSIÓN 20261118:1134</div>
 </div>
 
 <div id="login" hidden>
@@ -1060,7 +1060,7 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
     <p class="tenue" id="lgMsg"></p>
   </form>
   <p id="lgRed"></p>
-  <div id="lgVer2">VERSIÓN 20261118:1125</div>
+  <div id="lgVer2">VERSIÓN 20261118:1134</div>
   <button type="button" class="btn" id="lgAct" style="margin-top:4px;font-size:13px;padding:7px 12px">⟳ BUSCAR ACTUALIZACIÓN</button>
   <button type="button" class="btn" id="lgInstalar" hidden>📲 INSTALAR EN ESTE CELULAR</button>
 </div>
@@ -1191,7 +1191,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
    Registro de polinización georreferenciado sin conexión, con jornadas,
    registro del recorrido y sincronización con GitHub.
    ===================================================================== */
-const VERSION='20261118:1125';
+const VERSION='20261118:1134';
 /* Ejecutándose dentro de la APK de Android (Capacitor) o en el navegador. */
 const NATIVO=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
 /* APK sin puente nativo (copia guardada antigua): con internet se recarga una vez para recibirlo. */
@@ -1579,14 +1579,16 @@ function reestilarVias(){for(const {pl,c} of VIAS.partes)pl.setStyle(estiloParte
 mapa.on('zoomend',()=>{if(VIAS.partes.length)reestilarVias();});
 function mostrarVias(on){VIAS.visible=on!==false;dibujarVias();}
 /* Descarga y descifra datos/vias.enc (mismo formato SPC1 de la cartografía). guardar/leer: almacenamiento local opcional para uso sin conexión. */
-async function cargarVias(guardar,leer){
-  const v=ACCESO&&ACCESO.vias;if(!v||!SES||!SES.dk)return false;
+async function cargarVias(guardar,leer,leerRepo){
+  const v=ACCESO&&ACCESO.vias;if(!SES)return false;
   let gj=null;
-  try{const r=await fetch('datos/'+(v.archivo||'vias.enc'),{cache:'no-cache'});if(!r.ok)throw new Error('HTTP '+r.status);
+  // 1) Paquete cifrado (datos/vias.enc) si existe; 2) si no, cartografia/vias.geojson del repositorio privado de datos; 3) sin conexión, la copia guardada.
+  if(v&&SES.dk)try{const r=await fetch('datos/'+(v.archivo||'vias.enc'),{cache:'no-cache'});if(!r.ok)throw new Error('HTTP '+r.status);
     const buf=new Uint8Array(await r.arrayBuffer());if(new TextDecoder().decode(buf.slice(0,4))!=='SPC1')throw new Error('formato');
-    gj=JSON.parse(new TextDecoder().decode(await aesDes(SES.dk,buf.slice(4,16),buf.slice(16))));
-    if(guardar)try{await guardar({version:v.version,gj});}catch(e){}}
-  catch(e){if(leer)try{const c=await leer();if(c&&c.gj)gj=c.gj;}catch(_){}}
+    gj=JSON.parse(new TextDecoder().decode(await aesDes(SES.dk,buf.slice(4,16),buf.slice(16))));}catch(e){gj=null;}
+  if(!gj&&leerRepo&&navigator.onLine)try{const g=await leerRepo();if(g&&Array.isArray(g.features))gj=g;}catch(e){gj=null;}
+  if(gj){if(guardar)try{await guardar({version:v?v.version:'datos',gj});}catch(e){}}
+  else if(leer)try{const c=await leer();if(c&&c.gj)gj=c.gj;}catch(_){}
   if(!gj)return false;VIAS.gj=gj;dibujarVias();return true;
 }
 function leyendaVias(){
@@ -2263,20 +2265,42 @@ function dentroLote(l,sx,sy){const f=featLote(l);if(!f)return true;const lng=sx/
   let m=LMET.get(l);if(!m){m=[];for(const p of polys)for(const r of p)m.push(r.map(c=>[c[0]*KX,c[1]*KY]));LMET.set(l,m);}
   for(const r of m)for(let i=1;i<r.length;i++)if(dSeg(sx,sy,r[i-1][0],r[i-1][1],r[i][0],r[i][1])<=2)return true;
   return false;}
+/* Polinización: una calle solo cuenta como trabajada si tiene al menos un registro (A, P, B, R o V) en alguna de sus líneas. */
+function calleConRegistro(E,key){const lr=E.lineasReg;if(!lr)return false;const p=key.split('|');const l=p[0];
+  return [p[1],p[2]].some(x=>x!==''&&x!=null&&lr.has(l+'|'+Number(x)));}
+function confirmarCalle(E,key,r,nuevos,t){E.abiertas.set(key,t);E.runs.delete(key);for(const [qq,tt] of r.qs){E.prov.delete(qq.id);marcarVisita(E,r.l,qq,nuevos,tt);}}
+function anotarLineaRegistro(E,r){if(!E||!r||!r.lote||r.linea==null||r.linea==='')return null;(E.lineasReg||(E.lineasReg=new Set())).add(String(r.lote)+'|'+Number(r.linea));return String(r.lote)+'|'+Number(r.linea);}
+/* Al registrar una palma: las calles de esa línea que ya cumplían el recorrido se confirman. */
+function reconfirmarCalles(E,nuevos,t){for(const [k,r] of [...E.runs])if(r.ok&&calleConRegistro(E,k))confirmarCalle(E,k,r,nuevos,t);}
+
+/* ---------- Senderos y vías: a 6 m o menos de su eje no se cuentan palmas (el operario va de paso) ---------- */
+const SENDERO_M=6;let SEND_IDX=null,SEND_GJ=null;
+function indiceSenderos(){
+  const gj=typeof VIAS!=='undefined'&&VIAS.gj;if(!gj||!gj.features)return null;if(SEND_IDX&&SEND_GJ===gj)return SEND_IDX;
+  prepK();const idx=new Map(),C=20;
+  const add=(a,b)=>{const ax=a[0]*KX,ay=a[1]*KY,bx=b[0]*KX,by=b[1]*KY;const s=[ax,ay,bx,by];
+    for(let i=Math.floor((Math.min(ax,bx)-SENDERO_M)/C);i<=Math.floor((Math.max(ax,bx)+SENDERO_M)/C);i++)
+      for(let j=Math.floor((Math.min(ay,by)-SENDERO_M)/C);j<=Math.floor((Math.max(ay,by)+SENDERO_M)/C);j++){const k=i+','+j;let g=idx.get(k);if(!g)idx.set(k,g=[]);g.push(s);}};
+  for(const f of gj.features){const g=f.geometry;if(!g)continue;const ls=g.type==='LineString'?[g.coordinates]:g.type==='MultiLineString'?g.coordinates:[];
+    for(const l of ls)for(let i=1;i<l.length;i++)add(l[i-1],l[i]);}
+  idx.C=C;SEND_IDX=idx;SEND_GJ=gj;return idx;}
+function enSendero(sx,sy){const idx=indiceSenderos();if(!idx)return false;const g=idx.get(Math.floor(sx/idx.C)+','+Math.floor(sy/idx.C));if(!g)return false;
+  for(const s of g)if(dSeg(sx,sy,s[0],s[1],s[2],s[3])<=SENDERO_M)return true;return false;}
 function proponer(E,cands,t,nuevos){
   for(const [k,r] of E.runs)if(t-r.ult>RUN_VIVA){for(const [q] of r.qs)E.prov.delete(q.id);E.runs.delete(k);} // calle sin confirmar = desplazamiento: se descarta
-  for(const c of cands){const q=c.q;if(E.set.has(q.id))continue;
+  for(const c of cands){const q=c.q;
+    if(E.set.has(q.id)){const ab0=E.abiertas.get(c.key);if(ab0!=null)E.abiertas.set(c.key,t);continue;} // sigue trabajando la calle (quieto en la palma)
     // Terrazas (lotes terraza y sectores terraza de lotes mixtos): sin confirmación de recorrido; cuenta toda palma dentro del buffer y del polígono.
     if(c.key.endsWith('|T')){E.prov.delete(q.id);marcarVisita(E,c.l,q,nuevos,t);continue;}
     const ab=E.abiertas.get(c.key);if(ab!=null&&t-ab<=RUN_ABIERTA){E.abiertas.set(c.key,t);marcarVisita(E,c.l,q,nuevos,t);continue;}
-    if(E.prov.has(q.id))continue;
+    if(E.prov.has(q.id)){const rr=E.runs.get(c.key);if(rr)rr.ult=t;continue;} // quieto en una palma pendiente: la calle sigue viva
     let r=E.runs.get(c.key);if(!r)E.runs.set(c.key,r={l:c.l,qs:[],ult:t,tot:c.tot,a0:Infinity,a1:-Infinity,x0:c.sx,y0:c.sy,dmax:0});
     r.qs.push([q,t]);r.ult=t;E.prov.add(q.id);
     // avance del operario: a lo largo de la calle (proyección sobre la dirección de las líneas) o, en terrazas, distancia recorrida
     if(c.ux!=null){const a=c.sx*c.ux+c.sy*c.uy;if(a<r.a0)r.a0=a;if(a>r.a1)r.a1=a;}else r.dmax=Math.max(r.dmax,Math.hypot(c.sx-r.x0,c.sy-r.y0));
     const avance=c.ux!=null?r.a1-r.a0:r.dmax;
-    if((r.qs.length>=3&&avance>=RUN_LARGO&&(c.ux!=null||r.qs.length>=RUN_MIN))||(r.tot<=RUN_MIN+1&&r.qs.length>=Math.max(2,Math.ceil(r.tot*.8)))){ // calle confirmada: el operario está trabajando
-      E.abiertas.set(c.key,t);E.runs.delete(c.key);for(const [qq,tt] of r.qs){E.prov.delete(qq.id);marcarVisita(E,r.l,qq,nuevos,tt);}}
+    r.ok=(r.qs.length>=3&&avance>=RUN_LARGO&&(c.ux!=null||r.qs.length>=RUN_MIN))||(r.tot<=RUN_MIN+1&&r.qs.length>=Math.max(2,Math.ceil(r.tot*.8)));
+    if(r.ok&&calleConRegistro(E,c.key))confirmarCalle(E,c.key,r,nuevos,t); // calle trabajada y con al menos un registro
   }
 }
 function cerrarVisita(E){for(const r of E.runs.values())for(const [q] of r.qs)E.prov.delete(q.id);E.runs.clear();} // fin de jornada: lo pendiente es desplazamiento final
@@ -2381,7 +2405,7 @@ async function visitarTramo(E,p){
     const grids=[];for(const l of lotesCercanos(ax,ay,bx,by,14))if(CARTO.lotes[l]&&enProgramacion(E,l)){const g=await indiceVisita(l);grids.push([l,g]);E.grids.set(l,g);(E.tipos||(E.tipos=new Map())).set(l,g.tipo);}
     if(!grids.length){proponer(E,[],p.t,nuevos);return nuevos;}
     const n=Math.max(1,Math.ceil(Math.hypot(bx-ax,by-ay)/2));const cands=[];
-    for(let k=(a===p?n:0);k<=n;k++){const t=k/n;marcarCalle(E,grids,ax+(bx-ax)*t,ay+(by-ay)*t,cands);}
+    for(let k=(a===p?n:0);k<=n;k++){const t=k/n,sx=ax+(bx-ax)*t,sy=ay+(by-ay)*t;if(enSendero(sx,sy))continue;marcarCalle(E,grids,sx,sy,cands);}
     proponer(E,cands,p.t,nuevos);
     return nuevos;
   }
@@ -2390,19 +2414,22 @@ async function visitarTramo(E,p){
     if(!CARTO.lotes[l]||!enProgramacion(E,l))continue;const grid=await indiceVisita(l);E.grids.set(l,grid);(E.tipos||(E.tipos=new Map())).set(l,grid.tipo);
     const i0=Math.floor((Math.min(ax,bx)-B)/CV),i1=Math.floor((Math.max(ax,bx)+B)/CV),j0=Math.floor((Math.min(ay,by)-B)/CV),j1=Math.floor((Math.max(ay,by)+B)/CV);
     for(let i=i0;i<=i1;i++)for(let j=j0;j<=j1;j++){const g=grid.get(i+','+j);if(!g)continue;
-      for(const q of g)if(!E.set.has(q.id)&&dSeg(q.x,q.y,ax,ay,bx,by)<=B)marcarVisita(E,l,q,nuevos,p.t);}
+      for(const q of g)if(!E.set.has(q.id)&&dSeg(q.x,q.y,ax,ay,bx,by)<=B&&!enSendero(bx,by))marcarVisita(E,l,q,nuevos,p.t);}
   }
   return nuevos;
 }
 /* conT: guarda el segundo de la primera visita confirmada de cada palma (secuencias y reproducción). final: descarta las calles sin confirmar (desplazamiento final). */
 /* Una palma con registro (A, P, B, R o V) cuenta como visitada aunque el recorrido no la haya marcado. */
 async function visitarRegistro(E,r){const nuevos=[];
-  if(!E||!r||r.palma_id==null||!r.lote||(r.labor&&r.labor!==LABOR_APP))return nuevos;const id=String(r.palma_id);if(E.set.has(id))return nuevos;
+  if(!E||!r||r.palma_id==null||!r.lote||(r.labor&&r.labor!==LABOR_APP))return nuevos;const id=String(r.palma_id);
+  if(anotarLineaRegistro(E,r)){try{prepK();await indiceVisita(r.lote);}catch(e){}reconfirmarCalles(E,nuevos,Date.parse(r.creado_telefono||r.creado)||Date.now());}
+  if(E.set.has(id))return nuevos;
   try{prepK();const grid=await indiceVisita(r.lote);if(!grid)return nuevos;E.grids.set(r.lote,grid);
     for(const arr of grid.values()){if(!Array.isArray(arr))continue;const q=arr.find(z=>z.id===id);
       if(q){if(E.prov)E.prov.delete(id);marcarVisita(E,r.lote,q,nuevos,Date.parse(r.creado_telefono||r.creado)||Date.now());break;}}}catch(e){}
   return nuevos;}
 async function calcularVisita(pts,densidad,buffer,metodo,conT,final,sel,bufTer,regs){const E=nuevoEstadoVisita(densidad,buffer,metodo,bufTer);E.sel=sel||null;const t0=pts.length?pts[0].t:0;
+  for(const r of regs||[])if(!r.labor||r.labor===LABOR_APP)anotarLineaRegistro(E,r);
   for(const p of pts)await visitarTramo(E,p);
   if(final)cerrarVisita(E);
   for(const r of regs||[])await visitarRegistro(E,r); // toda palma registrada cuenta como visitada
@@ -4673,7 +4700,7 @@ async function despuesDeIngresar(){
   try{await cargarModoProgApp();}catch(e){}
   try{await cargarServiciosIA();}catch(e){}
   if(puedeAuditar()&&navigator.onLine)setTimeout(async()=>{try{const d=await (await ghFetch(`/contents/reportes/diario/${fechaLocal()}/resumen.json?ref=${encodeURIComponent(S.cfg.gh.rama)}`,{accept:'application/vnd.github.raw+json'})).json();if(d.alertas&&d.alertas.length)toast(`⚠ ${d.alertas.length} alerta(s) en el reporte de hoy. Menú → Panel del día.`,7000);}catch(e){}},9000);
-  try{await cargarVias(v=>dbPut('config',{clave:'vias',v}),async()=>{const r=await dbGet('config','vias');return r&&r.v;});}catch(e){}
+  try{await cargarVias(v=>dbPut('config',{clave:'vias',v}),async()=>{const r=await dbGet('config','vias');return r&&r.v;},async()=>JSON.parse(await (await ghRaw('cartografia/vias.geojson')).text()));}catch(e){}
   if(S.cfg.jornadaActiva){const j=await dbGet('jornadas',S.cfg.jornadaActiva);
     if(j&&j.estado==='activa'){
       if(j.usuario&&SES&&j.usuario!==SES.u){

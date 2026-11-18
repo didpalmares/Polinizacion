@@ -68,14 +68,16 @@ function reestilarVias(){for(const {pl,c} of VIAS.partes)pl.setStyle(estiloParte
 mapa.on('zoomend',()=>{if(VIAS.partes.length)reestilarVias();});
 function mostrarVias(on){VIAS.visible=on!==false;dibujarVias();}
 /* Descarga y descifra datos/vias.enc (mismo formato SPC1 de la cartografía). guardar/leer: almacenamiento local opcional para uso sin conexión. */
-async function cargarVias(guardar,leer){
-  const v=ACCESO&&ACCESO.vias;if(!v||!SES||!SES.dk)return false;
+async function cargarVias(guardar,leer,leerRepo){
+  const v=ACCESO&&ACCESO.vias;if(!SES)return false;
   let gj=null;
-  try{const r=await fetch('datos/'+(v.archivo||'vias.enc'),{cache:'no-cache'});if(!r.ok)throw new Error('HTTP '+r.status);
+  // 1) Paquete cifrado (datos/vias.enc) si existe; 2) si no, cartografia/vias.geojson del repositorio privado de datos; 3) sin conexión, la copia guardada.
+  if(v&&SES.dk)try{const r=await fetch('datos/'+(v.archivo||'vias.enc'),{cache:'no-cache'});if(!r.ok)throw new Error('HTTP '+r.status);
     const buf=new Uint8Array(await r.arrayBuffer());if(new TextDecoder().decode(buf.slice(0,4))!=='SPC1')throw new Error('formato');
-    gj=JSON.parse(new TextDecoder().decode(await aesDes(SES.dk,buf.slice(4,16),buf.slice(16))));
-    if(guardar)try{await guardar({version:v.version,gj});}catch(e){}}
-  catch(e){if(leer)try{const c=await leer();if(c&&c.gj)gj=c.gj;}catch(_){}}
+    gj=JSON.parse(new TextDecoder().decode(await aesDes(SES.dk,buf.slice(4,16),buf.slice(16))));}catch(e){gj=null;}
+  if(!gj&&leerRepo&&navigator.onLine)try{const g=await leerRepo();if(g&&Array.isArray(g.features))gj=g;}catch(e){gj=null;}
+  if(gj){if(guardar)try{await guardar({version:v?v.version:'datos',gj});}catch(e){}}
+  else if(leer)try{const c=await leer();if(c&&c.gj)gj=c.gj;}catch(_){}
   if(!gj)return false;VIAS.gj=gj;dibujarVias();return true;
 }
 function leyendaVias(){
