@@ -1,9 +1,8 @@
 /* ===================== NÚCLEO COMÚN DE LABORES (App, visor y programador) =====================
    1) Calendario laboral colombiano: festivos (Ley 51 de 1983 «Ley Emiliani» y fiestas móviles por Semana Santa).
-      Día hábil = lunes a sábado que no sea festivo. Plazo D+1 hábil para cirugías.
+      Día hábil = lunes a sábado que no sea festivo.
    2) Red de caminos: grafo de vías y senderos (vias.enc), caminos más cortos (Dijkstra) y orden de visita
-      (vecino más cercano + 2-opt) para rutas de palmas puntuales.
-   3) Reglas de cirugía: qué diagnósticos generan orden de cirugía y las condiciones de corrección. */
+      (vecino más cercano + 2-opt) para rutas de palmas puntuales. */
 
 /* ---------- 1. Calendario ---------- */
 const NUCLEO_CAL={cache:new Map()};
@@ -177,88 +176,13 @@ function rutaOptima(RED_GJ,oficina,puntos,opciones={}){
     min_caminata:Math.round(acumCosto/(VEL_KMH.via*1000/60))};
 }
 
-/* ---------- 3. Reglas de cirugía ---------- */
-const CIR_N2=['PC INICIAL','PC AVANZADA','PC REINCIDENTE'];
-const esCasoCirugia=d=>!!d&&(d.n1_codigo==='PC'||/PUDRICI[ÓO]N DE COGOLLO/i.test(d.nivel1||d.n1||''))&&CIR_N2.includes(String(d.nivel2||d.n2||'').toUpperCase());
-const PRODUCTOS_CIR={quimico:['Mancozeb','Malathion','Clorpirifos','Oxicloruro de cobre','Mancozeb + Malathion'],biologico:['Beauveria bassiana','Quelato de zinc']};
-/* Correcciones del cirujano: estado real de la palma cuando el censo quedó mal. */
-const CORRECCIONES_CIR=[
-  {id:'recuperacion',t:'PC en recuperación',n1_codigo:'PC',n1:'PUDRICIÓN DE COGOLLO (PC)',n2:'PC EN RECUPERACIÓN',n3:'SEGUIMIENTO PC',estado:'tratamiento'},
-  {id:'crater',t:'Cráter',n1_codigo:'PC',n1:'PUDRICIÓN DE COGOLLO (PC)',n2:'CRATER',n3:'SEGUIMIENTO PC',estado:'enferma'},
-  {id:'muerta',t:'Palma muerta',n1_codigo:'MUERTA',n1:'PALMA MUERTA',n2:'',n3:'',estado:'muerta'},
-  {id:'erradicar',t:'Para erradicar',n1_codigo:'PC',n1:'PUDRICIÓN DE COGOLLO (PC)',n2:'PARA ERRADICAR',n3:'SEGUIMIENTO PC',estado:'enferma',accion:'erradicar'},
-  {id:'sana',t:'Palma sana',n1_codigo:'SN',n1:'SIN NOVEDAD (PALMA SANA)',n2:'',n3:'',estado:'sana'},
-  {id:'boro',t:'Deficiencia de boro',n1_codigo:'DEF',n1:'DEFICIENCIAS',n2:'BORO (B)',n3:'',estado:'enferma'},
-  {id:'doblamiento',t:'Doblamiento de cogollo',n1_codigo:'DC',n1:'DOBLAMIENTO DE COGOLLO',n2:'',n3:'',estado:'novedad'}
-];
-
-/* ---------- 4. Reglas de erradicación ----------
-   Se erradican: PC en estado cráter (o marcada «para erradicar» por un cirujano), palmas espontáneas y yarumos.
-   Plazo: día hábil siguiente al reporte. Prioridad: cráter → espontánea → yarumo. */
-const n2De=d=>String(d&&(d.nivel2||d.n2)||'').toUpperCase();
-const codN1De=d=>String(d&&(d.n1_codigo||((d.problemas||[])[0]))||'').toUpperCase();
-function tipoErradicacion(d){
-  if(!d)return null;const c=codN1De(d),n1=String(d.nivel1||d.n1||'').toUpperCase(),n2=n2De(d);
-  if((c==='PC'||/PUDRICI[ÓO]N DE COGOLLO/.test(n1))&&(n2==='CRATER'||n2==='CRÁTER'||n2==='PARA ERRADICAR'))return 'CRATER';
-  if(c==='ESP'||/ESPONT/.test(n1))return 'ESPONTANEA';
-  if(c==='YAR'||/YARUMO/.test(n1))return 'YARUMO';
-  return null;
-}
-const TIPOS_ERR={CRATER:{t:'PC cráter',p:0,existencia:true},ESPONTANEA:{t:'Palma espontánea',p:1,existencia:true},YARUMO:{t:'Yarumo',p:2,existencia:false}};
-const METODOS_ERR=['Motosierra','Química'];
-const PRODUCTOS_ERR=['Mesa Mate'];          // productos químicos por defecto (la lista se amplía en config/erradicacion.json)
-const DOSIS_UNIDAD_ERR='ml';
-const EFICIENCIAS_ERR=[5,10,15,20,25,30];
-/* Correcciones del erradicador: estado real cuando el caso quedó mal reportado (queda la versión del censador y la suya). */
-const CORRECCIONES_ERR=[
-  {id:'crater',t:'Sí es PC cráter',n1_codigo:'PC',n1:'PUDRICIÓN DE COGOLLO (PC)',n2:'CRATER',n3:'SEGUIMIENTO PC',estado:'enferma'},
-  {id:'pc_inicial',t:'PC inicial (pasa a cirugía)',n1_codigo:'PC',n1:'PUDRICIÓN DE COGOLLO (PC)',n2:'PC INICIAL',n3:'SEGUIMIENTO PC',estado:'enferma'},
-  {id:'pc_avanzada',t:'PC avanzada (pasa a cirugía)',n1_codigo:'PC',n1:'PUDRICIÓN DE COGOLLO (PC)',n2:'PC AVANZADA',n3:'SEGUIMIENTO PC',estado:'enferma'},
-  {id:'recuperacion',t:'PC en recuperación',n1_codigo:'PC',n1:'PUDRICIÓN DE COGOLLO (PC)',n2:'PC EN RECUPERACIÓN',n3:'SEGUIMIENTO PC',estado:'tratamiento'},
-  {id:'muerta',t:'Palma muerta',n1_codigo:'MUERTA',n1:'PALMA MUERTA',n2:'',n3:'',estado:'muerta'},
-  {id:'sana',t:'Palma sana / no hay espontánea ni yarumo',n1_codigo:'SN',n1:'SIN NOVEDAD (PALMA SANA)',n2:'',n3:'',estado:'sana'}
-];
-
-/* ---------- 5. Monitoreo de plagas ----------
-   Muestreo por lote (10×10, 7×7, 5×5): líneas 1, 1+k, 1+2k… (desde la primera línea del lote) y, en cada una, la primera palma
-   viva y luego cada k palmas; si la palma que toca está muerta (existencia 0) se toma la siguiente viva de esa línea. */
-const PLAGAS=[{id:'OPS',n:'Opsiphanes cassina'},{id:'BRA',n:'Brassolis sophorae'},{id:'HOR',n:'Hormiga'},{id:'SIB',n:'Sibine fusca'},{id:'SAG',n:'Sagalassa valida'}];
-const ESTADOS_PLAGA=[{k:'lv',t:'LV',d:'Larvas'},{k:'huevo',t:'Huevo',d:'Huevos'},{k:'nido',t:'Nido',d:'Nidos'},{k:'pm',t:'PM',d:'Pupas muertas'},{k:'pv',t:'PV',d:'Pupas vivas'},{k:'adulto',t:'Adulto',d:'Adultos'}];
-const HOJAS_PLAGA=[9,17,25];
-const MUESTREOS=[{id:'10x10',k:10,t:'10 × 10'},{id:'7x7',k:7,t:'7 × 7'},{id:'5x5',k:5,t:'5 × 5'}];
-const TRANSITABILIDAD=['Transitable','Poco transitable','No transitable'];
-/* Palmas de una unidad de la programación de plagas: rangos de ids [[desde, hasta], …] */
-const enRangos=(id,rs)=>{const x=Number(id);for(const [a,b] of rs)if(x>=a&&x<=b)return true;return false;};
-/* d: palmas del lote [id,línea,palma,existe,lng,lat]; muerta(id) opcional (p. ej. existencia 0 aprobada). Devuelve las palmas de la muestra. */
-function muestraLote(d,k,muerta){
-  const viva=a=>Number(a[3])!==0&&!(muerta&&muerta(String(a[0])));
-  const porLinea=new Map();for(const a of d||[]){const l=Number(a[1]);if(!(l>0))continue;if(!porLinea.has(l))porLinea.set(l,[]);porLinea.get(l).push(a);}
-  const lineas=[...porLinea.keys()].sort((a,b)=>a-b);if(!lineas.length)return [];
-  const l0=lineas[0],out=[];
-  for(const l of lineas){if((l-l0)%k)continue;
-    const ps=porLinea.get(l).slice().sort((a,b)=>Number(a[2])-Number(b[2]));const pv=ps.find(viva);if(!pv)continue;
-    const usadas=new Set();const max=Number(ps[ps.length-1][2]);
-    for(let t=Number(pv[2]);t<=max;t+=k){const a=ps.find(x=>Number(x[2])>=t&&viva(x)&&!usadas.has(String(x[0])));if(!a)break;
-      if(Number(a[2])>=t+k&&t!==Number(pv[2]))continue;   /* sin palma viva en este tramo: se pasa al siguiente */
-      usadas.add(String(a[0]));out.push({palma_id:String(a[0]),linea:Number(a[1]),palma:Number(a[2]),lng:a[4],lat:a[5]});}}
-  return out;
-}
-
 /* ---------- Modo de programación por labor (config/modo_programacion.json, lo cambia Coordinación) ----------
    'libre': el personal elige cualquier lote · 'programado': solo su bloque del plan del día. Sin archivo = libre. */
-const MODO_PROG_RUTA='config/modo_programacion.json',LABORES_MODO_PROG={censo:'Censo de enfermedades',plagas:'Monitoreo de plagas'};
+const MODO_PROG_RUTA='config/modo_programacion.json',LABORES_MODO_PROG={polinizacion:'Polinización'};
 const modoProgDe=(c,labor)=>c&&c[labor]&&c[labor].modo==='programado'?'programado':'libre';
 
-/* ---------- Casos críticos que titilan en el mapa: PE partida (la palma murió) y PC cráter (próxima a morir; se erradica) ---------- */
-const CRITICOS={PE_PARTIDA:{t:'PE partida',nota:'La palma murió: pendiente de marcar como inexistente'},CRATER:{t:'PC cráter',nota:'Próxima a morir: se erradica el día hábil siguiente'}};
-function criticoDe(d){if(!d)return null;const n2=String(d.nivel2||d.n2||'').toUpperCase().trim(),c=String(d.n1_codigo||(Array.isArray(d.problemas)?d.problemas[0]:'')||'').toUpperCase(),n1=String(d.nivel1||d.n1||'').toUpperCase();
-  if(n2==='PE PARTIDA'&&(!c||c==='PE'||/EST[IÍ]PITE/.test(n1)))return 'PE_PARTIDA';
-  if((n2==='CRATER'||n2==='CRÁTER')&&(!c||c==='PC'||/COGOLLO/.test(n1)))return 'CRATER';
-  return null;}
-
 /* ---------- Hoja de vida de la palma (App y visor): resumen, alertas y línea de tiempo ---------- */
-const HV_LAB={censo:['Censo','#e53935'],correccion:['Corrección','#ff9f1c'],caso_nuevo:['Caso nuevo','#ff7043'],cirugia:['Cirugía','#2f93d5'],
-  erradicacion:['Erradicación','#8d6e63'],existencia:['Existencia','#9e9e9e'],plagas:['Plagas','#c77dff']};
+const HV_LAB={censo:['Censo','#e53935'],correccion:['Corrección','#ff9f1c'],caso_nuevo:['Caso nuevo','#ff7043'],existencia:['Existencia','#9e9e9e']};
 (function(){const css=document.createElement('style');css.textContent=`
   .hv{margin:10px 0;border:1px solid var(--borde,#2a3b36);border-radius:12px;padding:8px 10px;background:rgba(47,147,213,.06)}
   .hv>summary{cursor:pointer;font-weight:800;font-size:15px;list-style:none;display:flex;align-items:center;gap:6px}
@@ -276,16 +200,15 @@ function resumenHV(ev){
   const al=[];const n2=String(ult&&ult.n2||'').toUpperCase();
   if(ev.some(e=>e.l==='existencia'&&/aprobada/i.test(e.x)))al.push(['✝ Palma con existencia 0 (ya no existe en la cartografía)','']);
   else if(n2==='PE PARTIDA')al.push(['✝ PE PARTIDA: la palma murió','']);
-  else if(n2==='CRATER'||n2==='CRÁTER')al.push([ev.some(e=>e.l==='erradicacion'&&Date.parse(e.t)>=Date.parse(ult.t))?'⚠ Cráter: ya fue erradicada':'⚠ PC CRÁTER: pendiente de erradicar','am']);
   if(/RECUPERACI/.test(n2)&&dias>30)al.push([`⏰ En recuperación sin nueva revisión hace ${dias} días`,'am']);
-  return {ult,dias,al,nCir:ev.filter(e=>e.l==='cirugia').length,nDiag:diags.length,nPlg:ev.filter(e=>e.l==='plagas').length};
+  return {ult,dias,al,nDiag:diags.length};
 }
 function htmlHojaVida(h,abierta,conFoto){
   const ev=h.ev||[];const r=resumenHV(ev);
   return `<details class="hv"${abierta?' open':''}><summary>📋 Hoja de vida <span class="tenue" style="font-weight:600">· ${ev.length} registro${ev.length===1?'':'s'}</span></summary>
     ${r.al.map(([t,c])=>`<div class="al ${c}">${esc(t)}</div>`).join('')}
     <div class="est"><div><b>Último diagnóstico:</b><br>${r.ult?esc(r.ult.x):'—'}</div><div><b>Hace:</b><br>${r.dias==null?'—':r.dias===0?'hoy':r.dias+' día'+(r.dias===1?'':'s')}${r.ult?`<br><span class="tenue">${esc(r.ult.q||'')}</span>`:''}</div>
-      <div><b>Diagnósticos:</b> ${r.nDiag}</div><div><b>Cirugías:</b> ${r.nCir}${r.nPlg?` · <b>Plagas:</b> ${r.nPlg}`:''}</div></div>
+      <div><b>Diagnósticos:</b> ${r.nDiag}</div></div>
     ${[...ev].reverse().map(e=>{const [et,col]=HV_LAB[e.l]||[e.l,'#999'];
       return `<div class="ev" style="border-left-color:${col}"><b>${esc(et)}${e.r&&e.l!=='censo'?' ('+esc(e.r)+')':''}</b> · <span class="tenue">${esc(fechaHV(e.t))}</span><br>${esc(e.x||'')}${e.d?`<br><span class="tenue">${esc(e.d)}</span>`:''}<br><span class="tenue">${esc(e.q||'')}${e.f?(conFoto?` <button class="btn mini nar" data-hvf="${esc(e.f)}">📷 Ver foto</button>`:' · 📷'):''}</span></div>`;}).join('')}
     <div class="tenue" style="font-size:11.5px">Incluye los registros de todo el personal ya sincronizados. Se actualiza con internet.</div></details>`;

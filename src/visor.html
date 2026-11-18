@@ -156,9 +156,6 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 #rep .acu{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
 #rep .acu div{border:1px solid var(--borde);border-radius:10px;padding:4px 8px;font-size:11.5px;color:var(--tenue);line-height:1.25}
 #rep .acu div b{display:block;color:var(--texto);font-family:var(--t);font-size:16px;font-variant-numeric:tabular-nums}
-#rep .critRep{display:none;align-items:center;gap:8px;flex-wrap:wrap;background:#b71c1c;color:#fff;border:2px solid #ff5252;border-radius:10px;padding:5px 10px;font-weight:800;font-size:13px;animation:critLatido 1.2s ease-out infinite}
-#rep .critRep.on{display:flex}
-#rep .critRep.nuevo{animation:critLatido 1.2s ease-out infinite,critParpadeo .35s linear 6}
 @media (max-width:560px){#rep .acu{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .rep-etq{background:rgba(6,20,15,.82);color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:6px;font-family:var(--t);font-weight:700;font-size:12px;padding:0 5px;box-shadow:none}
 .rep-etq::before{display:none}
@@ -908,7 +905,6 @@ function prepararRep(){
     return {j,t,ll,col,estela,marca,k:-1,acum,diags,dN:0,activa:false};});
   if(REP.modo==='uno'){precargarFotos(REP.lista[REP.i]);const jx=REP.lista[REP.i],ix=REP.i;REP.vis=null;
     palmasVisitadasJ(jx).then(v=>{if(!REP.on||REP.modo!=='uno'||REP.i!==ix)return;REP.vis=v.filter(q=>Number.isFinite(q.t)).map(q=>q.t);REP.visTot=v.length;ponerRep(REP.T);}).catch(()=>{});}
-  REP.critUlt=null;
   REP.T0=Math.min(...REP.js.map(x=>x.t[0]));REP.T1=Math.max(...REP.js.map(x=>x.t[x.t.length-1]));REP.T=REP.T0;
   const caja=L.latLngBounds(REP.js.flatMap(x=>x.ll));try{mapa.fitBounds(caja,{padding:[40,40],maxZoom:REP.modo==='todos'?17:18});}catch(e){}
   pintarBarraRep();ponerRep(REP.T0);
@@ -925,7 +921,6 @@ function pintarBarraRep(){
       ${uno?'':'<span>Activos <b id="repAct">0</b></span><span>Diagnósticos <b id="repND">0</b></span><span>Km <b id="repKm">0.00</b></span><span class="tenue">Las horas son del día; cada color es un operario.</span>'}</div>
     ${uno?`<div class="acu" id="repAcu"><div>Inicio<b>${esc(j.hora_inicio||'--')}</b></div><div>Fin<b>${esc(j.hora_fin||'--')}</b></div><div>Transcurrido<b id="rqTr">00:00:00</b></div><div>Km recorridos<b id="repKm">0.00</b></div>
       <div>Velocidad prom.<b id="rqVel">0.0 km/h</b></div><div>Hectáreas<b id="rqHa">0.00</b></div><div>Palmas visitadas<b id="rqPal">0</b></div><div>Diagnósticos<b id="repND">0</b></div></div>`:''}
-    <div class="critRep" id="repCrit" title="Clic: ir al último caso crítico"></div>
     ${uno?'':`<div class="ops" id="repOps">${REP.js.map((x,k)=>`<span data-k="${k}"><i class="punto" style="background:${x.col}"></i>${esc(nombreCorto(x.j.evaluador))} · ${esc(x.j.hora_inicio)}</span>`).join('')}</div>`}`;
   $('#repX').onclick=()=>detenerRep();
   $('#repBt').onclick=()=>REP.run?pausarRep():iniciarRep();
@@ -948,10 +943,8 @@ function ponerRep(T){REP.T=T;let act=0,nd=0,km=0;const uno=REP.modo==='uno';
       km+=x.acum[i]/1000;}
     // Diagnósticos que van apareciendo
     let k=x.dN;const nuevos=[];
-    while(k<x.diags.length&&x.diags[k].t<=T){const q=x.diags[k];const cr=typeof criticoDe==='function'?criticoDe(q.d):null;
-      q.m=cr&&typeof iconoCritico==='function'?L.marker([q.d.lat,q.d.lng],{icon:iconoCritico(cr),zIndexOffset:2000,keyboard:false}).addTo(REP.capa)
-        :L.circleMarker([q.d.lat,q.d.lng],{renderer:rend,radius:6,color:'#fff',weight:1.5,fillColor:colorD(q.d),fillOpacity:1}).addTo(REP.capa);
-      if(cr&&REP.run)avisoCritRep(q,x,cr);
+    while(k<x.diags.length&&x.diags[k].t<=T){const q=x.diags[k];
+      q.m=L.circleMarker([q.d.lat,q.d.lng],{renderer:rend,radius:6,color:'#fff',weight:1.5,fillColor:colorD(q.d),fillOpacity:1}).addTo(REP.capa);
       q.m.on('click',ev=>{L.DomEvent.stopPropagation(ev);popupDiag({...q.d,_j:x.j},ev.latlng);});nuevos.push(q);k++;}
     while(k>0&&x.diags[k-1].t>T){k--;const q=x.diags[k];if(q.m){REP.capa.removeLayer(q.m);q.m=null;}}
     x.dN=k;nd+=k;
@@ -962,7 +955,7 @@ function ponerRep(T){REP.T=T;let act=0,nd=0,km=0;const uno=REP.modo==='uno';
   const rg=$('#repRg');if(rg)rg.value=Math.round(1000*(T-REP.T0)/Math.max(1,REP.T1-REP.T0));
   if($('#repAct'))$('#repAct').textContent=act;if($('#repND'))$('#repND').textContent=nd;if($('#repKm'))$('#repKm').textContent=km.toFixed(2);
   $$('#repOps span').forEach(s=>{const x=REP.js[+s.dataset.k];s.classList.toggle('inact',!x||!x.activa);});
-  pintarCritRep();if(uno)acumuladosRep(T,km,nd);
+  if(uno)acumuladosRep(T,km,nd);
 }
 /* Uno a uno: datos acumulados de la jornada hasta el instante T. */
 function acumuladosRep(T,km,nd){const x=REP.js[0];if(!x)return;const j=x.j,t0=x.t[0],tf=x.t[x.t.length-1],ms=Math.max(0,Math.min(T,tf)-t0),h=ms/3600000;
@@ -972,16 +965,6 @@ function acumuladosRep(T,km,nd){const x=REP.js[0];if(!x)return;const j=x.j,t0=x.
   if(pal==null)pal=Math.round((Number(j.palmas)||0)*(kmT>0?Math.min(1,km/kmT):0));
   const s=(id,v)=>{const e=$('#'+id);if(e)e.textContent=v;};
   s('rqTr',hms(ms));s('rqVel',(h>0.005?km/h:0).toFixed(1)+' km/h');s('rqHa',ha.toFixed(2));s('rqPal',num(pal));}
-/* Casos críticos (PE partida y PC cráter) que van apareciendo en la reproducción. */
-function pintarCritRep(){const e=$('#repCrit');if(!e)return;let np=0,nc=0;
-  for(const x of REP.js)for(let k=0;k<x.dN;k++){const c=typeof criticoDe==='function'?criticoDe(x.diags[k].d):null;if(c==='PE_PARTIDA')np++;else if(c==='CRATER')nc++;}
-  const txt=(np?`✝ ${np} PE PARTIDA (palma${np>1?'s':''} muerta${np>1?'s':''})`:'')+(np&&nc?' · ':'')+(nc?`⚠ ${nc} PC CRÁTER (erradicar)`:'');
-  const u=REP.critUlt;const h=`<span style="font-size:17px">🚨</span><span>${txt}</span>${u?`<span style="font-weight:600">· último: ${esc(nombreCorto(u.op))} · lote ${esc(u.d.lote)} L${esc(u.d.linea)} P${esc(u.d.palma)}</span>`:''}`;
-  if(e.dataset.h!==h){e.dataset.h=h;e.innerHTML=h;}e.classList.toggle('on',np+nc>0);
-  e.onclick=()=>{const q=REP.critUlt;if(q){mapa.setView([q.d.lat,q.d.lng],19,{animate:true});popupDiag({...q.d,_j:q.j},[q.d.lat,q.d.lng]);}};}
-function avisoCritRep(q,x,cr){REP.critUlt={d:q.d,j:x.j,op:x.j.evaluador};const e=$('#repCrit');
-  if(e){e.classList.remove('nuevo');void e.offsetWidth;e.classList.add('nuevo');}
-}
 function iniciarRep(){if(!REP.on)return;if(REP.T>=REP.T1)ponerRep(REP.T0);REP.run=true;const b=$('#repBt');if(b)b.textContent='❚❚';
   let prev=performance.now();const paso=now=>{if(!REP.run)return;const dt=now-prev;prev=now;
     if(Date.now()<REP.espera){REP.raf=requestAnimationFrame(paso);return;}
@@ -1051,7 +1034,7 @@ function resumenLotes(){
   for(const d of DIAGF){const f=fila(d.lote||'—');f.diag++;if(d.estado==='enferma')f.enfermas++;}
   // casos de PC: último diagnóstico de cada palma (todas las jornadas filtradas, sin el filtro de estado)
   const ult=new Map();for(const j of JORF)for(const d of j.diags){if(!loteSel(d.lote)||!enProg(d.lote))continue;const k=d.palma_id??(d.lote+'|'+d.linea+'|'+d.palma);const u=ult.get(k);if(!u||String(d.creado)>String(u.creado))ult.set(k,d);}
-  for(const d of ult.values())if(esCasoPC(codN1(d),d.nivel2,d.estado)&&!(typeof VAJ!=='undefined'&&VAJ.has(String(d.palma_id))))fila(d.lote||'—').pc=(fila(d.lote||'—').pc||0)+1;   // sin palmas erradicadas aprobadas
+  for(const d of ult.values())if(esCasoPC(codN1(d),d.nivel2,d.estado))fila(d.lote||'—').pc=(fila(d.lote||'—').pc||0)+1;
   // Avance = palmas distintas visitadas (sin repetir entre jornadas) ÷ palmas totales del lote
   return [...m.values()].map(f=>{const tl=totalLote(f.lote),vis=Math.min(tl||Infinity,f.ids.size+f.sinIds);return {...f,ids:undefined,operarios:f.operarios.size,ha:+f.ha.toFixed(2),distintas:vis,total_lote:tl,avance:tl?+(vis/tl*100).toFixed(1):null,pc:f.pc||0,incid_pc:tl?+((f.pc||0)/tl*100).toFixed(2):null};});
 }
@@ -1167,15 +1150,34 @@ async function entrar(){
   $('#hdrUsuario').textContent=`${SES.nombre} · ${({admin:'Administrador',superadmin:'Super administrador',supervisor:'Supervisor',analista:'Analista de datos'})[SES.rol]||'Supervisor'}`;
   if(typeof aplicarPermisosGer==='function')aplicarPermisosGer();
   try{await cargarCartografia();}catch(e){toast('No se pudo cargar la cartografía: '+e.message,6000);}
-  try{await cargarAjustesVisor();}catch(e){}
   try{await cargarVias();}catch(e){}
   ponerRango(6);await cargar();
 }
-/*CIRUGIA_VISOR_JS*/
+/* ---------- Utilidades comunes del visor (usuarios del paquete, carpetas por día y escritura en el repositorio de datos) ---------- */
+const nombreCorto=n=>{const p=String(n||'').trim().split(/\s+/);if(p.length>=3)return (p[2]+' '+p[0]).toLowerCase().replace(/(^|\s)\S/g,c=>c.toUpperCase());return String(n||'').toLowerCase().replace(/(^|\s)\S/g,c=>c.toUpperCase());};
+const LABOR_VISOR='polinizacion';   /* la única labor de la App */
+let USUARIOS_PAQ=null;
+/* Usuarios del paquete de acceso (nombres, cargos, roles y labores), descifrados con la llave de la sesión. */
+async function usuariosPaquete(){
+  if(USUARIOS_PAQ&&USUARIOS_PAQ.length)return USUARIOS_PAQ;
+  const out=[];for(const x of ACCESO.usuarios){try{const m=JSON.parse(DEC.decode(await desObj(SES.dk,x.meta)));out.push({u:x.u,...m});}catch(e){}}
+  USUARIOS_PAQ=out.sort((a,b)=>ordenNat(a.nombre,b.nombre));return USUARIOS_PAQ;
+}
+/* Carpetas AAAA-MM-DD de una ruta del repositorio de datos entre dos fechas. */
+async function listarDias(raiz,d1,d2){
+  let r;try{r=await (await gh(`/contents/${raiz}?ref=${encodeURIComponent(SES.repo.rama)}`)).json();}catch(e){if(e.status===404)return [];throw e;}
+  return (Array.isArray(r)?r:[]).filter(x=>x.type==='dir'&&x.name>=d1&&x.name<=d2).map(x=>({path:x.name,sha:x.sha}));
+}
+/* Crea o actualiza un archivo del repositorio de datos; devuelve el sha nuevo. */
+async function ghPut(path,texto,mensaje,sha){
+  const g=SES.repo;
+  const r=await fetch(`${GHAPI}/repos/${encodeURIComponent(g.owner)}/${encodeURIComponent(g.repo)}/contents/${path.split('/').map(encodeURIComponent).join('/')}`,{method:'PUT',cache:'no-store',
+    headers:{'Authorization':'Bearer '+SES.token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28','Content-Type':'application/json'},
+    body:JSON.stringify({message:mensaje,content:aB64(ENC.encode(texto)),branch:g.rama,...(sha?{sha}:{})})});
+  if(!r.ok){let m='';try{m=(await r.json()).message||'';}catch(e){}const e=new Error(errorGH(r.status,m));e.status=r.status;throw e;}
+  return (await r.json()).content.sha;
+}
 /*GERENCIA_VISOR_JS*/
-/*ERRADICACION_VISOR_JS*/
-/*PLAGAS_VISOR_JS*/
-/*ENFERMEDADES_VISOR_JS*/
 /*HOJA_VIDA_VISOR_JS*/
 (async()=>{
   ponerBase();pintarLeyenda();

@@ -8,7 +8,7 @@
    ===================================================================== */
 const HVV={lotes:new Map(),ind:null};
 const HVP={on:false,lote:'',pid:null,filtro:'todas',q:'',mapa:null,capa:null,lista:[]};
-const HV_FILTROS=[['todas','Todas'],['crit','🚨 Críticas'],['rec','En recuperación'],['cir','Con cirugía'],['plg','Con plagas']];
+const HV_FILTROS=[['todas','Todas'],['crit','🚨 Críticas'],['rec','En recuperación']];
 (function(){
   const css=document.createElement('style');css.textContent=`
   #hvPanel{position:fixed;left:0;right:0;bottom:0;z-index:1500;display:grid;grid-template-columns:minmax(320px,400px) 1fr;background:var(--fondo,#06140f)}
@@ -56,14 +56,11 @@ async function hvLoteVisor(lote){
     catch(e){if(e.status===404)return {palmas:{}};HVV.lotes.delete(lote);throw e;}})();
   HVV.lotes.set(lote,pr);return pr;
 }
-/* Eventos de lo cargado en el visor (censo y, si están cargadas, cirugías y correcciones) en el formato de la hoja de vida. */
+/* Eventos de lo cargado en el visor en el formato de la hoja de vida. */
 function eventosCargadosHV(pid){const k=String(pid),ev=[];
   for(const j of JOR)for(const d of j.diags)if(String(d.palma_id)===k)ev.push({t:d.creado,l:'censo',x:[d.nivel1,d.nivel2,d.nivel3].filter(Boolean).join(' › ')||d.estado_nombre||d.estado,e:d.estado,n1:codN1(d),n2:d.nivel2||'',q:d.evaluador||j.evaluador,id:d.id,
     d:[d.sintomas?'Síntomas: '+String(d.sintomas).split('|').join(' / '):'',d.cirugia?'Cirugía: '+d.cirugia:'',d.produccion?'Producción: '+d.produccion:'',d.observaciones?'Observaciones: '+d.observaciones:''].filter(Boolean).join(' · '),
     f:Number(d.n_fotos)>0&&d.fotos&&j.ruta?'jornadas/'+j.ruta.replace(/\.geojson$/,'_fotos.zip')+'|'+String(d.fotos).split('|')[0]:''});
-  if(typeof CIR!=='undefined'&&CIR.cargado){
-    for(const d of CIR.correcciones)if(String(d.palma_id)===k)ev.push({t:d.creado,l:d.origen==='caso_nuevo'?'caso_nuevo':'correccion',r:d.autor_rol||'cirujano',x:[d.nivel1,d.nivel2,d.nivel3].filter(Boolean).join(' › '),e:d.estado,n1:codN1(d),n2:d.nivel2||'',q:d.evaluador||'',id:d.id});
-    for(const c of CIR.cirugias)if(String(c.palma_id)===k)ev.push({t:c.creado,l:'cirugia',x:[c.tipo_cirugia,c.producto].filter(Boolean).join(' · ')||'Cirugía realizada',q:[c.cirujano_nombre,c.auxiliar_nombre].filter(Boolean).join(' + ')||c.evaluador||'',id:c.id});}
   return ev;}
 function unirHV(h,cargados){const ev=[...((h&&h.ev)||[])];const ids=new Set(ev.map(e=>e.l+'|'+e.id));
   for(const e of cargados)if(!e.id||!ids.has(e.l+'|'+e.id)){ev.push(e);ids.add(e.l+'|'+e.id);}
@@ -83,8 +80,8 @@ async function palmasHV(lote){
   for(const x of out.values()){x.ev=unirHV(x.h,eventosCargadosHV(x.pid));x.r=resumenHV(x.ev);}
   return {lista:[...out.values()].filter(x=>x.ev.length).sort((a,b)=>ordenNat(a.linea,b.linea)||ordenNat(a.palma,b.palma)),err};
 }
-const colorHV=x=>{const u=x.r.ult;if(x.ev.some(e=>e.l==='existencia'&&/aprobada/i.test(e.x)))return '#9e9e9e';return u?colorD({estado:u.e,n1_codigo:u.n1}):(x.ev.some(e=>e.l==='plagas')?'#c77dff':'#2f93d5');};
-const filtroHV={todas:()=>true,crit:x=>x.r.al.length>0,rec:x=>/RECUPERACI/i.test(x.r.ult&&x.r.ult.n2||''),cir:x=>x.r.nCir>0,plg:x=>x.r.nPlg>0};
+const colorHV=x=>{const u=x.r.ult;if(x.ev.some(e=>e.l==='existencia'&&/aprobada/i.test(e.x)))return '#9e9e9e';return u?colorD({estado:u.e,n1_codigo:u.n1}):'#2f93d5';};
+const filtroHV={todas:()=>true,crit:x=>x.r.al.length>0,rec:x=>/RECUPERACI/i.test(x.r.ult&&x.r.ult.n2||'')};
 async function abrirHVP(lote,pid){
   HVP.on=true;$('#hvPanel').hidden=false;$('#btHV').classList.add('prim');ubicarHVP();
   if(!HVP.mapa){HVP.mapa=L.map('hvMapa',{zoomControl:true,attributionControl:true,maxZoom:22});capaOrto('teselas/orto/','3',ORTO_B,17).addTo(HVP.mapa);
@@ -123,9 +120,7 @@ async function mapaHVP(lista,vis,ajustar){
   const visS=new Set(vis.map(x=>x.pid));
   for(const x of lista){const ll=x.ll||pos.get(x.pid);if(!ll)continue;x.ll=ll;caja.extend(ll);const vi=visS.has(x.pid);
     L.circleMarker(ll,{renderer:HVP.rend,radius:vi?7:4,color:'#fff',weight:vi?1.5:.5,fillColor:colorHV(x),fillOpacity:vi?1:.35}).bindTooltip(`L${esc(x.linea)} · P${esc(x.palma)} · ${x.ev.length} reg.`,{direction:'top'})
-      .on('click',()=>verPalmaHVP(x.pid,false)).addTo(c);
-    if(vi&&x.r.al.length&&typeof iconoCritico==='function'){const t=/PE PARTIDA|existencia/i.test(x.r.al[0][0])?'PE_PARTIDA':/CR[AÁ]TER/i.test(x.r.al[0][0])?'CRATER':null;
-      if(t)L.marker(ll,{icon:iconoCritico(t),interactive:false,keyboard:false,zIndexOffset:1000}).addTo(c);}}
+      .on('click',()=>verPalmaHVP(x.pid,false)).addTo(c);}
   if(ajustar&&caja.isValid())m.fitBounds(caja,{padding:[30,30],maxZoom:19});
 }
 function verPalmaHVP(pid,centrar){

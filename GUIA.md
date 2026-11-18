@@ -18,20 +18,12 @@
 **Pruebas automáticas:** cada cambio en `src/` o `tests/` dispara en GitHub Actions el flujo **Pruebas** (`.github/workflows/pruebas.yml`): compila la app y ejecuta las pruebas de `tests/` (unas 200 verificaciones con GitHub simulado y datos ficticios). Si algo falla, el flujo queda en rojo antes de que el cambio llegue a los celulares. Ver `tests/README.md`.
 
 **Módulos del visor:**
-- **🦠 ENFERMEDADES** (cabecera, antes de ✚ CIRUGÍAS): vuelve al censo de enfermedades en el mapa y cierra los otros módulos. Muestra en rojo cuántas palmas críticas hay.
-- **Casos críticos que titilan** en el visor y en la App: **PE PARTIDA** (rojo, «✝ PE PARTIDA · MUERTA»: la palma murió) y **PC CRÁTER** (naranja, «⚠ CRÁTER · ERRADICAR»: próxima a morir). Cuentan las palmas cuyo último diagnóstico es uno de esos y que no tienen existencia 0. Una franja roja sobre el mapa resume cuántas hay; al tocarla, el mapa va a esas palmas. Las de cráter siguen el flujo de 🪓 ERRADICACIÓN.
-- **🗄️ DATOS → Palmas pendientes por marcar inexistentes:** las PE partida de las jornadas cargadas (atajos de 30, 90 y 180 días). El **analista de datos** o el **super administrador** las aprueban con existencia 0 (quedan en `cartografia/ajustes_existencia.json` con quién y cuándo) o las rechazan con un motivo. Los demás roles solo ven la lista. Al aprobarlas salen de la cartografía activa, de la incidencia y de los conteos en la App, el visor y los reportes.
-- **📊 GERENCIA:** Tablero, Reportes y Sincronización. El Tablero incluye los **mapas de PC por lote, sin ortofoto**, al estilo de los mapas oficiales.
+- **📊 GERENCIA:** Tablero, Reportes y Sincronización.
   - **Barra de filtros** arriba del Tablero (también en Calidad y Auditoría): fechas con atajos (Hoy, 7, 30, 90 días, Este mes) y **CARGAR**, programa, lote, operario, estado, enfermedad, opción de la enfermedad y tipo de seguimiento. Son los mismos filtros del visor: al cambiar uno se actualizan el tablero, el mapa y las tablas. **✕ Quitar filtros** los limpia.
   - El Tablero tiene tres secciones: **📊 Resumen** (lo de siempre), **🦠 Enfermedades** y **🗺️ Mapa de avance del censo**.
   - **Enfermedades:** palmas por enfermedad (gráfico de barras con % y número de diagnósticos), palmas por semana apiladas por enfermedad, una tarjeta por enfermedad con sus **opciones** (nivel 2) y sus **tipos de seguimiento** (nivel 3) con palmas y porcentaje, y la tabla por lote. Clic en una enfermedad u opción filtra todo por ella.
   - **Mapa de avance del censo:** cada palma según las veces que fue visitada en el periodo cargado: **1ra entrada**, **2da entrada** (días distintos), **3ra o más** si las hay, y **sin intervenir**. Convenciones con hectáreas y porcentaje (proporcionales a las palmas sobre el área oficial de los lotes) y **Total intervenido** en lotes. Respeta programa, lote y operario. **⬇ Descargar imagen (PNG)** genera el mapa con título, convenciones, escala y norte. Las jornadas antiguas sin detalle de palmas no se pueden ubicar y se avisa cuántas palmas son.
-  - **Incidencia actual PC:** casos vigentes ÷ palmas del lote. Clases ≤ 1 %, 1–2 %, 2–3 %, 3–4 % y > 4 %.
-  - **Casos nuevos PC:** en el periodo cargado. Clases ≤ 3, 3–6, 6–9, 9–12 y > 12.
-  - Es una superficie interpolada (IDW) a partir del valor de cada lote, pintada sobre toda la plantación (límite de `cartografia/plantacion.geojson`), con los lotes y sus nombres encima, escala y norte.
-  - **Convenciones:** en incidencia, solo el color y el rango. En casos nuevos, el color, el rango y el número de casos de los lotes de cada rango.
-  - Al lado aparece la lista de lotes ordenada de mayor a menor (un clic acerca el lote). Al acercar el mapa aparece cada palma con caso.
-- **🧭 COORDINACIÓN Y SUPERVISIÓN DE LA LABOR** (gestión del personal): **Programador de censo de enfermedades** (ciclo de censo y asignación del personal), **Programador de cirugías** (abre el programador sobre el mapa; también con el botón ✚ CIRUGÍAS), Cirugía (indicadores), Calidad, Auditoría y Reportes.
+- **🧭 COORDINACIÓN Y SUPERVISIÓN DE LA LABOR** (gestión del personal): **Programador de polinización** (ciclo y asignación del personal), Calidad, Auditoría y Reportes.
 - **🗄️ ANÁLISIS DE DATOS** (analistas de datos): Sincronización de los equipos.
 
 Ver la sección 7.4 (reportes diarios, alertas, planificación, panel del día e IA).
@@ -77,7 +69,7 @@ Los celulares toman los cambios la próxima vez que abran la aplicación con int
 > **Revocación completa:** si se pierde un celular o una contraseña queda expuesta, haga tres cosas. Primero, **revoque el token** en GitHub y cree uno nuevo. Segundo, en **Crear paquete nuevo**, genere un paquete completo con el token nuevo y contraseñas nuevas; así se crea una llave de datos nueva. Tercero, súbalo a `datos/`. Todas las sesiones anteriores quedarán invalidadas.
 
 
-**Módulo de usuarios** (`admin.html` → *Modificar paquete existente* → abrir con un usuario administrador): lista de todos los usuarios con resumen por rol y labor, búsqueda (usuario, nombre, cargo, identificación) y filtros. Por usuario: **Editar** (nombre, cargo, identificación, rol, labores censo/cirugía y rol en cirugía), **Contraseña** nueva, **Suspender / Reactivar** (no puede ingresar a la app ni al visor; sus datos se conservan) y **Eliminar**. **＋ Nuevo usuario** con todos los datos y contraseña generada. **Exportar lista (CSV)** sin contraseñas. Los cambios se aplican con **Generar archivos actualizados**: se descarga `acceso.json` (súbalo a `datos/`); las contraseñas que no se cambiaron siguen funcionando.
+**Módulo de usuarios** (`admin.html` → *Modificar paquete existente* → abrir con un usuario administrador): lista de todos los usuarios con resumen por rol y labor, búsqueda (usuario, nombre, cargo, identificación) y filtros. Por usuario: **Editar** (nombre, cargo, identificación, rol; la labor es siempre polinización), **Contraseña** nueva, **Suspender / Reactivar** (no puede ingresar a la app ni al visor; sus datos se conservan) y **Eliminar**. **＋ Nuevo usuario** con todos los datos y contraseña generada. **Exportar lista (CSV)** sin contraseñas. Los cambios se aplican con **Generar archivos actualizados**: se descarga `acceso.json` (súbalo a `datos/`); las contraseñas que no se cambiaron siguen funcionando.
 
 ## 5. Publicar la aplicación y preparar cada celular
 
@@ -128,14 +120,14 @@ Desde ese momento el operario trabaja **sin internet**: abre la aplicación, que
   - En cada jornada hay un diagnóstico por palma, que puede corregirse mientras no se haya sincronizado. Los diagnósticos hechos con el formulario anterior se conservan y se muestran como tales.
 - La aplicación **no permite crear palmas ni lotes**: solo se trabaja sobre la cartografía oficial.
 - Desde el botón **JORNADA** puede ver el avance por lote, **agregar lotes**, ver el recorrido hasta el momento o **FINALIZAR JORNADA**.
-- **FINALIZAR JORNADA** (censo y cirugía) se debe **mantener presionado 2 segundos**: una barra se llena sobre el botón y el celular vibra; un toque corto no finaliza y muestra un aviso. Después se pide la confirmación.
+- **FINALIZAR JORNADA** se debe **mantener presionado 2 segundos**: una barra se llena sobre el botón y el celular vibra; un toque corto no finaliza y muestra un aviso. Después se pide la confirmación.
 - **Diagnóstico por voz (manos libres, modo dictado):** botón 🎙 (a la derecha, bajo la guía por voz). En la APK usa el motor **Vosk** dentro del celular (la primera vez descarga el modelo de voz en español, unos 40 MB); en el navegador usa el reconocimiento de voz de Chrome. Frente a la palma diga **«realizar diagnóstico»**; la app dice la palma (a 20 m o menos) y «Dicte», y **no pregunta nada**: el operario dicta todo seguido y la app marca el formulario mientras escucha (pitido agudo = entendido; grave = no reconoció ningún campo). Ejemplo: *«Pudrición de cogollo, PC inicial. Síntomas manchas necróticas. Cirugía no. Producción sí. Transitabilidad transitable. Observación hojas amarillas. Tomar foto. Guardar foto. Registrar diagnóstico.»*
   - La **enfermedad** y su **opción** se dicen por su nombre; los **síntomas** después de la palabra «síntomas» (basta el comienzo del nombre); los demás campos con su nombre y la respuesta: «cirugía no», «producción sí», «raíces sí», «hongo …», «transitabilidad poco transitable». Lo que va después de **«observación»** es texto libre.
   - Para **corregir**, se vuelve a decir el campo («cirugía sí»). **«Resumen»** lee lo marcado; **«cancelar»** cierra sin guardar.
   - **«Tomar foto»**, **«guardar foto»**, **«repetir foto»** manejan la cámara sin tocarla.
   - Con **«registrar diagnóstico»** la app **pregunta solo lo que falte** (y la foto si no hay) y, al guardar, dice como validación: «Se registró la palma 14, línea 3, del lote IT01. Enfermedad: …. Diagnóstico: …».
   - El formulario se puede seguir llenando con el dedo en cualquier momento.
-- **Solo se inicia jornada dentro de la plantación.** Al tocar **Iniciar** (censo o cirugía) la app verifica con el GPS que el operario esté dentro del límite de la plantación (línea amarilla discontinua en el mapa). Por fuera, muestra y dice: «No se puede iniciar la jornada porque usted está por fuera de la plantación (a X m del límite)». Sin señal GPS pide esperarla. En el borde se tolera la precisión del GPS (entre 5 y 25 m). Si aún no se ha publicado el límite, no hay restricción.
+- **Solo se inicia jornada dentro de la plantación.** Al tocar **Iniciar** la app verifica con el GPS que el operario esté dentro del límite de la plantación (línea amarilla discontinua en el mapa). Por fuera, muestra y dice: «No se puede iniciar la jornada porque usted está por fuera de la plantación (a X m del límite)». Sin señal GPS pide esperarla. En el borde se tolera la precisión del GPS (entre 5 y 25 m). Si aún no se ha publicado el límite, no hay restricción.
 - **Una jornada en curso solo la continúa o la finaliza su dueño.** Si otro usuario ingresa en ese celular, la app le avisa y vuelve a pedir el ingreso con el usuario de la jornada. Solo un **administrador** puede cerrarla, escribiendo **FINALIZAR** (queda registrado como cierre por administrador).
 
 ### Palmas visitadas y hectáreas recorridas (automático)
@@ -233,7 +225,7 @@ PolinizacionData/
 - **Filtros de selección múltiple:** Programa, Operario, Lote, Estado y **Enfermedad principal, Opción de la enfermedad (si aplica) y Tipo de seguimiento**. Cada filtro abre una lista con buscador, botón *Todos* (quita el filtro), *Marcar los visibles* (marca lo que muestra la búsqueda), casillas para elegir varias opciones y *solo este* para una sola. Sin nada marcado = Todos. Los lotes se limitan al programa elegido; Opción de la enfermedad muestra las de la enfermedad principal elegida y Tipo de seguimiento las de la opción elegida. Los filtros de enfermedad y estado aplican a los diagnósticos; los demás, a jornadas, recorridos, secuencias y diagnósticos.
 - **Dirección:** `https://didpalmares.github.io/Polinizacion/visor.html` (también desde el menú de la app: **Visor web**, visible para administradores y supervisores).
 - **Acceso:** mismo usuario y contraseña de la app. Solo ingresan usuarios con rol **Super administrador**, **Administrador**, **Analista de datos** o **Supervisor**; los operarios reciben un aviso. Los roles se asignan en `admin.html`.
-  - *Administrador*, *Analista de datos* y *Supervisor* ven los tres módulos (📊 Gerencia, 🧭 Coordinación y 🗄️ Datos) y ✚ Cirugías. En la app de campo, el supervisor funciona como operario.
+  - *Administrador*, *Analista de datos* y *Supervisor* ven los tres módulos (📊 Gerencia, 🧭 Coordinación y 🗄️ Datos). En la app de campo, el supervisor funciona como operario.
   - El *Analista de datos* tiene los **mismos permisos que el administrador** en el visor, en la app y en `admin.html`.
   - El *Super administrador* tiene el **control total**: todos los permisos del administrador y, además, es el único que puede crear, editar, suspender o eliminar las cuentas privilegiadas (administradores, analistas de datos y super administradores), cambiarles la contraseña o asignar esos roles, y cambiar el token o el repositorio.
     - Mientras no exista un super administrador, cualquier administrador puede asignar ese rol, para crear el primero.
@@ -285,7 +277,7 @@ Llega en 3 a 5 minutos y queda en la lista de reportes.
 
 **Panel del día (App).** Menú → *Panel del día* (supervisores y administradores): jornadas recibidas hoy, hectáreas, diagnósticos, casos de PC, alertas, operarios y lotes con PC del último reporte diario. Al ingresar, si el reporte de hoy trae alertas, aparece un aviso.
 
-**Planificación del censo — ciclo aprobado (visor → 🧭 COORDINACIÓN → Programador de censo de enfermedades).** La plantación está dividida en un **ciclo de 16 días** aprobado (`censo/programacion/ciclo.json`, con su PDF, Excel y mapa en la misma carpeta del repositorio de datos), de lo general a lo particular:
+**Planificación del censo — ciclo aprobado (visor → 🧭 COORDINACIÓN → Programador de polinización).** La plantación está dividida en un **ciclo de 16 días** aprobado (`censo/programacion/ciclo.json`, con su PDF, Excel y mapa en la misma carpeta del repositorio de datos), de lo general a lo particular:
 - **Bloque general por día:** zona de lotes vecinos, de sur a norte empezando en IT, para **11 personas**; los lotes se cierran en el mismo día salvo unos pocos que continúan al día siguiente.
 - **Bloque de cada persona:** **18 ha (2.070 palmas, contando existentes 1 y no existentes 0) o más, preferiblemente 18–19 ha**, por **calles completas** (línea impar + par) y **continuo** (solo lotes vecinos).
 - **Asignación del personal por bloque (P):**
@@ -303,14 +295,14 @@ Llega en 3 a 5 minutos y queda en la lista de reportes.
   Para que el avance cuente toda la vuelta, cargue las jornadas desde su inicio; el visor ofrece el botón. **📄 PDF del ciclo** abre la programación aprobada.
 - En la App, al planificar la jornada, el operario ve **«Su bloque de hoy D5·P3»** con los lotes y calles (por ejemplo *GU28 L1–L78 · GU27 L39–L59*), y **Usar mi bloque** lo deja seleccionado con esas líneas. Si ese día tiene dos bloques (titular + apoyo), ve **«Sus bloques de hoy D5·P3 + D4·P8 (apoyo)»** y **Usar mis bloques** selecciona las calles de ambos. En los lotes de RI sin numeración de líneas en la cartografía se indica cuántas palmas le corresponden.
 - La propuesta automática por días sin censo sigue disponible como alternativa.
-- **Elección de lotes: 🔓 Libre / 🔒 Según programación.** Arriba del programador hay un interruptor (también en Monitoreo de plagas, independiente):
+- **Elección de lotes: 🔓 Libre / 🔒 Según programación.** Arriba del programador hay un interruptor:
   - **Libre** (lo normal si nunca se ha tocado): el personal elige cualquier lote y su bloque de hoy aparece como sugerencia.
   - **Según programación:** al abrir la labor la App deja seleccionado su bloque de hoy y no permite elegir otros lotes ni cambiar las líneas. Si la persona no tiene bloque en el plan del día, la App no inicia la jornada y le pide comunicarse con Coordinación.
   - Lo cambian superadministrador, analista, administradores y coordinadores (con confirmación). Se guarda en `config/modo_programacion.json` con quién y cuándo, y un historial. Rige desde la siguiente jornada que se inicie; sin señal, la App usa el último modo que descargó. Cada jornada guarda el modo con que se inició (`modo_programacion`).
 
-**Historia de la palma.** En el visor, en la ficha de un diagnóstico, *🕘 Historia de la palma* muestra en orden sus censos y, si se cargó Cirugías, las cirugías y correcciones, con aviso si lleva más de 30 días en recuperación sin revisión. En la App, la ficha de la palma muestra la **línea de tiempo** con sus registros.
+**Historia de la palma.** En el visor, en la ficha de un diagnóstico, *🕘 Historia de la palma* muestra en orden sus registros, con aviso si lleva más de 30 días en recuperación sin revisión. En la App, la ficha de la palma muestra la **línea de tiempo** con sus registros.
 
-**Carga masiva de usuarios e historial.** En *Modificar paquete existente*: *Cargar usuarios desde Excel o CSV* (columnas en cualquier orden: usuario, nombre, cargo, identificación, rol, labores, rol en cirugía, contraseña, estado). Crea los nuevos, actualiza los existentes y muestra un resumen con errores antes de aplicar. Al generar los archivos queda un **historial de cambios** (quién, cuándo, qué usuarios se crearon, editaron, suspendieron o eliminaron) en `config/historial_usuarios.json`, consultable desde la misma página.
+**Carga masiva de usuarios e historial.** En *Modificar paquete existente*: *Cargar usuarios desde Excel o CSV* (columnas en cualquier orden: usuario, nombre, cargo, identificación, rol, contraseña, estado). Crea los nuevos, actualiza los existentes y muestra un resumen con errores antes de aplicar. Al generar los archivos queda un **historial de cambios** (quién, cuándo, qué usuarios se crearon, editaron, suspendieron o eliminaron) en `config/historial_usuarios.json`, consultable desde la misma página.
 
 **Diagnóstico sugerido por IA (piloto).** Con la foto ya tomada, el botón *🤖 Sugerir diagnóstico con la foto* envía la foto (reducida) y las opciones del formulario a un servicio intermedio propio, que consulta a Claude (Anthropic) y devuelve enfermedad, opción, síntomas visibles, confianza y una explicación corta. El operario decide: *Aplicar sugerencia* marca los campos y él revisa y completa. Cada diagnóstico guarda si se usó la IA y si coincidió con el diagnóstico final (`ia_sugerido`, `ia_aplicada`, `ia_acerto`), para medir el piloto antes de ampliarlo. Puesta en marcha (una vez):
 1. Cuenta gratuita de Cloudflare y clave de API en console.anthropic.com con límite de gasto mensual.
@@ -318,122 +310,14 @@ Llega en 3 a 5 minutos y queda en la lista de reportes.
 3. En `admin.html` → *Diagnóstico sugerido por IA (piloto)*: pegue la dirección del servicio, elija los usuarios del piloto (vacío = todos), marque *Activar* y guarde (`config/servicios.json`).
 El servicio solo atiende a quien tenga el token de la App con escritura en el repositorio de datos, y necesita internet; sin internet se diagnostica como siempre.
 
-## 7.3 Módulo de cirugía
-
-**Quién lo usa.** Los auxiliares de remoción de tejidos enfermos (cirujanos) y los auxiliares de fumigación como auxiliares de cirugía. En el paquete de acceso cada usuario lleva `labores` (`censo`, `cirugia`, `fumigacion`) y `rol_cirugia` (`cirujano` o `auxiliar`). El administrador entra a todos los módulos sin importar su rol ni sus labores; el supervisor también, salvo que se le asignen labores específicas.
-
-**Qué genera una cirugía.** El último diagnóstico de la palma con PC inicial, PC avanzada o PC reincidente, sea del censo o de un caso nuevo del cirujano, sin cirugía posterior. Plazo: D+1 hábil, de lunes a sábado sin domingos ni festivos de Colombia; los festivos se calculan con la Ley Emiliani y la Semana Santa.
-
-**Programación (visor › ✚ CIRUGÍAS).** Coordinadores, supervisores y verificadores:
-1. Eligen la fecha y arman las parejas (cirujano + auxiliar) con su eficiencia en palmas por día.
-2. Tocan «Generar programación». La programación prioriza los casos vencidos y los que vencen ese día, y los reparte por cercanía entre las parejas:
-   - Si los casos superan la capacidad, cada pareja recibe su eficiencia.
-   - Si no la superan, se reparten en partes iguales.
-   La ruta es una sola línea continua y combina vías y senderos con atajos por dentro de los lotes entre palmas (hasta 600 m), según el tiempo de caminata de cada sector: vía 4,5 km/h, sendero principal 4,0, sendero secundario 3,8, dentro del lote 3,3. Se informan los km y minutos en campo, aparte del traslado desde la oficina.
-3. Con «Enviar a los celulares» se guarda en `cirugia/programacion/AAAA-MM-DD.json`. Los casos que no alcanzan quedan para el siguiente día hábil.
-
-**En el celular.**
-1. INICIAR › Cirugía. Se elige el rol y la pareja, y la App descarga la programación del día; queda guardada para trabajar sin señal.
-2. La ruta aparece numerada, con la siguiente palma anunciada por voz y su plazo.
-3. **Cirujano:** confirma la PC y registra la cirugía, en este orden:
-   - tipo de cirugía;
-   - producto químico (Mancozeb, Malathion, Clorpirifos, Oxicloruro de cobre o Mancozeb + Malathion) o biológico (Beauveria bassiana o Quelato de zinc);
-   - foto de antes y foto de después, obligatorias y solo con la cámara. La hora de cada foto define el inicio, el fin y la duración.
-4. Si el diagnóstico del censo estaba mal, el cirujano lo corrige con foto obligatoria. Las opciones son: PC en recuperación, cráter, palma muerta, para erradicar, palma sana, deficiencia de boro y doblamiento de cogollo. También puede reportar y operar casos nuevos de PC.
-5. **Auxiliar:** marca cada palma en su propio celular.
-6. Nada se borra: el visor muestra la versión del censador y la del cirujano. La vigente es la última.
-
-**Datos.** `cirugia/jornadas/AAAA-MM-DD/<jornada>.geojson` incluye:
-- cirugías, correcciones, casos nuevos y marcas del auxiliar;
-- recorrido y paradas;
-- un ZIP con las fotos.
-
-## 7.5 Módulo de erradicación
-
-**Qué se erradica.** Las palmas cuyo último diagnóstico (del censador, o corregido por un cirujano o un erradicador) es:
-1. **PC cráter**, o «para erradicar» si lo marcó un cirujano.
-2. **Palma espontánea.**
-3. **Yarumo** (en calle, lote o palma).
-
-En ese orden de prioridad. **Plazo:** día hábil siguiente al reporte (lunes a sábado, sin festivos).
-
-**Quién la hace.** En `admin.html` se asigna la labor **Erradicación** con el rol *Erradicador* o *Auxiliar de erradicación*. Los **equipos son mixtos**: un erradicador solo, o con su auxiliar.
-
-**Programación (visor → 🧭 COORDINACIÓN → Programador de erradicación → abrir en el mapa).**
-- Muestra los casos pendientes, los vencidos y los que vencen en la fecha.
-- Se arman los equipos (erradicador y auxiliar opcional) y se fija su eficiencia: 5, 10, 15, 20, 25 o 30 palmas por día.
-- **Generar programación** reparte los casos por cercanía y arma la ruta de cada equipo desde la oficina central. **Enviar a los celulares** escribe `erradicacion/programacion/AAAA-MM-DD.json`.
-- **Editar** cambia la lista de productos químicos (`config/erradicacion.json`, por defecto *Mesa Mate*, dosis en ml).
-
-**App (labor Erradicación).**
-- Al tocar INICIAR se elige la labor, el rol y el compañero (o «Trabajo solo»), y aparece la ruta del día.
-- En cada palma, **CONFIRMA: ERRADICAR** abre el registro:
-  1. Qué se erradica.
-  2. **Método:** *motosierra* o *química*. Si es química, el **producto** y la **dosis (ml por palma)**.
-  3. **Foto antes** y **foto después**, obligatorias y solo con la cámara.
-- **El reporte está mal: corregir** cambia el diagnóstico con evidencia fotográfica. Queda la versión del censador y la del erradicador; PC inicial o avanzada pasa a la programación de cirugía.
-- Con **Caso nuevo** se reporta y erradica una palma que no estaba programada.
-- Si el equipo es una pareja, el auxiliar marca las palmas.
-- Se sincroniza en `erradicacion/jornadas/AAAA-MM-DD/`.
-
-**Aprobación de existencia 0 (solo analista de datos o super administrador).** En el programador, pestaña **APROBACIONES**:
-- Las palmas erradicadas (cráter y espontáneas) se revisan con sus fotos de antes y después.
-- **Aprobar** (una a una o las seleccionadas) las deja con **existencia 0** en `cartografia/ajustes_existencia.json`. Así salen de los casos activos de PC y de la incidencia en la App, el visor y los reportes, sin regenerar el paquete cifrado.
-- **Rechazar** (con motivo) devuelve la palma a pendientes.
-- Los yarumos no cambian ninguna palma.
-
-**Seguimiento y reportes.**
-- La pestaña **SEGUIMIENTO** muestra: erradicadas por tipo y método, producto y dosis total, rendimiento por erradicador (palmas por día), cumplimiento del plazo, fotos, estado de la aprobación y las correcciones. También permite **exportar a CSV**.
-- Los reportes diario y semanal incluyen la página **ERRADICACIÓN** en el PDF, la hoja **Erradicación** en el Excel y el indicador «Palmas erradicadas».
-
-## 7.6 Monitoreo de plagas
-
-**Quién lo hace.** En `admin.html` se asigna la labor **Monitoreo de plagas**.
-
-**Muestreo por lote.** Al tocar INICIAR → 🐛 MONITOREO DE PLAGAS se agregan los lotes del día. Para cada lote se elige el tipo de muestreo: **10 × 10**, **7 × 7** o **5 × 5**.
-- La App calcula las palmas de la muestra con la cartografía. En 10 × 10 toma las líneas 1, 11, 21…; en cada una parte de la **primera palma viva** y sigue cada 10 palmas. 7 × 7 y 5 × 5 funcionan igual con su número.
-- Si la palma que toca está muerta (existencia 0, incluidas las erradicadas aprobadas), se toma la siguiente palma viva de esa línea.
-- Las palmas de la muestra se ven en el mapa: blanco = pendiente, verde = registrada, rojo = con daño. El panel superior indica la siguiente palma más cercana y el avance.
-
-**Registro por palma.**
-1. **Hoja evaluada:** 9, 17 o 25.
-2. **Plaga:** Opsiphanes cassina, Brassolis sophorae, Hormiga, Sibine fusca o Sagalassa valida.
-3. **Estados**, con botones − y +: LV (larvas), Huevo, Nido, PM (pupas muertas), PV (pupas vivas) y Adulto.
-4. **¿La palma presenta daño?** sí o no.
-
-Si hay más plagas en la misma palma, se usa **＋ Agregar otra plaga en esta palma**. Al final, **foto de la muestra** (obligatoria, solo cámara) y **transitabilidad del lote**. Se sincroniza en `plagas/jornadas/AAAA-MM-DD/`.
-
-**Visor → botón 🐛 PLAGAS (cabecera).** Muestra los datos del monitoreo en el mapa, como el censo:
-- el recorrido de cada jornada y las palmas muestreadas (rojo = con daño, verde = sin daño), con su detalle y foto al tocarlas;
-- filtros por periodo, plaga, auxiliar, lote y «solo con daño»;
-- la lista de jornadas (un clic resalta su recorrido y sus palmas) y la tabla de palmas.
-
-La **programación** está en 🧭 COORDINACIÓN → Monitoreo de plagas.
-
-**Visor → 🧭 COORDINACIÓN → Monitoreo de plagas.**
-- Indicadores (jornadas, palmas muestreadas, con daño).
-- Resumen **por plaga** (palmas con la plaga, con daño, total de cada estado) y **por lote**.
-- Lista de palmas muestreadas con su foto.
-- **Exportar a CSV** (una fila por palma y plaga) y **Ver en el mapa**.
-
-**Programación (visor → 🧭 COORDINACIÓN → Monitoreo de plagas → Programación).**
-- El ciclo viene de `BloquesSanidad.gpkg` pasado a palmas: **18 días con 6 unidades de unos 30 ha** cada uno (bloque P y mitad, por ejemplo D01_02-P1-1). Se guarda en `plagas/programacion/ciclo.json`, con su PDF de validación.
-- Cada auxiliar es **titular de una posición** del día (1 a 6) y sigue con su siguiente unidad pendiente. Los días con una séptima unidad se cubren con apoyo.
-- **Plan del día:** se puede cambiar la unidad, quitar a quien no asiste o agregar unidades de apoyo. **Guardar y enviar** escribe `plagas/plan/AAAA-MM-DD.json`.
-- **Avance:** una unidad queda hecha cuando se registró el 90 % de su muestra. También se marca terminada o se reabre con un clic.
-- **En la App** aparece **«Su bloque de hoy»** con su unidad y sus lotes. **Usar mi bloque** calcula la muestra solo dentro de las palmas de la unidad.
-- **Interruptor 🔓 Libre / 🔒 Según programación** (arriba de la programación): con la programación activa la App deja seleccionada su unidad, no permite agregar ni quitar lotes y, sin unidad asignada, no deja iniciar el monitoreo. Funciona igual que en el censo (ver 7.4).
-
-**Reportes:** el diario y el semanal incluyen la página **MONITOREO DE PLAGAS** (por plaga y por lote) y las hojas **Plagas** y **Plagas por lote** en el Excel.
-
 ## 7.7 Hoja de vida de la palma
 
 Cada palma **diagnosticada o con alguna novedad** de otra labor tiene una hoja de vida con todo lo que le ha pasado, en orden. Las palmas sin diagnósticos ni novedades no tienen hoja de vida.
 
-- **Qué registra:** diagnósticos del censo de **todos** los operarios (enfermedad, opción, seguimiento, estado, síntomas, cirugía, producción y foto), correcciones y casos nuevos del cirujano o del erradicador, **cirugías** (tipo y producto), **erradicaciones** (tipo, método, producto y dosis), **existencia 0** aprobada o rechazada (con quién la decidió) y **daños de plagas** encontrados en el monitoreo. Desde el inicio, sin las jornadas de prueba.
+- **Qué registra:** los registros de **todos** los operarios (con estado y foto), correcciones, casos nuevos y **existencia 0**. Desde el inicio, sin las jornadas de prueba.
 - **Cómo se arma:** un flujo automático del repositorio de datos (`scripts/hoja_vida.py`) la rehace cada vez que se sincroniza una jornada o se aprueba una existencia 0, y además cada hora de 6:00 a. m. a 8:00 p. m.; queda en `palmas/hoja_vida/<LOTE>.json`.
-- **En la App (todo el personal de polinizacion):** al tocar una palma, en cualquier labor (censo, cirugía, erradicación o plagas), aparece **📋 Hoja de vida** con el estado actual (último diagnóstico, hace cuántos días y quién, número de diagnósticos, cirugías y plagas), las alertas (PE partida, cráter pendiente o ya erradicado, existencia 0, en recuperación sin revisión hace más de 30 días) y la línea de tiempo, de lo más reciente a lo más antiguo. Se descarga con internet (solo los lotes que cambiaron) y queda guardada para usarla **sin señal**. En las palmas de **auditoría** no se muestra, para no influir el diagnóstico.
-- **En el visor:** el botón **📋 HOJA DE VIDA** de la cabecera abre una vista con la lista de palmas con hoja de vida por lote (búsqueda por línea y palma; filtros: críticas, en recuperación, con cirugía, con plagas), la hoja de vida de la palma elegida y el **mapa sobre la ortofoto del dron** con todas esas palmas (color del último diagnóstico; las críticas titilan) y la palma elegida resaltada. En la ficha del diagnóstico, **📋 Hoja de vida** abre la misma vista en esa palma. Usa la hoja completa (no solo las fechas cargadas) y suma lo cargado en el visor que aún no haya pasado al archivo, sin duplicar. Los registros con foto tienen **📷 Ver foto**.
+- **En la App (todo el personal de polinizacion):** al tocar una palma aparece **📋 Hoja de vida** con el estado actual (último diagnóstico, hace cuántos días y quién, número de diagnósticos), las alertas (PE partida, existencia 0, en recuperación sin revisión hace más de 30 días) y la línea de tiempo, de lo más reciente a lo más antiguo. Se descarga con internet (solo los lotes que cambiaron) y queda guardada para usarla **sin señal**. En las palmas de **auditoría** no se muestra, para no influir el diagnóstico.
+- **En el visor:** el botón **📋 HOJA DE VIDA** de la cabecera abre una vista con la lista de palmas con hoja de vida por lote (búsqueda por línea y palma; filtros: críticas y en recuperación), la hoja de vida de la palma elegida y el **mapa sobre la ortofoto del dron** con todas esas palmas (color del último diagnóstico) y la palma elegida resaltada. En la ficha del diagnóstico, **📋 Hoja de vida** abre la misma vista en esa palma. Usa la hoja completa (no solo las fechas cargadas) y suma lo cargado en el visor que aún no haya pasado al archivo, sin duplicar. Los registros con foto tienen **📷 Ver foto**.
 - **Caso nuevo o seguimiento:** al diagnosticar, el tipo de seguimiento automático (por ejemplo, cráter como caso nuevo o como seguimiento) tiene en cuenta los registros de la palma en el celular **y en la hoja de vida**, es decir, también lo que registraron otros operarios.
 
 ## 7.2 Ortofoto del dron

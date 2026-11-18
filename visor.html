@@ -820,9 +820,6 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 #rep .acu{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
 #rep .acu div{border:1px solid var(--borde);border-radius:10px;padding:4px 8px;font-size:11.5px;color:var(--tenue);line-height:1.25}
 #rep .acu div b{display:block;color:var(--texto);font-family:var(--t);font-size:16px;font-variant-numeric:tabular-nums}
-#rep .critRep{display:none;align-items:center;gap:8px;flex-wrap:wrap;background:#b71c1c;color:#fff;border:2px solid #ff5252;border-radius:10px;padding:5px 10px;font-weight:800;font-size:13px;animation:critLatido 1.2s ease-out infinite}
-#rep .critRep.on{display:flex}
-#rep .critRep.nuevo{animation:critLatido 1.2s ease-out infinite,critParpadeo .35s linear 6}
 @media (max-width:560px){#rep .acu{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .rep-etq{background:rgba(6,20,15,.82);color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:6px;font-family:var(--t);font-weight:700;font-size:12px;padding:0 5px;box-shadow:none}
 .rep-etq::before{display:none}
@@ -881,7 +878,7 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
       <div id="lgMsg"></div>
     </form>
     <p class="tenue" style="font-size:12.5px;margin:6px 0 0">Acceso para administradores y supervisores. Requiere internet: los datos se leen del repositorio privado de GitHub.</p>
-    <div id="lgVer">VERSIÓN 20261117:1855</div>
+    <div id="lgVer">VERSIÓN 20261117:1908</div>
   </div>
 </div>
 
@@ -976,7 +973,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
    Los archivos de GitHub no cambian una vez escritos, por eso se guardan
    en caché local por su huella (sha) y solo se descargan una vez.
    ===================================================================== */
-const VERSION='20261117:1855';
+const VERSION='20261117:1908';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const num=(n,d=0)=>Number(n||0).toLocaleString('es-CO',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -1248,10 +1245,9 @@ function leyendaVias(){
 
 /* ===================== NÚCLEO COMÚN DE LABORES (App, visor y programador) =====================
    1) Calendario laboral colombiano: festivos (Ley 51 de 1983 «Ley Emiliani» y fiestas móviles por Semana Santa).
-      Día hábil = lunes a sábado que no sea festivo. Plazo D+1 hábil para cirugías.
+      Día hábil = lunes a sábado que no sea festivo.
    2) Red de caminos: grafo de vías y senderos (vias.enc), caminos más cortos (Dijkstra) y orden de visita
-      (vecino más cercano + 2-opt) para rutas de palmas puntuales.
-   3) Reglas de cirugía: qué diagnósticos generan orden de cirugía y las condiciones de corrección. */
+      (vecino más cercano + 2-opt) para rutas de palmas puntuales. */
 
 /* ---------- 1. Calendario ---------- */
 const NUCLEO_CAL={cache:new Map()};
@@ -1425,88 +1421,13 @@ function rutaOptima(RED_GJ,oficina,puntos,opciones={}){
     min_caminata:Math.round(acumCosto/(VEL_KMH.via*1000/60))};
 }
 
-/* ---------- 3. Reglas de cirugía ---------- */
-const CIR_N2=['PC INICIAL','PC AVANZADA','PC REINCIDENTE'];
-const esCasoCirugia=d=>!!d&&(d.n1_codigo==='PC'||/PUDRICI[ÓO]N DE COGOLLO/i.test(d.nivel1||d.n1||''))&&CIR_N2.includes(String(d.nivel2||d.n2||'').toUpperCase());
-const PRODUCTOS_CIR={quimico:['Mancozeb','Malathion','Clorpirifos','Oxicloruro de cobre','Mancozeb + Malathion'],biologico:['Beauveria bassiana','Quelato de zinc']};
-/* Correcciones del cirujano: estado real de la palma cuando el censo quedó mal. */
-const CORRECCIONES_CIR=[
-  {id:'recuperacion',t:'PC en recuperación',n1_codigo:'PC',n1:'PUDRICIÓN DE COGOLLO (PC)',n2:'PC EN RECUPERACIÓN',n3:'SEGUIMIENTO PC',estado:'tratamiento'},
-  {id:'crater',t:'Cráter',n1_codigo:'PC',n1:'PUDRICIÓN DE COGOLLO (PC)',n2:'CRATER',n3:'SEGUIMIENTO PC',estado:'enferma'},
-  {id:'muerta',t:'Palma muerta',n1_codigo:'MUERTA',n1:'PALMA MUERTA',n2:'',n3:'',estado:'muerta'},
-  {id:'erradicar',t:'Para erradicar',n1_codigo:'PC',n1:'PUDRICIÓN DE COGOLLO (PC)',n2:'PARA ERRADICAR',n3:'SEGUIMIENTO PC',estado:'enferma',accion:'erradicar'},
-  {id:'sana',t:'Palma sana',n1_codigo:'SN',n1:'SIN NOVEDAD (PALMA SANA)',n2:'',n3:'',estado:'sana'},
-  {id:'boro',t:'Deficiencia de boro',n1_codigo:'DEF',n1:'DEFICIENCIAS',n2:'BORO (B)',n3:'',estado:'enferma'},
-  {id:'doblamiento',t:'Doblamiento de cogollo',n1_codigo:'DC',n1:'DOBLAMIENTO DE COGOLLO',n2:'',n3:'',estado:'novedad'}
-];
-
-/* ---------- 4. Reglas de erradicación ----------
-   Se erradican: PC en estado cráter (o marcada «para erradicar» por un cirujano), palmas espontáneas y yarumos.
-   Plazo: día hábil siguiente al reporte. Prioridad: cráter → espontánea → yarumo. */
-const n2De=d=>String(d&&(d.nivel2||d.n2)||'').toUpperCase();
-const codN1De=d=>String(d&&(d.n1_codigo||((d.problemas||[])[0]))||'').toUpperCase();
-function tipoErradicacion(d){
-  if(!d)return null;const c=codN1De(d),n1=String(d.nivel1||d.n1||'').toUpperCase(),n2=n2De(d);
-  if((c==='PC'||/PUDRICI[ÓO]N DE COGOLLO/.test(n1))&&(n2==='CRATER'||n2==='CRÁTER'||n2==='PARA ERRADICAR'))return 'CRATER';
-  if(c==='ESP'||/ESPONT/.test(n1))return 'ESPONTANEA';
-  if(c==='YAR'||/YARUMO/.test(n1))return 'YARUMO';
-  return null;
-}
-const TIPOS_ERR={CRATER:{t:'PC cráter',p:0,existencia:true},ESPONTANEA:{t:'Palma espontánea',p:1,existencia:true},YARUMO:{t:'Yarumo',p:2,existencia:false}};
-const METODOS_ERR=['Motosierra','Química'];
-const PRODUCTOS_ERR=['Mesa Mate'];          // productos químicos por defecto (la lista se amplía en config/erradicacion.json)
-const DOSIS_UNIDAD_ERR='ml';
-const EFICIENCIAS_ERR=[5,10,15,20,25,30];
-/* Correcciones del erradicador: estado real cuando el caso quedó mal reportado (queda la versión del censador y la suya). */
-const CORRECCIONES_ERR=[
-  {id:'crater',t:'Sí es PC cráter',n1_codigo:'PC',n1:'PUDRICIÓN DE COGOLLO (PC)',n2:'CRATER',n3:'SEGUIMIENTO PC',estado:'enferma'},
-  {id:'pc_inicial',t:'PC inicial (pasa a cirugía)',n1_codigo:'PC',n1:'PUDRICIÓN DE COGOLLO (PC)',n2:'PC INICIAL',n3:'SEGUIMIENTO PC',estado:'enferma'},
-  {id:'pc_avanzada',t:'PC avanzada (pasa a cirugía)',n1_codigo:'PC',n1:'PUDRICIÓN DE COGOLLO (PC)',n2:'PC AVANZADA',n3:'SEGUIMIENTO PC',estado:'enferma'},
-  {id:'recuperacion',t:'PC en recuperación',n1_codigo:'PC',n1:'PUDRICIÓN DE COGOLLO (PC)',n2:'PC EN RECUPERACIÓN',n3:'SEGUIMIENTO PC',estado:'tratamiento'},
-  {id:'muerta',t:'Palma muerta',n1_codigo:'MUERTA',n1:'PALMA MUERTA',n2:'',n3:'',estado:'muerta'},
-  {id:'sana',t:'Palma sana / no hay espontánea ni yarumo',n1_codigo:'SN',n1:'SIN NOVEDAD (PALMA SANA)',n2:'',n3:'',estado:'sana'}
-];
-
-/* ---------- 5. Monitoreo de plagas ----------
-   Muestreo por lote (10×10, 7×7, 5×5): líneas 1, 1+k, 1+2k… (desde la primera línea del lote) y, en cada una, la primera palma
-   viva y luego cada k palmas; si la palma que toca está muerta (existencia 0) se toma la siguiente viva de esa línea. */
-const PLAGAS=[{id:'OPS',n:'Opsiphanes cassina'},{id:'BRA',n:'Brassolis sophorae'},{id:'HOR',n:'Hormiga'},{id:'SIB',n:'Sibine fusca'},{id:'SAG',n:'Sagalassa valida'}];
-const ESTADOS_PLAGA=[{k:'lv',t:'LV',d:'Larvas'},{k:'huevo',t:'Huevo',d:'Huevos'},{k:'nido',t:'Nido',d:'Nidos'},{k:'pm',t:'PM',d:'Pupas muertas'},{k:'pv',t:'PV',d:'Pupas vivas'},{k:'adulto',t:'Adulto',d:'Adultos'}];
-const HOJAS_PLAGA=[9,17,25];
-const MUESTREOS=[{id:'10x10',k:10,t:'10 × 10'},{id:'7x7',k:7,t:'7 × 7'},{id:'5x5',k:5,t:'5 × 5'}];
-const TRANSITABILIDAD=['Transitable','Poco transitable','No transitable'];
-/* Palmas de una unidad de la programación de plagas: rangos de ids [[desde, hasta], …] */
-const enRangos=(id,rs)=>{const x=Number(id);for(const [a,b] of rs)if(x>=a&&x<=b)return true;return false;};
-/* d: palmas del lote [id,línea,palma,existe,lng,lat]; muerta(id) opcional (p. ej. existencia 0 aprobada). Devuelve las palmas de la muestra. */
-function muestraLote(d,k,muerta){
-  const viva=a=>Number(a[3])!==0&&!(muerta&&muerta(String(a[0])));
-  const porLinea=new Map();for(const a of d||[]){const l=Number(a[1]);if(!(l>0))continue;if(!porLinea.has(l))porLinea.set(l,[]);porLinea.get(l).push(a);}
-  const lineas=[...porLinea.keys()].sort((a,b)=>a-b);if(!lineas.length)return [];
-  const l0=lineas[0],out=[];
-  for(const l of lineas){if((l-l0)%k)continue;
-    const ps=porLinea.get(l).slice().sort((a,b)=>Number(a[2])-Number(b[2]));const pv=ps.find(viva);if(!pv)continue;
-    const usadas=new Set();const max=Number(ps[ps.length-1][2]);
-    for(let t=Number(pv[2]);t<=max;t+=k){const a=ps.find(x=>Number(x[2])>=t&&viva(x)&&!usadas.has(String(x[0])));if(!a)break;
-      if(Number(a[2])>=t+k&&t!==Number(pv[2]))continue;   /* sin palma viva en este tramo: se pasa al siguiente */
-      usadas.add(String(a[0]));out.push({palma_id:String(a[0]),linea:Number(a[1]),palma:Number(a[2]),lng:a[4],lat:a[5]});}}
-  return out;
-}
-
 /* ---------- Modo de programación por labor (config/modo_programacion.json, lo cambia Coordinación) ----------
    'libre': el personal elige cualquier lote · 'programado': solo su bloque del plan del día. Sin archivo = libre. */
-const MODO_PROG_RUTA='config/modo_programacion.json',LABORES_MODO_PROG={censo:'Censo de enfermedades',plagas:'Monitoreo de plagas'};
+const MODO_PROG_RUTA='config/modo_programacion.json',LABORES_MODO_PROG={polinizacion:'Polinización'};
 const modoProgDe=(c,labor)=>c&&c[labor]&&c[labor].modo==='programado'?'programado':'libre';
 
-/* ---------- Casos críticos que titilan en el mapa: PE partida (la palma murió) y PC cráter (próxima a morir; se erradica) ---------- */
-const CRITICOS={PE_PARTIDA:{t:'PE partida',nota:'La palma murió: pendiente de marcar como inexistente'},CRATER:{t:'PC cráter',nota:'Próxima a morir: se erradica el día hábil siguiente'}};
-function criticoDe(d){if(!d)return null;const n2=String(d.nivel2||d.n2||'').toUpperCase().trim(),c=String(d.n1_codigo||(Array.isArray(d.problemas)?d.problemas[0]:'')||'').toUpperCase(),n1=String(d.nivel1||d.n1||'').toUpperCase();
-  if(n2==='PE PARTIDA'&&(!c||c==='PE'||/EST[IÍ]PITE/.test(n1)))return 'PE_PARTIDA';
-  if((n2==='CRATER'||n2==='CRÁTER')&&(!c||c==='PC'||/COGOLLO/.test(n1)))return 'CRATER';
-  return null;}
-
 /* ---------- Hoja de vida de la palma (App y visor): resumen, alertas y línea de tiempo ---------- */
-const HV_LAB={censo:['Censo','#e53935'],correccion:['Corrección','#ff9f1c'],caso_nuevo:['Caso nuevo','#ff7043'],cirugia:['Cirugía','#2f93d5'],
-  erradicacion:['Erradicación','#8d6e63'],existencia:['Existencia','#9e9e9e'],plagas:['Plagas','#c77dff']};
+const HV_LAB={censo:['Censo','#e53935'],correccion:['Corrección','#ff9f1c'],caso_nuevo:['Caso nuevo','#ff7043'],existencia:['Existencia','#9e9e9e']};
 (function(){const css=document.createElement('style');css.textContent=`
   .hv{margin:10px 0;border:1px solid var(--borde,#2a3b36);border-radius:12px;padding:8px 10px;background:rgba(47,147,213,.06)}
   .hv>summary{cursor:pointer;font-weight:800;font-size:15px;list-style:none;display:flex;align-items:center;gap:6px}
@@ -1524,16 +1445,15 @@ function resumenHV(ev){
   const al=[];const n2=String(ult&&ult.n2||'').toUpperCase();
   if(ev.some(e=>e.l==='existencia'&&/aprobada/i.test(e.x)))al.push(['✝ Palma con existencia 0 (ya no existe en la cartografía)','']);
   else if(n2==='PE PARTIDA')al.push(['✝ PE PARTIDA: la palma murió','']);
-  else if(n2==='CRATER'||n2==='CRÁTER')al.push([ev.some(e=>e.l==='erradicacion'&&Date.parse(e.t)>=Date.parse(ult.t))?'⚠ Cráter: ya fue erradicada':'⚠ PC CRÁTER: pendiente de erradicar','am']);
   if(/RECUPERACI/.test(n2)&&dias>30)al.push([`⏰ En recuperación sin nueva revisión hace ${dias} días`,'am']);
-  return {ult,dias,al,nCir:ev.filter(e=>e.l==='cirugia').length,nDiag:diags.length,nPlg:ev.filter(e=>e.l==='plagas').length};
+  return {ult,dias,al,nDiag:diags.length};
 }
 function htmlHojaVida(h,abierta,conFoto){
   const ev=h.ev||[];const r=resumenHV(ev);
   return `<details class="hv"${abierta?' open':''}><summary>📋 Hoja de vida <span class="tenue" style="font-weight:600">· ${ev.length} registro${ev.length===1?'':'s'}</span></summary>
     ${r.al.map(([t,c])=>`<div class="al ${c}">${esc(t)}</div>`).join('')}
     <div class="est"><div><b>Último diagnóstico:</b><br>${r.ult?esc(r.ult.x):'—'}</div><div><b>Hace:</b><br>${r.dias==null?'—':r.dias===0?'hoy':r.dias+' día'+(r.dias===1?'':'s')}${r.ult?`<br><span class="tenue">${esc(r.ult.q||'')}</span>`:''}</div>
-      <div><b>Diagnósticos:</b> ${r.nDiag}</div><div><b>Cirugías:</b> ${r.nCir}${r.nPlg?` · <b>Plagas:</b> ${r.nPlg}`:''}</div></div>
+      <div><b>Diagnósticos:</b> ${r.nDiag}</div></div>
     ${[...ev].reverse().map(e=>{const [et,col]=HV_LAB[e.l]||[e.l,'#999'];
       return `<div class="ev" style="border-left-color:${col}"><b>${esc(et)}${e.r&&e.l!=='censo'?' ('+esc(e.r)+')':''}</b> · <span class="tenue">${esc(fechaHV(e.t))}</span><br>${esc(e.x||'')}${e.d?`<br><span class="tenue">${esc(e.d)}</span>`:''}<br><span class="tenue">${esc(e.q||'')}${e.f?(conFoto?` <button class="btn mini nar" data-hvf="${esc(e.f)}">📷 Ver foto</button>`:' · 📷'):''}</span></div>`;}).join('')}
     <div class="tenue" style="font-size:11.5px">Incluye los registros de todo el personal ya sincronizados. Se actualiza con internet.</div></details>`;
@@ -1970,7 +1890,6 @@ function prepararRep(){
     return {j,t,ll,col,estela,marca,k:-1,acum,diags,dN:0,activa:false};});
   if(REP.modo==='uno'){precargarFotos(REP.lista[REP.i]);const jx=REP.lista[REP.i],ix=REP.i;REP.vis=null;
     palmasVisitadasJ(jx).then(v=>{if(!REP.on||REP.modo!=='uno'||REP.i!==ix)return;REP.vis=v.filter(q=>Number.isFinite(q.t)).map(q=>q.t);REP.visTot=v.length;ponerRep(REP.T);}).catch(()=>{});}
-  REP.critUlt=null;
   REP.T0=Math.min(...REP.js.map(x=>x.t[0]));REP.T1=Math.max(...REP.js.map(x=>x.t[x.t.length-1]));REP.T=REP.T0;
   const caja=L.latLngBounds(REP.js.flatMap(x=>x.ll));try{mapa.fitBounds(caja,{padding:[40,40],maxZoom:REP.modo==='todos'?17:18});}catch(e){}
   pintarBarraRep();ponerRep(REP.T0);
@@ -1987,7 +1906,6 @@ function pintarBarraRep(){
       ${uno?'':'<span>Activos <b id="repAct">0</b></span><span>Diagnósticos <b id="repND">0</b></span><span>Km <b id="repKm">0.00</b></span><span class="tenue">Las horas son del día; cada color es un operario.</span>'}</div>
     ${uno?`<div class="acu" id="repAcu"><div>Inicio<b>${esc(j.hora_inicio||'--')}</b></div><div>Fin<b>${esc(j.hora_fin||'--')}</b></div><div>Transcurrido<b id="rqTr">00:00:00</b></div><div>Km recorridos<b id="repKm">0.00</b></div>
       <div>Velocidad prom.<b id="rqVel">0.0 km/h</b></div><div>Hectáreas<b id="rqHa">0.00</b></div><div>Palmas visitadas<b id="rqPal">0</b></div><div>Diagnósticos<b id="repND">0</b></div></div>`:''}
-    <div class="critRep" id="repCrit" title="Clic: ir al último caso crítico"></div>
     ${uno?'':`<div class="ops" id="repOps">${REP.js.map((x,k)=>`<span data-k="${k}"><i class="punto" style="background:${x.col}"></i>${esc(nombreCorto(x.j.evaluador))} · ${esc(x.j.hora_inicio)}</span>`).join('')}</div>`}`;
   $('#repX').onclick=()=>detenerRep();
   $('#repBt').onclick=()=>REP.run?pausarRep():iniciarRep();
@@ -2010,10 +1928,8 @@ function ponerRep(T){REP.T=T;let act=0,nd=0,km=0;const uno=REP.modo==='uno';
       km+=x.acum[i]/1000;}
     // Diagnósticos que van apareciendo
     let k=x.dN;const nuevos=[];
-    while(k<x.diags.length&&x.diags[k].t<=T){const q=x.diags[k];const cr=typeof criticoDe==='function'?criticoDe(q.d):null;
-      q.m=cr&&typeof iconoCritico==='function'?L.marker([q.d.lat,q.d.lng],{icon:iconoCritico(cr),zIndexOffset:2000,keyboard:false}).addTo(REP.capa)
-        :L.circleMarker([q.d.lat,q.d.lng],{renderer:rend,radius:6,color:'#fff',weight:1.5,fillColor:colorD(q.d),fillOpacity:1}).addTo(REP.capa);
-      if(cr&&REP.run)avisoCritRep(q,x,cr);
+    while(k<x.diags.length&&x.diags[k].t<=T){const q=x.diags[k];
+      q.m=L.circleMarker([q.d.lat,q.d.lng],{renderer:rend,radius:6,color:'#fff',weight:1.5,fillColor:colorD(q.d),fillOpacity:1}).addTo(REP.capa);
       q.m.on('click',ev=>{L.DomEvent.stopPropagation(ev);popupDiag({...q.d,_j:x.j},ev.latlng);});nuevos.push(q);k++;}
     while(k>0&&x.diags[k-1].t>T){k--;const q=x.diags[k];if(q.m){REP.capa.removeLayer(q.m);q.m=null;}}
     x.dN=k;nd+=k;
@@ -2024,7 +1940,7 @@ function ponerRep(T){REP.T=T;let act=0,nd=0,km=0;const uno=REP.modo==='uno';
   const rg=$('#repRg');if(rg)rg.value=Math.round(1000*(T-REP.T0)/Math.max(1,REP.T1-REP.T0));
   if($('#repAct'))$('#repAct').textContent=act;if($('#repND'))$('#repND').textContent=nd;if($('#repKm'))$('#repKm').textContent=km.toFixed(2);
   $$('#repOps span').forEach(s=>{const x=REP.js[+s.dataset.k];s.classList.toggle('inact',!x||!x.activa);});
-  pintarCritRep();if(uno)acumuladosRep(T,km,nd);
+  if(uno)acumuladosRep(T,km,nd);
 }
 /* Uno a uno: datos acumulados de la jornada hasta el instante T. */
 function acumuladosRep(T,km,nd){const x=REP.js[0];if(!x)return;const j=x.j,t0=x.t[0],tf=x.t[x.t.length-1],ms=Math.max(0,Math.min(T,tf)-t0),h=ms/3600000;
@@ -2034,16 +1950,6 @@ function acumuladosRep(T,km,nd){const x=REP.js[0];if(!x)return;const j=x.j,t0=x.
   if(pal==null)pal=Math.round((Number(j.palmas)||0)*(kmT>0?Math.min(1,km/kmT):0));
   const s=(id,v)=>{const e=$('#'+id);if(e)e.textContent=v;};
   s('rqTr',hms(ms));s('rqVel',(h>0.005?km/h:0).toFixed(1)+' km/h');s('rqHa',ha.toFixed(2));s('rqPal',num(pal));}
-/* Casos críticos (PE partida y PC cráter) que van apareciendo en la reproducción. */
-function pintarCritRep(){const e=$('#repCrit');if(!e)return;let np=0,nc=0;
-  for(const x of REP.js)for(let k=0;k<x.dN;k++){const c=typeof criticoDe==='function'?criticoDe(x.diags[k].d):null;if(c==='PE_PARTIDA')np++;else if(c==='CRATER')nc++;}
-  const txt=(np?`✝ ${np} PE PARTIDA (palma${np>1?'s':''} muerta${np>1?'s':''})`:'')+(np&&nc?' · ':'')+(nc?`⚠ ${nc} PC CRÁTER (erradicar)`:'');
-  const u=REP.critUlt;const h=`<span style="font-size:17px">🚨</span><span>${txt}</span>${u?`<span style="font-weight:600">· último: ${esc(nombreCorto(u.op))} · lote ${esc(u.d.lote)} L${esc(u.d.linea)} P${esc(u.d.palma)}</span>`:''}`;
-  if(e.dataset.h!==h){e.dataset.h=h;e.innerHTML=h;}e.classList.toggle('on',np+nc>0);
-  e.onclick=()=>{const q=REP.critUlt;if(q){mapa.setView([q.d.lat,q.d.lng],19,{animate:true});popupDiag({...q.d,_j:q.j},[q.d.lat,q.d.lng]);}};}
-function avisoCritRep(q,x,cr){REP.critUlt={d:q.d,j:x.j,op:x.j.evaluador};const e=$('#repCrit');
-  if(e){e.classList.remove('nuevo');void e.offsetWidth;e.classList.add('nuevo');}
-}
 function iniciarRep(){if(!REP.on)return;if(REP.T>=REP.T1)ponerRep(REP.T0);REP.run=true;const b=$('#repBt');if(b)b.textContent='❚❚';
   let prev=performance.now();const paso=now=>{if(!REP.run)return;const dt=now-prev;prev=now;
     if(Date.now()<REP.espera){REP.raf=requestAnimationFrame(paso);return;}
@@ -2113,7 +2019,7 @@ function resumenLotes(){
   for(const d of DIAGF){const f=fila(d.lote||'—');f.diag++;if(d.estado==='enferma')f.enfermas++;}
   // casos de PC: último diagnóstico de cada palma (todas las jornadas filtradas, sin el filtro de estado)
   const ult=new Map();for(const j of JORF)for(const d of j.diags){if(!loteSel(d.lote)||!enProg(d.lote))continue;const k=d.palma_id??(d.lote+'|'+d.linea+'|'+d.palma);const u=ult.get(k);if(!u||String(d.creado)>String(u.creado))ult.set(k,d);}
-  for(const d of ult.values())if(esCasoPC(codN1(d),d.nivel2,d.estado)&&!(typeof VAJ!=='undefined'&&VAJ.has(String(d.palma_id))))fila(d.lote||'—').pc=(fila(d.lote||'—').pc||0)+1;   // sin palmas erradicadas aprobadas
+  for(const d of ult.values())if(esCasoPC(codN1(d),d.nivel2,d.estado))fila(d.lote||'—').pc=(fila(d.lote||'—').pc||0)+1;
   // Avance = palmas distintas visitadas (sin repetir entre jornadas) ÷ palmas totales del lote
   return [...m.values()].map(f=>{const tl=totalLote(f.lote),vis=Math.min(tl||Infinity,f.ids.size+f.sinIds);return {...f,ids:undefined,operarios:f.operarios.size,ha:+f.ha.toFixed(2),distintas:vis,total_lote:tl,avance:tl?+(vis/tl*100).toFixed(1):null,pc:f.pc||0,incid_pc:tl?+((f.pc||0)/tl*100).toFixed(2):null};});
 }
@@ -2229,185 +2135,25 @@ async function entrar(){
   $('#hdrUsuario').textContent=`${SES.nombre} · ${({admin:'Administrador',superadmin:'Super administrador',supervisor:'Supervisor',analista:'Analista de datos'})[SES.rol]||'Supervisor'}`;
   if(typeof aplicarPermisosGer==='function')aplicarPermisosGer();
   try{await cargarCartografia();}catch(e){toast('No se pudo cargar la cartografía: '+e.message,6000);}
-  try{await cargarAjustesVisor();}catch(e){}
   try{await cargarVias();}catch(e){}
   ponerRango(6);await cargar();
 }
-/* =====================================================================
-   PROGRAMADOR Y SEGUIMIENTO DE CIRUGÍAS (visor web)
-   · Casos pendientes: palmas cuyo último diagnóstico (censo o corrección del cirujano) es PC inicial, avanzada o
-     reincidente y que no tienen cirugía posterior. Plazo: D+1 hábil (lunes a sábado, sin festivos).
-   · Programación inteligente: reparte los casos entre las parejas según su eficiencia (palmas/día), prioriza
-     vencidos y los que vencen en la fecha, y ordena cada ruta sobre vías y senderos desde la oficina central.
-   · La programación se guarda en el repositorio (cirugia/programacion/AAAA-MM-DD.json) y la App la descarga.
-   ===================================================================== */
-const CIR={on:false,cargado:false,cargando:false,diags:[],cirugias:[],correcciones:[],marcas:[],jornadas:[],pend:[],usuarios:[],
-  parejas:[],prog:null,progSha:null,capa:L.layerGroup(),fecha:null,tab:'prog'};
-const COLORES_PAREJA=['#22d39a','#f2a33a','#4fb3ff','#c77dff'];
-const OFICINA_DEF={lat:1.526032,lng:-78.734753};
-function oficinaCentral(){const f=VIAS.gj&&VIAS.gj.features.find(x=>x.properties.tipo==='oficina');return f?{lng:f.geometry.coordinates[0],lat:f.geometry.coordinates[1]}:OFICINA_DEF;}
+/* ---------- Utilidades comunes del visor (usuarios del paquete, carpetas por día y escritura en el repositorio de datos) ---------- */
 const nombreCorto=n=>{const p=String(n||'').trim().split(/\s+/);if(p.length>=3)return (p[2]+' '+p[0]).toLowerCase().replace(/(^|\s)\S/g,c=>c.toUpperCase());return String(n||'').toLowerCase().replace(/(^|\s)\S/g,c=>c.toUpperCase());};
-const etqPalma=o=>`${o.lote} · L${o.linea??'?'} · P${o.palma??'?'}`;
-
-/* ---------- Interfaz ---------- */
-(function montarCirugia(){
-  const css=document.createElement('style');css.textContent=`
-  body.modo-cir #filtros,body.modo-cir nav.tabs,body.modo-cir #panel{display:none!important}
-  #cirPanel{flex:1;overflow:auto;padding:12px 14px 30px;display:none}
-  body.modo-cir #cirPanel{display:block}
-  .cir-num{background:none;border:0}
-  .cir-num b{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;color:#06140f;font:700 11.5px/1 system-ui;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5)}
-  .cir-par{border:1px solid var(--borde);border-radius:12px;padding:10px;margin:0 0 8px;display:grid;gap:6px}
-  .cir-par .cab{display:flex;align-items:center;gap:8px}
-  .cir-par .cab i{width:12px;height:12px;border-radius:3px;display:inline-block}
-  .cir-par select{width:100%}
-  .cir-ef{display:flex;align-items:center;gap:8px;font-size:12.5px}
-  .cir-ef input{flex:1;accent-color:var(--acento)}
-  .cir-aviso{border:1px solid var(--ambar);background:rgba(255,197,61,.08);border-radius:10px;padding:8px 10px;font-size:12.8px;margin:8px 0}
-  .cir-tabs{display:flex;gap:6px;margin:0 0 10px}
-  .cir-tabs button.on{border-color:var(--acento);background:rgba(34,211,154,.15)}
-  .venc{color:#ff8a80;font-weight:700}.hoyv{color:var(--ambar);font-weight:600}
-  .hist{border-left:2px solid var(--borde);margin:6px 0 0 4px;padding-left:10px;display:grid;gap:6px;font-size:12.5px}
-  .hist .v{position:relative}.hist .v::before{content:'';position:absolute;left:-15px;top:4px;width:8px;height:8px;border-radius:50%;background:#5c6b64}
-  .hist .v.vig::before{background:var(--acento)}.hist .v.vieja b{text-decoration:line-through;color:var(--tenue)}`;
-  document.head.appendChild(css);
-  const bt=document.createElement('button');bt.className='btn mini';bt.id='btCir';bt.innerHTML='✚ CIRUGÍAS';bt.title='Programador y seguimiento de cirugías';
-  $('#chDatos').before(bt);
-  const p=document.createElement('div');p.id='cirPanel';$('aside').appendChild(p);
-  bt.onclick=()=>alternarCirugia();
-})();
-function alternarCirugia(on){
-  CIR.on=on==null?!CIR.on:on;if(CIR.on&&typeof ERR!=='undefined'&&ERR.on)alternarErr(false);document.body.classList.toggle('modo-cir',CIR.on);$('#btCir').classList.toggle('prim',CIR.on);
-  for(const c of [capaRec,capaDiag,capaPar])CIR.on?mapa.removeLayer(c):(c.addTo(mapa));
-  if(CIR.on){CIR.capa.addTo(mapa);if(!CIR.cargado&&!CIR.cargando)cirCargar();else pintarCir();}
-  else{mapa.removeLayer(CIR.capa);}
-}
-
-/* ---------- Usuarios del paquete (nombres, cargos y labores) ---------- */
-async function cirUsuarios(){
-  if(CIR.usuarios.length)return CIR.usuarios;
+const LABOR_VISOR='polinizacion';   /* la única labor de la App */
+let USUARIOS_PAQ=null;
+/* Usuarios del paquete de acceso (nombres, cargos, roles y labores), descifrados con la llave de la sesión. */
+async function usuariosPaquete(){
+  if(USUARIOS_PAQ&&USUARIOS_PAQ.length)return USUARIOS_PAQ;
   const out=[];for(const x of ACCESO.usuarios){try{const m=JSON.parse(DEC.decode(await desObj(SES.dk,x.meta)));out.push({u:x.u,...m});}catch(e){}}
-  CIR.usuarios=out.sort((a,b)=>ordenNat(a.nombre,b.nombre));return CIR.usuarios;
+  USUARIOS_PAQ=out.sort((a,b)=>ordenNat(a.nombre,b.nombre));return USUARIOS_PAQ;
 }
-const cirujanos=()=>CIR.usuarios.filter(x=>x.rol_cirugia==='cirujano');
-const auxiliaresCir=()=>CIR.usuarios.filter(x=>(x.labores||[]).includes('cirugia'));
-
-/* ---------- Carga de datos: censo (45 días) y jornadas de cirugía ---------- */
+/* Carpetas AAAA-MM-DD de una ruta del repositorio de datos entre dos fechas. */
 async function listarDias(raiz,d1,d2){
   let r;try{r=await (await gh(`/contents/${raiz}?ref=${encodeURIComponent(SES.repo.rama)}`)).json();}catch(e){if(e.status===404)return [];throw e;}
   return (Array.isArray(r)?r:[]).filter(x=>x.type==='dir'&&x.name>=d1&&x.name<=d2).map(x=>({path:x.name,sha:x.sha}));
 }
-async function cirCargar(){
-  CIR.cargando=true;pintarCir('Cargando el censo de los últimos 45 días y las cirugías…');
-  try{
-    await cirUsuarios();
-    const hoy=hoyISO(),d1=hoyISO(new Date(Date.now()-45*86400000));
-    const [diasC,diasX]=await Promise.all([listarDias('jornadas',d1,hoy),listarDias('cirugia/jornadas',d1,hoy)]);
-    const arch=[];
-    await enParalelo(diasC,6,async d=>{for(const f of await arbol(d.sha))if(f.type==='blob')arch.push({...f,dia:d.path,cir:false});});
-    await enParalelo(diasX,6,async d=>{for(const f of await arbol(d.sha))if(f.type==='blob')arch.push({...f,dia:d.path,cir:true});});
-    const zips=new Map(arch.filter(f=>f.path.endsWith('_fotos.zip')).map(f=>[(f.cir?'c/':'')+f.dia+'/'+f.path,f.sha]));
-    const diags=[],cirs=[],corr=[],marcas=[],jors=[];let n=0;const geos=arch.filter(f=>f.path.endsWith('.geojson'));
-    await enParalelo(geos,6,async f=>{try{const g=JSON.parse(await blobTexto(f.sha));
-      const zip=zips.get((f.cir?'c/':'')+f.dia+'/'+f.path.replace(/\.geojson$/,'_fotos.zip'));
-      if(!f.cir){const j=normalizar(g,f,zip);for(const d of j.diags){d._j=j;diags.push(d);}}
-      else{const h=g.jornada||{};const j={...h,zipSha:zip,ruta:f.dia+'/'+f.path,cirugias:0};jors.push(j);
-        for(const ft of g.features||[]){const p=ft.properties||{};const ll=ft.geometry&&ft.geometry.type==='Point'?{lng:ft.geometry.coordinates[0],lat:ft.geometry.coordinates[1]}:{};
-          const o={...p,...ll,_j:j};
-          if(p.tipo==='cirugia'){cirs.push(o);j.cirugias++;}else if(p.tipo==='diagnostico')corr.push(o);else if(p.tipo==='marca')marcas.push(o);}}
-    }catch(e){console.warn('archivo ilegible',f.path,e);}n++;pintarCir(`Leyendo archivos: ${n} de ${geos.length}`);});
-    CIR.diags=diags;CIR.cirugias=cirs;CIR.correcciones=corr;CIR.marcas=marcas;CIR.jornadas=jors;
-    calcularPendientes();CIR.cargado=true;
-    const guard=await dget('kv','cir_parejas');CIR.parejas=Array.isArray(guard)&&guard.length?guard:parejasIniciales();
-    if(!CIR.fecha)CIR.fecha=esHabil(hoyISO())&&new Date().getHours()<12?hoyISO():habilMas(hoyISO());
-    await leerProgramacion(CIR.fecha);
-  }catch(e){toast(e.message,6000);}
-  finally{CIR.cargando=false;pintarCir();}
-}
-function parejasIniciales(){const c=cirujanos();const out=[];for(let i=0;i+1<c.length&&out.length<2;i+=2)out.push({cirujano:c[i].u,auxiliar:c[i+1].u,ef:20});if(!out.length)out.push({cirujano:'',auxiliar:'',ef:20});return out;}
-const tDe=x=>Date.parse(x.modificado||x.creado||x.hora_fin||x.fecha)||0;
-/* Historia por palma: diagnósticos del censo, correcciones y casos nuevos del cirujano y cirugías. */
-function historia(pid){
-  const ev=[];
-  for(const d of CIR.diags)if(String(d.palma_id)===String(pid))ev.push({t:tDe(d),clase:'censo',d});
-  for(const d of CIR.correcciones)if(String(d.palma_id)===String(pid))ev.push({t:tDe(d),clase:d.origen==='caso_nuevo'?'caso_nuevo':'correccion',d});
-  for(const c of CIR.cirugias)if(String(c.palma_id)===String(pid))ev.push({t:tDe(c),clase:'cirugia',d:c});
-  return ev.sort((a,b)=>a.t-b.t);
-}
-function calcularPendientes(){
-  const ult=new Map(),ultCir=new Map();
-  const ponD=(d,clase)=>{const k=String(d.palma_id);const t=tDe(d);const u=ult.get(k);if(!u||t>=u.t)ult.set(k,{t,d,clase});};
-  CIR.diags.forEach(d=>ponD(d,'censo'));CIR.correcciones.forEach(d=>ponD(d,d.origen==='caso_nuevo'?'caso_nuevo':'correccion'));
-  for(const c of CIR.cirugias){const k=String(c.palma_id);const t=tDe(c);const u=ultCir.get(k);if(!u||t>u.t)ultCir.set(k,{t,c});}
-  const pend=[];
-  for(const [k,{t,d,clase}] of ult){if(!esCasoCirugia(d))continue;const c=ultCir.get(k);if(c&&c.t>=t-60000)continue;
-    const f=fechaISO(new Date(t));pend.push({palma_id:k,lote:d.lote,linea:d.linea,palma:d.palma,lat:d.lat,lng:d.lng,n1_codigo:d.n1_codigo||'PC',diagnostico:String(d.nivel2||'').toUpperCase(),
-      seguimiento:d.nivel3||'',fecha_censo:f,vence:habilMas(f),censador:d.evaluador||'',diag_id:d.id||'',origen:clase,creado:new Date(t).toISOString()});}
-  const prioN2={'PC AVANZADA':0,'PC REINCIDENTE':1,'PC INICIAL':2};
-  CIR.pend=pend.sort((a,b)=>a.vence.localeCompare(b.vence)||(prioN2[a.diagnostico]??3)-(prioN2[b.diagnostico]??3)||ordenNat(a.lote,b.lote));
-  // cumplimiento D+1 de los últimos 30 días: casos que se volvieron «de cirugía» y si se operaron a tiempo
-  const desde=Date.now()-30*86400000;let tot=0,ok=0;
-  for(const d of [...CIR.diags,...CIR.correcciones]){if(!esCasoCirugia(d))continue;const t=tDe(d);if(t<desde)continue;const vence=habilMas(fechaISO(new Date(t)));
-    if(vence>hoyISO())continue;tot++;const c=CIR.cirugias.find(x=>String(x.palma_id)===String(d.palma_id)&&tDe(x)>=t-60000);if(c&&fechaISO(new Date(tDe(c)))<=vence)ok++;}
-  CIR.cumplimiento=tot?Math.round(ok/tot*100):null;CIR.cumpTot=tot;
-}
-
-/* ---------- Programación inteligente ---------- */
-/* Cupo de cada pareja: si los casos superan la capacidad, cada una recibe su eficiencia; si no, los casos se reparten en
-   partes iguales (sin pasar de la eficiencia de ninguna pareja; lo que sobre lo toman las que tienen cupo). */
-function cuposParejas(n,parejas){
-  const ef=parejas.map(p=>Number(p.ef)||20);const tot=ef.reduce((a,b)=>a+b,0);if(n>=tot)return ef;
-  const cup=new Array(ef.length).fill(0);let quedan=n;
-  while(quedan>0){const ab=ef.map((e,i)=>i).filter(i=>cup[i]<ef[i]);if(!ab.length)break;
-    const q=Math.floor(quedan/ab.length);
-    if(q===0){ab.sort((a,b)=>(ef[b]-cup[b])-(ef[a]-cup[a]));for(const i of ab){if(!quedan)break;cup[i]++;quedan--;}}
-    else for(const i of ab){const g=Math.min(q,ef[i]-cup[i]);cup[i]+=g;quedan-=g;}}
-  return cup;
-}
-function repartir(ordenes,parejas){
-  const k=parejas.length;if(!k)return [];const cap=cuposParejas(ordenes.length,parejas);
-  const P=ordenes.map(o=>aXY(o.lng,o.lat));
-  // semillas: la más lejana a la oficina y luego la más lejana a las ya elegidas
-  const of=aXY(oficinaCentral().lng,oficinaCentral().lat);const semillas=[];
-  let i0=0,dm=-1;P.forEach((p,i)=>{const d=Math.hypot(p[0]-of[0],p[1]-of[1]);if(d>dm){dm=d;i0=i;}});if(P.length)semillas.push(P[i0]);
-  while(semillas.length<k&&semillas.length<P.length){let bi=0,bd=-1;P.forEach((p,i)=>{const d=Math.min(...semillas.map(s=>Math.hypot(p[0]-s[0],p[1]-s[1])));if(d>bd){bd=d;bi=i;}});semillas.push(P[bi]);}
-  while(semillas.length<k)semillas.push(of);
-  let asig=new Array(P.length).fill(0),cent=semillas.map(s=>[...s]);
-  for(let it=0;it<6;it++){
-    const libre=[...cap];asig=new Array(P.length).fill(-1);
-    // primero los puntos con más diferencia entre su mejor y segunda opción (los «indecisos» al final)
-    const ord=P.map((p,i)=>{const ds=cent.map(c=>Math.hypot(p[0]-c[0],p[1]-c[1])).sort((a,b)=>a-b);return {i,reg:(ds[1]??ds[0])-ds[0]};}).sort((a,b)=>b.reg-a.reg);
-    for(const {i} of ord){const p=P[i];const op=cent.map((c,j)=>({j,d:Math.hypot(p[0]-c[0],p[1]-c[1])})).sort((a,b)=>a.d-b.d);
-      const el=op.find(x=>libre[x.j]>0)||op[0];asig[i]=el.j;libre[el.j]--;}
-    cent=cent.map((c,j)=>{const m=P.filter((_,i)=>asig[i]===j);return m.length?[m.reduce((s,p)=>s+p[0],0)/m.length,m.reduce((s,p)=>s+p[1],0)/m.length]:c;});
-  }
-  return asig;
-}
-function generarProgramacion(){
-  const fecha=CIR.fecha;const parejas=CIR.parejas.filter(p=>p.cirujano);
-  if(!parejas.length){toast('Defina al menos una pareja con su cirujano.');return;}
-  const cap=parejas.reduce((s,p)=>s+(Number(p.ef)||20),0);
-  const cand=CIR.pend.filter(o=>o.fecha_censo<fecha||(o.fecha_censo<=fecha&&o.vence>=fecha)); // censados antes del día programado
-  const sel=cand.slice(0,cap),quedan=cand.slice(cap);
-  const asig=repartir(sel,parejas);const of=oficinaCentral();
-  const out=parejas.map((p,j)=>{const cirj=CIR.usuarios.find(u=>u.u===p.cirujano)||{},aux=CIR.usuarios.find(u=>u.u===p.auxiliar)||{};
-    const ords=sel.filter((_,i)=>asig[i]===j);let ruta={orden:ords.map((_,i)=>i),geometria:[],tramos_m:[],km:0};
-    try{if(VIAS.gj&&ords.length)ruta=rutaOptima(VIAS.gj,of,ords,{dentro:(lng,lat)=>!!loteDe(lat,lng)});}catch(e){console.warn('ruta',e);}
-    const ordenes=ruta.orden.map((ix,n)=>({...ords[ix],orden:n+1,id:`cir-${fecha}-${ords[ix].palma_id}`,tramo_m:ruta.tramos_m[n]||null,tramo_min:(ruta.tramos_min||[])[n]??null}));
-    return {n:j+1,color:COLORES_PAREJA[j%COLORES_PAREJA.length],cirujano:{u:p.cirujano,nombre:cirj.nombre||p.cirujano},auxiliar:{u:p.auxiliar||'',nombre:aux.nombre||''},
-      eficiencia:Number(p.ef)||20,km:ruta.km,km_lote:ruta.km_lote||0,min_caminata:ruta.min_caminata||null,
-      km_campo:+((ruta.tramos_m||[]).slice(1,-1).reduce((a,b)=>a+b,0)/1000).toFixed(2),min_campo:(ruta.tramos_min||[]).slice(1,-1).reduce((a,b)=>a+b,0),
-      km_traslado:+(((ruta.tramos_m||[])[0]||0)/1000+((ruta.tramos_m||[]).length>1?(ruta.tramos_m[ruta.tramos_m.length-1]||0)/1000:0)).toFixed(2),regreso_m:ruta.tramos_m[ruta.tramos_m.length-1]||null,ruta:ruta.geometria,ordenes};});
-  CIR.prog={formato:'polinizacion-programacion-cirugia-1',fecha,generado:new Date().toISOString(),por:SES.u,por_nombre:SES.nombre,oficina:of,parejas:out,
-    sin_programar:quedan.map(o=>({palma_id:o.palma_id,lote:o.lote,linea:o.linea,palma:o.palma,diagnostico:o.diagnostico,vence:o.vence})),enviada:false};
-  dput('kv','cir_parejas',CIR.parejas);pintarCir();toast(`Programación lista: ${sel.length} palma(s) en ${out.length} pareja(s). Revise y envíela a los celulares.`,4500);
-}
-async function leerProgramacion(fecha){
-  CIR.prog=null;CIR.progSha=null;
-  try{const r=await gh(`/contents/cirugia/programacion/${fecha}.json?ref=${encodeURIComponent(SES.repo.rama)}`);const j=await r.json();
-    CIR.progSha=j.sha;CIR.prog={...JSON.parse(DEC.decode(deB64(j.content.replace(/\s/g,'')))),enviada:true};}
-  catch(e){if(e.status!==404)toast(e.message,5000);}
-}
+/* Crea o actualiza un archivo del repositorio de datos; devuelve el sha nuevo. */
 async function ghPut(path,texto,mensaje,sha){
   const g=SES.repo;
   const r=await fetch(`${GHAPI}/repos/${encodeURIComponent(g.owner)}/${encodeURIComponent(g.repo)}/contents/${path.split('/').map(encodeURIComponent).join('/')}`,{method:'PUT',cache:'no-store',
@@ -2416,103 +2162,22 @@ async function ghPut(path,texto,mensaje,sha){
   if(!r.ok){let m='';try{m=(await r.json()).message||'';}catch(e){}const e=new Error(errorGH(r.status,m));e.status=r.status;throw e;}
   return (await r.json()).content.sha;
 }
-async function enviarProgramacion(){
-  if(!CIR.prog)return;const b=$('#cirEnviar');if(b){b.disabled=true;b.textContent='Enviando…';}
-  try{const datos={...CIR.prog};delete datos.enviada;datos.enviado=new Date().toISOString();
-    let sha=CIR.progSha;if(!sha){try{const r=await gh(`/contents/cirugia/programacion/${CIR.prog.fecha}.json?ref=${encodeURIComponent(SES.repo.rama)}`);sha=(await r.json()).sha;}catch(e){}}
-    CIR.progSha=await ghPut(`cirugia/programacion/${CIR.prog.fecha}.json`,JSON.stringify(datos),`Programación de cirugías ${CIR.prog.fecha} · ${SES.nombre}`,sha);
-    CIR.prog={...datos,enviada:true};toast('✓ Programación enviada. Las parejas la reciben al iniciar la jornada de cirugía.',5000);}
-  catch(e){toast('No se pudo enviar: '+e.message,6000);}
-  finally{pintarCir();}
-}
-
-/* ---------- Pintado ---------- */
-function marcadorNum(o,color,n){return L.marker([o.lat,o.lng],{icon:L.divIcon({className:'cir-num',iconSize:[22,22],iconAnchor:[11,11],html:`<b style="background:${color}">${n}</b>`}),keyboard:false});}
-function htmlHistoria(pid){
-  const ev=historia(pid);if(!ev.length)return '';
-  const ultD=[...ev].reverse().find(e=>e.clase!=='cirugia');
-  return '<div class="hist">'+ev.map(e=>{const d=e.d;const f=new Date(e.t);const cuando=`${fechaCorta(f)} ${hhmm(f)}`;
-    if(e.clase==='cirugia')return `<div class="v vig"><span class="tenue">Cirugía · ${cuando}</span><br><b>${esc(d.tipo_cirugia||'')}</b> · ${esc(d.producto||'')}<br><span class="tenue">${esc(nombreCorto(d.cirujano_nombre||d.cirujano))}${d.auxiliar_nombre?' + '+esc(nombreCorto(d.auxiliar_nombre)):''} · ${d.duracion_min??'—'} min</span></div>`;
-    const et={censo:'Censo',correccion:'Corrección del cirujano',caso_nuevo:'Caso nuevo (cirujano)'}[e.clase];
-    return `<div class="v ${e===ultD?'vig':'vieja'}"><span class="tenue">${et} · ${cuando}${e===ultD?' · vigente':''}</span><br><b>${esc([d.nivel1,d.nivel2].filter(Boolean).join(' · '))}</b><br><span class="tenue">${esc(nombreCorto(d.evaluador))}</span></div>`;}).join('')+'</div>';
-}
-function pintarMapaCir(){
-  CIR.capa.clearLayers();
-  if(CIR.prog){for(const p of CIR.prog.parejas){
-      if(p.ruta&&p.ruta.length>1){L.polyline(p.ruta.map(([x,y])=>[y,x]),{renderer:rend,color:'#06140f',weight:7,opacity:.6,interactive:false}).addTo(CIR.capa);
-        L.polyline(p.ruta.map(([x,y])=>[y,x]),{renderer:rend,color:p.color,weight:4,opacity:.95,dashArray:'8 6',interactive:false}).addTo(CIR.capa);}
-      for(const o of p.ordenes)marcadorNum(o,p.color,o.orden).bindPopup(`<b>${esc(etqPalma(o))}</b><br>Pareja ${p.n} · orden ${o.orden}<br>${esc(o.diagnostico)} · vence ${fechaCorta(o.vence)}${htmlHistoria(o.palma_id)}`,{maxWidth:300}).addTo(CIR.capa);}
-    const prog=new Set(CIR.prog.parejas.flatMap(p=>p.ordenes.map(o=>String(o.palma_id))));
-    for(const o of CIR.pend)if(!prog.has(String(o.palma_id))&&o.lat!=null)L.circleMarker([o.lat,o.lng],{renderer:rend,radius:6,color:'#fff',weight:1.5,fillColor:'#e53935',fillOpacity:.9})
-      .bindPopup(`<b>${esc(etqPalma(o))}</b><br>Sin programar · ${esc(o.diagnostico)} · vence ${fechaCorta(o.vence)}${htmlHistoria(o.palma_id)}`,{maxWidth:300}).addTo(CIR.capa);}
-  else for(const o of CIR.pend)if(o.lat!=null)L.circleMarker([o.lat,o.lng],{renderer:rend,radius:6,color:'#fff',weight:1.5,fillColor:o.vence<CIR.fecha?'#ff1744':'#e53935',fillOpacity:.9})
-      .bindPopup(`<b>${esc(etqPalma(o))}</b><br>${esc(o.diagnostico)} · censo ${fechaCorta(o.fecha_censo)} · vence ${fechaCorta(o.vence)}<br>${esc(nombreCorto(o.censador))}${htmlHistoria(o.palma_id)}`,{maxWidth:300}).addTo(CIR.capa);
-  const of=oficinaCentral();
-}
-function pintarCir(msg){
-  const P=$('#cirPanel');if(!P)return;
-  if(!CIR.cargado){P.innerHTML=`<h3>Cirugías</h3><div class="tenue">${esc(msg||'Preparando…')}</div>`;return;}
-  const f=CIR.fecha;const venc=CIR.pend.filter(o=>o.vence<f).length,venceF=CIR.pend.filter(o=>o.vence===f).length;
-  const fest=esFestivo(f),hab=esHabil(f);
-  const tabs=`<div class="cir-tabs"><button class="btn mini ${CIR.tab==='prog'?'on':''}" data-ct="prog">PROGRAMACIÓN</button><button class="btn mini ${CIR.tab==='seg'?'on':''}" data-ct="seg">CIRUGÍAS REALIZADAS</button><button class="btn mini" id="cirRec" title="Volver a leer los datos">↻</button></div>`;
-  let h=tabs;
-  if(CIR.tab==='prog'){
-    h+=`<div class="kpis"><div class="kpi"><b>${num(CIR.pend.length)}</b><span>Casos pendientes</span></div><div class="kpi"><b class="venc">${num(venc)}</b><span>Vencidos</span></div><div class="kpi"><b class="hoyv">${num(venceF)}</b><span>Vencen el ${esc(fechaCorta(f))}</span></div></div>
-    <div class="kpis"><div class="kpi"><b>${CIR.cumplimiento==null?'—':CIR.cumplimiento+' %'}</b><span>Cumplimiento D+1 (30 días)</span></div><div class="kpi"><b>${num(CIR.cirugias.length)}</b><span>Cirugías (45 días)</span></div><div class="kpi"><b>${num(CIR.correcciones.filter(c=>c.origen!=='caso_nuevo').length)}</b><span>Correcciones</span></div></div>
-    <label class="campo" for="cirFecha">Programar para</label>
-    <div style="display:flex;gap:8px;align-items:center"><input type="date" id="cirFecha" value="${f}"><span class="tenue">${fest?'⚠ Festivo: '+esc(fest):hab?esc(fechaCorta(f)):'⚠ Domingo'}</span></div>
-    <h3>Parejas y eficiencia (palmas/día)</h3>
-    ${CIR.parejas.map((p,i)=>`<div class="cir-par"><div class="cab"><i style="background:${COLORES_PAREJA[i%4]}"></i><b>Pareja ${i+1}</b>${CIR.parejas.length>1?`<button class="btn mini" data-quitar="${i}" style="margin-left:auto">Quitar</button>`:''}</div>
-      <label class="campo" for="pc${i}">Cirujano</label><select id="pc${i}" data-p="${i}" data-k="cirujano"><option value="">—</option>${cirujanos().map(u=>`<option value="${esc(u.u)}" ${u.u===p.cirujano?'selected':''}>${esc(u.nombre)}</option>`).join('')}</select>
-      <label class="campo" for="pa${i}">Auxiliar</label><select id="pa${i}" data-p="${i}" data-k="auxiliar"><option value="">—</option>${auxiliaresCir().filter(u=>u.u!==p.cirujano).map(u=>`<option value="${esc(u.u)}" ${u.u===p.auxiliar?'selected':''}>${esc(u.nombre)} · ${esc(u.rol_cirugia==='cirujano'?'cirujano':'aux. fumigación')}</option>`).join('')}</select>
-      <div class="cir-ef"><span>Eficiencia</span><input type="range" min="12" max="30" value="${p.ef}" data-p="${i}" data-k="ef" aria-label="Eficiencia de la pareja ${i+1}"><b id="ef${i}">${p.ef}</b></div></div>`).join('')}
-    ${CIR.parejas.length<4?'<button class="btn mini" id="cirMasPar">+ Agregar pareja</button>':''}
-    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn prim" id="cirGenerar">GENERAR PROGRAMACIÓN</button>${CIR.prog?`<button class="btn nar" id="cirEnviar" ${CIR.prog.enviada?'':''}>${CIR.prog.enviada?'REENVIAR A LOS CELULARES':'ENVIAR A LOS CELULARES'}</button>`:''}</div>`;
-    if(CIR.prog){const tot=CIR.prog.parejas.reduce((s,p)=>s+p.ordenes.length,0);
-      h+=`<p class="tenue" style="margin:8px 0">${CIR.prog.enviada?'✓ Enviada':'Sin enviar'} · generada ${esc(fechaCorta(CIR.prog.generado))} ${hhmm(CIR.prog.generado)} por ${esc(CIR.prog.por_nombre||CIR.prog.por)} · ${num(tot)} palmas</p>`;
-      if(CIR.prog.sin_programar&&CIR.prog.sin_programar.length)h+=`<div class="cir-aviso">${num(CIR.prog.sin_programar.length)} caso(s) quedan para el siguiente día hábil (${esc(fechaCorta(habilMas(f)))}): la capacidad de las parejas no alcanza. Aumente la eficiencia o agregue una pareja.</div>`;
-      for(const p of CIR.prog.parejas){h+=`<h3 style="color:${p.color}">Pareja ${p.n} · ${p.ordenes.length} palmas · ${p.km_campo??p.km??'—'} km en campo${p.min_campo?' · '+minAh(p.min_campo)+' caminando':''}</h3><div class="tenue" style="font-size:12px;margin:-6px 0 4px">${p.km_traslado!=null?`Traslado oficina–lotes (ida y regreso): ${p.km_traslado} km`:''}${p.km_lote?` · ${p.km_lote} km por dentro de los lotes, entre palmas`:''}</div><div class="tenue" style="font-size:12.5px;margin:-4px 0 6px">${esc(p.cirujano.nombre)} (cirujano)${p.auxiliar.nombre?' · '+esc(p.auxiliar.nombre)+' (auxiliar)':''}</div>
-        <table class="t"><thead><tr><th>#</th><th>Palma</th><th>Diagnóstico</th><th>Censo</th><th>Vence</th></tr></thead><tbody>${p.ordenes.map(o=>`<tr data-ll="${o.lat},${o.lng}"><td>${o.orden}</td><td>${esc(etqPalma(o))}</td><td>${esc(o.diagnostico.replace('PC ',''))}${o.origen==='caso_nuevo'?' · nuevo':''}</td><td>${esc(fechaCorta(o.fecha_censo))}<br><span class="tenue">${esc(nombreCorto(o.censador))}</span></td><td class="${o.vence<f?'venc':o.vence===f?'hoyv':''}">${esc(fechaCorta(o.vence))}</td></tr>`).join('')}</tbody></table>`;}
-    }else{h+=`<h3>Casos pendientes</h3>${CIR.pend.length?`<table class="t"><thead><tr><th>Palma</th><th>Diagnóstico</th><th>Censo</th><th>Vence</th></tr></thead><tbody>${CIR.pend.map(o=>`<tr data-ll="${o.lat},${o.lng}"><td>${esc(etqPalma(o))}</td><td>${esc(o.diagnostico)}</td><td>${esc(fechaCorta(o.fecha_censo))}<br><span class="tenue">${esc(nombreCorto(o.censador))}</span></td><td class="${o.vence<f?'venc':o.vence===f?'hoyv':''}">${esc(fechaCorta(o.vence))}</td></tr>`).join('')}</tbody></table>`:'<div class="tenue">No hay casos de PC pendientes de cirugía en los últimos 45 días.</div>'}`;}
-  }else{
-    const cs=[...CIR.cirugias].sort((a,b)=>tDe(b)-tDe(a));
-    h+=`<div class="kpis"><div class="kpi"><b>${num(cs.length)}</b><span>Cirugías (45 días)</span></div><div class="kpi"><b>${num(cs.filter(c=>c.origen==='caso_nuevo').length)}</b><span>Casos nuevos operados</span></div><div class="kpi"><b>${(()=>{const d=cs.map(c=>Number(c.duracion_min)).filter(x=>x>0);return d.length?Math.round(d.reduce((a,b)=>a+b,0)/d.length)+' min':'—';})()}</b><span>Duración promedio</span></div></div>
-    <h3>Cirugías realizadas</h3>${cs.length?`<table class="t"><thead><tr><th>Fecha</th><th>Palma</th><th>Cirugía</th><th>Producto</th><th>Pareja</th><th>Fotos</th></tr></thead><tbody>${cs.map((c,i)=>`<tr data-ll="${c.lat},${c.lng}"><td>${esc(fechaCorta(new Date(tDe(c))))}<br><span class="tenue">${esc(c.hora_foto_antes||'')}–${esc(c.hora_foto_despues||'')}</span></td><td>${esc(etqPalma(c))}</td><td>${esc(String(c.tipo_cirugia||'').replace('PC ',''))}${c.origen==='caso_nuevo'?'<br><span class="tenue">caso nuevo</span>':''}</td><td>${esc(c.producto||'')}<br><span class="tenue">${esc(c.producto_tipo||'')}</span></td><td>${esc(nombreCorto(c.cirujano_nombre||c.cirujano))}<br><span class="tenue">${esc(nombreCorto(c.auxiliar_nombre||''))}</span></td><td>${(c.fotos||'').split('|').filter(Boolean).length?`<button class="btn mini" data-fot="${i}">Ver</button>`:'—'}</td></tr>`).join('')}</tbody></table>`:'<div class="tenue">Aún no hay cirugías sincronizadas.</div>'}
-    <h3>Correcciones del diagnóstico</h3>${CIR.correcciones.filter(c=>c.origen!=='caso_nuevo').length?`<table class="t"><thead><tr><th>Palma</th><th>Censo (antes)</th><th>Cirujano (vigente)</th></tr></thead><tbody>${CIR.correcciones.filter(c=>c.origen!=='caso_nuevo').map(c=>`<tr data-ll="${c.lat},${c.lng}"><td>${esc(etqPalma(c))}</td><td class="tenue">${esc(c.corrige_texto||'')}<br>${esc(nombreCorto(c.corrige_evaluador||''))}</td><td><b>${esc([c.nivel1,c.nivel2].filter(Boolean).join(' · '))}</b><br><span class="tenue">${esc(nombreCorto(c.evaluador))} · ${esc(fechaCorta(new Date(tDe(c))))}</span></td></tr>`).join('')}</tbody></table>`:'<div class="tenue">Sin correcciones.</div>'}`;
-    CIR._cs=cs;
-  }
-  P.innerHTML=h;
-  P.querySelectorAll('[data-ct]').forEach(b=>b.onclick=()=>{CIR.tab=b.dataset.ct;pintarCir();});
-  const rec=$('#cirRec');if(rec)rec.onclick=()=>{CIR.cargado=false;cirCargar();};
-  const fi=$('#cirFecha');if(fi)fi.onchange=async()=>{CIR.fecha=fi.value||hoyISO();await leerProgramacion(CIR.fecha);pintarCir();};
-  P.querySelectorAll('select[data-p]').forEach(s=>s.onchange=()=>{CIR.parejas[+s.dataset.p][s.dataset.k]=s.value;dput('kv','cir_parejas',CIR.parejas);pintarCir();});
-  P.querySelectorAll('input[type=range][data-p]').forEach(s=>{s.oninput=()=>{$('#ef'+s.dataset.p).textContent=s.value;};s.onchange=()=>{CIR.parejas[+s.dataset.p].ef=+s.value;dput('kv','cir_parejas',CIR.parejas);};});
-  P.querySelectorAll('[data-quitar]').forEach(b=>b.onclick=()=>{CIR.parejas.splice(+b.dataset.quitar,1);dput('kv','cir_parejas',CIR.parejas);pintarCir();});
-  const mas=$('#cirMasPar');if(mas)mas.onclick=()=>{CIR.parejas.push({cirujano:'',auxiliar:'',ef:20});pintarCir();};
-  const g=$('#cirGenerar');if(g)g.onclick=generarProgramacion;
-  const en=$('#cirEnviar');if(en)en.onclick=enviarProgramacion;
-  P.querySelectorAll('tr[data-ll]').forEach(tr=>tr.onclick=()=>{const [a,b]=tr.dataset.ll.split(',').map(Number);if(isFinite(a)&&isFinite(b))mapa.setView([a,b],18);});
-  P.querySelectorAll('[data-fot]').forEach(b=>b.onclick=ev=>{ev.stopPropagation();const c=CIR._cs[+b.dataset.fot];verFotos({...c,_j:c._j,lote:c.lote,linea:c.linea,palma:c.palma});});
-  pintarMapaCir();
-}
-
 /* =====================================================================
    GERENCIA (visor web) · botón «📊 GERENCIA» del encabezado
-   · Tablero: indicadores, productividad por operario, incidencia de PC por lote y semana, avance del ciclo de censo y mapa de calor.
-   · Cirugía: ciclo censo → cirugía (tiempo de respuesta, cumplimiento D+1, vencidos, por pareja y por lote).
+   · Tablero: indicadores, productividad por operario y avance del ciclo de la labor.
    · Sincronización: último envío de cada operario y alerta si lleva más de N días sin sincronizar.
    · Calidad: diagnósticos sospechosos (lejos de la palma, GPS impreciso, sin foto, muy rápidos, rachas iguales, fuera de la jornada).
    · Auditoría: muestra aleatoria de palmas para que el supervisor las verifique y concordancia por operario.
    · Reportes: reportes semanales generados automáticamente en el repositorio de datos (reportes/).
    Usa las jornadas cargadas en el visor (rango de fechas y filtros de la izquierda).
    ===================================================================== */
-const GER={on:false,tab:'tablero',sync:null,cargandoSync:false,calor:null,umbralSync:2,umbralCiclo:30,
+const GER={on:false,tab:'tablero',sync:null,cargandoSync:false,umbralSync:2,umbralCiclo:30,
   cal:{dist:20,prec:15,seg:20,racha:8,tipo:'',op:'',solo:true},revisados:new Set(),aud:{pct:5,min:5,muestra:null,lista:null,sel:null,res:null},reportes:null};
-const TABS_GER=[['tablero','TABLERO'],['plan','PROGRAMADOR DE CENSO DE ENFERMEDADES'],['progcir','PROGRAMADOR DE CIRUGÍAS'],['progerr','PROGRAMADOR DE ERRADICACIÓN'],['plagas','MONITOREO DE PLAGAS'],['cirugia','CIRUGÍA'],['sync','SINCRONIZACIÓN'],['calidad','CALIDAD'],['auditoria','AUDITORÍA'],['reportes','REPORTES']];
+const TABS_GER=[['tablero','TABLERO'],['plan','PROGRAMADOR DE POLINIZACIÓN'],['sync','SINCRONIZACIÓN'],['calidad','CALIDAD'],['auditoria','AUDITORÍA'],['reportes','REPORTES']];
 /* Módulos (comparten el mismo panel): Gerencia; Coordinación y supervisión de la labor (gestión del personal); Análisis de datos (sincronización). */
 const MODS_GER={
   ger:{roles:['superadmin','admin','analista','supervisor'],btn:'btGer',icono:'📊',titulo:'GERENCIA',corto:'GERENCIA',tabs:['tablero','reportes','sync'],ayuda:'Tablero gerencial, reportes y sincronización'},
-  coord:{roles:['superadmin','admin','analista','supervisor'],btn:'btCoord',icono:'🧭',titulo:'COORDINACIÓN Y SUPERVISIÓN DE LA LABOR',corto:'COORDINACIÓN',tabs:['plan','progcir','progerr','plagas','cirugia','calidad','auditoria','reportes'],ayuda:'Gestión del personal: programador de censo de enfermedades, programador de cirugías, programador de erradicación, monitoreo de plagas, cirugía, calidad, auditoría y reportes'},
+  coord:{roles:['superadmin','admin','analista','supervisor'],btn:'btCoord',icono:'🧭',titulo:'COORDINACIÓN Y SUPERVISIÓN DE LA LABOR',corto:'COORDINACIÓN',tabs:['plan','calidad','auditoria','reportes'],ayuda:'Gestión del personal: programador de polinización, calidad, auditoría y reportes'},
   datos:{roles:['superadmin','admin','supervisor','analista'],btn:'btDatos',icono:'🗄️',titulo:'ANÁLISIS DE DATOS',corto:'DATOS',tabs:['sync'],ayuda:'Analistas de datos: sincronización de los equipos'}};
 GER.mod='ger';GER.tabMod={ger:'tablero',coord:'plan',datos:'sync'};
 /* Módulos permitidos por rol (el analista de datos tiene los permisos de administrador: ve todo). */
@@ -2553,11 +2218,9 @@ function aplicarPermisosGer(){
   #gerPanel select option{background:#0b241b}
   .ger-calor td.c{text-align:center;font-variant-numeric:tabular-nums;min-width:38px}
   .ger-barra{display:inline-block;height:8px;border-radius:4px;background:var(--acento);vertical-align:middle;margin-right:6px}
-  #chCalor{cursor:pointer}
   .mc-etq{background:transparent;border:0;box-shadow:none;color:#111;font-size:8px;font-weight:600;padding:0;text-shadow:0 0 2px #fff,0 0 2px #fff}.mc-etq::before{display:none}
   .mc-sin-etq .mc-etq{display:none}
   .leaflet-marker-icon.mc-etq span{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;background:rgba(255,255,255,.85);border-radius:3px;padding:0 2px;line-height:1.25}
-  #gerMapaCalor .leaflet-control-scale-line{background:rgba(255,255,255,.85);color:#222;border-color:#222}
   @media (max-width:900px){.mc-grid{grid-template-columns:1fr!important}}`;
   document.head.appendChild(css);
   for(const [k,m] of Object.entries(MODS_GER)){const bt=document.createElement('button');bt.className='btn mini';bt.id=m.btn;bt.innerHTML=`${m.icono} ${m.corto}`;bt.title=m.ayuda;
@@ -2588,7 +2251,7 @@ function pintarGer(){
   const cab=`<div class="ger-cab"><h2>${M.icono} ${M.titulo}</h2><div class="ger-tabs">${TABS_GER.filter(([k])=>M.tabs.includes(k)).sort((a,b)=>M.tabs.indexOf(a[0])-M.tabs.indexOf(b[0])).map(([k,t])=>`<button data-gt="${k}" class="${GER.tab===k?'on':''}">${t}</button>`).join('')}</div>
     <button class="btn mini" id="gerX" title="Cerrar y volver al mapa">✕ Cerrar</button></div>`;
   let cuerpo='';
-  try{cuerpo=({plagas:pintarPlagasGer,progerr:pintarProgErrGer,progcir:pintarProgCir,plan:pintarPlanCenso,tablero:pintarTablero,cirugia:pintarCirGer,sync:pintarSync,calidad:pintarCalidad,auditoria:pintarAuditoria,reportes:pintarReportes}[GER.tab]||PINTAR_GER[GER.tab])();}
+  try{cuerpo=({plan:pintarPlanCenso,tablero:pintarTablero,sync:pintarSync,calidad:pintarCalidad,auditoria:pintarAuditoria,reportes:pintarReportes}[GER.tab]||PINTAR_GER[GER.tab])();}
   catch(e){console.error(e);cuerpo=`<div class="ger-aviso ger-mal">⚠ ${esc(e.message)}</div>`;}
   P.innerHTML=cab+(usaFiltrosGer()?barraFiltrosGer():'')+cuerpo;
   $$('#gerPanel [data-gt]').forEach(b=>b.onclick=()=>{GER.tab=b.dataset.gt;pintarGer();});
@@ -2605,28 +2268,15 @@ function enlazarRango(){$$('#gerPanel [data-rango]').forEach(b=>b.onclick=async(
 function pintarTablero(){
   if(!JOR.length)return sinDatos();
   const L=resumenLotes(),O=resumenOperarios();
-  const pc=L.reduce((a,x)=>a+(x.pc||0),0),tot=L.reduce((a,x)=>a+(x.total_lote||0),0);
   const ha=JORF.reduce((a,j)=>a+(Number(j.ha)||0),0),palmas=JORF.reduce((a,j)=>a+(Number(j.palmas)||0),0),diags=DIAGF.length;
   const kp=`<div class="ger-kpis">${kpi(num(JORF.length),'Jornadas')}${kpi(num(new Set(JORF.map(j=>j.usuario)).size),'Operarios')}${kpi(num(ha,1),'Ha recorridas')}${kpi(num(palmas),'Palmas visitadas')}
-    ${kpi(num(diags),'Diagnósticos')}${kpi(num(pc),'Casos de PC',pc?'mal':'ok')}${kpi(tot?num(pc/tot*100,2)+' %':'—','Incidencia PC (lotes con censo)')}${kpi(num(O.length?ha/Math.max(1,O.reduce((a,o)=>a+o.dias,0)):0,2),'Ha por operario-día')}</div>`;
+    ${kpi(num(diags),'Diagnósticos')}${kpi(num(O.length?ha/Math.max(1,O.reduce((a,o)=>a+o.dias,0)):0,2),'Ha por operario-día')}</div>`;
   // Productividad por operario
   const prod=O.map(o=>({...o,hah:o.min_efe>0?o.ha/(o.min_efe/60):null,pah:o.min_efe>0?o.palmas/(o.min_efe/60):null,dj:o.jornadas?o.diag/o.jornadas:0})).sort((a,b)=>(b.hah||0)-(a.hah||0));
   const maxH=Math.max(1,...prod.map(x=>x.hah||0));
   const tProd=tablaGer([{t:'Operario',f:x=>esc(x.evaluador)},{t:'Jornadas',n:1,f:x=>num(x.jornadas)},{t:'Días',n:1,f:x=>num(x.dias)},{t:'Ha',n:1,f:x=>num(x.ha,2)},{t:'Ha/día',n:1,f:x=>num(x.ha_dia,2)},
     {t:'Ha/hora efectiva',f:x=>x.hah==null?'—':`<span class="ger-barra" style="width:${Math.round(60*x.hah/maxH)}px"></span>${num(x.hah,2)}`},{t:'Palmas/hora',n:1,f:x=>x.pah==null?'—':num(x.pah)},
     {t:'Horas efectivas',n:1,f:x=>num(x.min_efe/60,1)},{t:'Diag./jornada',n:1,f:x=>num(x.dj,1)},{t:'Km',n:1,f:x=>num(x.km,1)},{t:'Vel. km/h',n:1,f:x=>x.vel==null?'—':num(x.vel,1)}],prod);
-  // Incidencia de PC por lote y semana: casos nuevos de PC (primera vez que la palma aparece como caso en el periodo)
-  const primera=new Map();
-  for(const j of JORF)for(const d of j.diags){if(!esCasoPC(codN1(d),d.nivel2,d.estado))continue;if(!loteSel(d.lote)||!enProg(d.lote))continue;
-    const k=d.palma_id??(d.lote+'|'+d.linea+'|'+d.palma);const f=d.creado?hoyISO(new Date(d.creado)):String(j.fecha).slice(0,10);const u=primera.get(k);if(!u||f<u.f)primera.set(k,{f,lote:d.lote});}
-  const semanas=[...new Set([...primera.values()].map(x=>semanaISO(x.f)))].sort();
-  const porLote=new Map();for(const x of primera.values()){const s=semanaISO(x.f);if(!porLote.has(x.lote))porLote.set(x.lote,new Map());const m=porLote.get(x.lote);m.set(s,(m.get(s)||0)+1);}
-  const lotesPC=[...porLote.entries()].map(([l,m])=>({lote:l,m,tot:[...m.values()].reduce((a,b)=>a+b,0),incid:(L.find(x=>x.lote===l)||{}).incid_pc})).sort((a,b)=>b.tot-a.tot);
-  const maxC=Math.max(1,...lotesPC.flatMap(x=>[...x.m.values()]));
-  const celda=v=>v?`<td class="c" style="background:rgba(229,57,53,${(.15+.75*v/maxC).toFixed(2)})">${v}</td>`:'<td class="c tenue">·</td>';
-  const tCalor=lotesPC.length?`<div class="ger-tabla ger-calor"><table><thead><tr><th>Lote</th>${semanas.map(s=>`<th class="n">${s.slice(5)}</th>`).join('')}<th class="n">Total</th><th class="n">Incidencia actual</th></tr></thead><tbody>${
-    lotesPC.map(x=>`<tr><td><b>${esc(x.lote)}</b></td>${semanas.map(s=>celda(x.m.get(s)||0)).join('')}<td class="n"><b>${x.tot}</b></td><td class="n">${x.incid==null?'—':num(x.incid,2)+' %'}</td></tr>`).join('')}</tbody></table></div>`
-    :'<p class="tenue">No hay casos de PC en el periodo cargado.</p>';
   // Avance del ciclo de censo: último censo por lote y días transcurridos
   const ult=new Map();for(const j of JORF)for(const x of j.por_lote){const u=ult.get(x.lote);if(!u||j.fecha>u)ult.set(x.lote,j.fecha);}
   const hoy=hoyISO(),X=GER.umbralCiclo;
@@ -2639,66 +2289,11 @@ function pintarTablero(){
   const tCiclo=tablaGer([{t:'Lote',f:x=>`<b>${esc(x.lote)}</b>`},{t:'Programa',f:x=>esc(x.prog||'—')},{t:'Último censo',f:x=>esc(x.ultimo||'—')},{t:'Desde el último censo',f:chipC},{t:'Avance en el periodo',n:1,f:x=>x.avance==null?'—':num(x.avance,1)+' %'}],ciclo);
   return `<p class="tenue">Datos: ${esc(rangoTxt())} · ${num(JORF.length)} jornadas con los filtros de arriba.</p>${kp}
     <div class="ger-sec"><h3>Productividad por operario</h3><p class="tenue">Ha/hora y palmas/hora sobre el tiempo efectivo (sin paradas). Ordenado de mayor a menor rendimiento.</p>${tProd}</div>
-    <div class="ger-sec"><h3>Mapas de PC por lote</h3>
-      <p class="tenue">Superficie interpolada (IDW) a partir del valor de cada lote, por clases, sobre toda la plantación (sin ortofoto). Con los filtros de la izquierda.
-        <b>Incidencia actual</b> = casos vigentes (último diagnóstico PC, sin recuperación, alta ni tratamiento) ÷ palmas del lote. <b>Casos nuevos</b> = palmas que aparecen por primera vez como caso en el periodo cargado (${esc(rangoTxt())}).</p>
-      <div class="ger-par"><button class="btn mini ${(GER.mcModo||'incid')==='incid'?'prim':''}" data-mcm="incid">Incidencia actual PC</button>
-        <button class="btn mini ${GER.mcModo==='nuevos'?'prim':''}" data-mcm="nuevos">Casos nuevos PC</button>
-        <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="mcNombres" ${GER.mcNombres!==false?'checked':''}> Nombres de lote</label>
-        <span id="mcResumen"></span></div>
-      <div style="display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:12px" class="mc-grid">
-        <div id="gerMapaCalor" style="height:640px;border-radius:14px;border:1px solid var(--borde);background:#fff"></div>
-        <div><div id="mcLeyenda"></div><div id="mcTop" class="ger-tabla" style="max-height:330px;overflow:auto;margin-top:10px"></div></div></div></div>
-    <div class="ger-sec"><h3>Casos nuevos de PC por lote y semana</h3><p class="tenue">Primera vez que cada palma aparece como caso de PC en el periodo. Más rojo = más casos. La incidencia actual es casos vigentes ÷ palmas del lote.</p>
-      <div class="ger-par"><button class="btn mini ${GER.calor?'prim':''}" id="gerCalor">🔥 ${GER.calor?'Quitar':'Ver'} mapa de calor de PC en el mapa</button></div>${tCalor}</div>
     <div class="ger-sec"><h3>Avance del ciclo de censo</h3>${nMal||nSin?`<div class="ger-aviso ${nMal?'ger-mal':''}">⚠ ${nMal?`<b>${nMal}</b> lote(s) llevan más de ${X} días sin censo`:''}${nMal&&nSin?' · ':''}${nSin?`<b>${nSin}</b> lote(s) sin censo en el periodo cargado (cargue un rango más largo para verlos)`:''}.</div>`:''}
       <div class="ger-par">Alerta si pasan más de <input type="number" id="gerCiclo" min="1" max="365" value="${X}"> días sin censo</div>${tCiclo}</div>`;
 }
-ENLACES_GER.tablero=()=>{enlazarRango();montarMapaCalor();
-  const c=$('#gerCiclo');if(c)c.onchange=()=>{GER.umbralCiclo=Math.max(1,Number(c.value)||30);pintarGer();};
-  const b=$('#gerCalor');if(b)b.onclick=()=>{alternarCalor();pintarGer();if(GER.calor)alternarGerencia(false);};};
-/* Casos de PC vigentes: último diagnóstico de cada palma (con los filtros), que sigue siendo PC. */
-function casosPCActivos(){
-  const ult=new Map();for(const j of JORF)for(const d of j.diags){if(!loteSel(d.lote)||!enProg(d.lote))continue;const k=d.palma_id??(d.lote+'|'+d.linea+'|'+d.palma);const u=ult.get(k);if(!u||String(d.creado)>String(u.creado))ult.set(k,d);}
-  return [...ult.values()].filter(d=>esCasoPC(codN1(d),d.nivel2,d.estado)&&d.lat!=null&&!VAJ.has(String(d.palma_id)));   /* sin las palmas erradicadas con existencia 0 aprobada */
-}
-/* Casos nuevos de PC en el periodo: primera vez que cada palma aparece como caso (con su diagnóstico de esa vez). */
-function casosPCNuevos(){
-  const pri=new Map();
-  for(const j of JORF)for(const d of j.diags){if(!esCasoPC(codN1(d),d.nivel2,d.estado)||!loteSel(d.lote)||!enProg(d.lote))continue;
-    const k=d.palma_id??(d.lote+'|'+d.linea+'|'+d.palma);const u=pri.get(k);if(!u||String(d.creado)<String(u.creado))pri.set(k,d);}
-  return [...pri.values()].filter(d=>d.lat!=null);
-}
-/* Clases de los mapas (como los mapas oficiales de Polinización) */
-const MC_COL=['#2c7bb6','#abdda4','#ffffbf','#fdae61','#d7191c'];
-const MC_CLASES={incid:{titulo:'INCIDENCIA ACTUAL PC',ley:'Incidencia PC',cortes:[1,2,3,4],etq:['≤ 1,0 %','1,0 % – 2,0 %','2,0 % – 3,0 %','3,0 % – 4,0 %','> 4,0 %']},
-  nuevos:{titulo:'CASOS NUEVOS PC',ley:'N.º casos nuevos PC',cortes:[3,6,9,12],etq:['≤ 3','3 – 6','6 – 9','9 – 12','> 12']}};
-const claseMC=(v,c)=>{let k=0;while(k<c.length&&v>c[k])k++;return k;};
-/* Superficie IDW (12 lotes más cercanos, potencia 2) en celdas de CEL metros, recortada a los lotes. Devuelve el lienzo y el área por clase. */
-function superficieMC(feats,vals,cortes,CEL,pinta){
-  pinta=pinta&&pinta.length?pinta:feats;   /* se pinta toda la plantación (si está disponible); el área por clase se cuenta solo en los lotes */
-  let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;const anillos=f=>f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates;
-  for(const f of pinta.concat(feats))for(const pol of anillos(f))for(const r of pol)for(const [x,y] of r){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}
-  const mx=111320*Math.cos((y0+y1)/2*Math.PI/180),my=110540,dlon=CEL/mx,dlat=CEL/my,W=Math.ceil((x1-x0)/dlon)+1,H=Math.ceil((y1-y0)/dlat)+1;
-  const cv=document.createElement('canvas');cv.width=W;cv.height=H;const g=cv.getContext('2d',{willReadFrequently:true});g.fillStyle='#000';
-  const mascara=fs=>{g.clearRect(0,0,W,H);for(const f of fs)for(const pol of anillos(f)){g.beginPath();for(const r of pol)r.forEach(([x,y],i)=>{const px=(x-x0)/dlon,py=(y1-y)/dlat;i?g.lineTo(px,py):g.moveTo(px,py);});g.fill('evenodd');}   /* cada polígono por separado */
-    return g.getImageData(0,0,W,H).data;};
-  const MA=mascara(feats),M=pinta===feats?MA:mascara(pinta);
-  const P=[];for(const f of feats){const l=f.properties._lote,c=centroLote(l);if(c)P.push([(c[1]-x0)*mx,(y1-c[0])*my,vals.get(l)||0]);}
-  const K=Math.min(12,P.length),bd=new Float64Array(K),bv=new Float64Array(K);
-  const img=g.createImageData(W,H),D=img.data,area=[0,0,0,0,0],RGB=MC_COL.map(h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)));
-  for(let j=0;j<H;j++)for(let i=0;i<W;i++){const o=(j*W+i)*4;if(M[o+3]<128)continue;
-    const px=i*CEL+CEL/2,py=j*CEL+CEL/2;let n=0,exacto=null;
-    for(const q of P){const dx=q[0]-px,dy=q[1]-py,d2=dx*dx+dy*dy;if(d2<1){exacto=q[2];break;}
-      if(n<K){let k=n++;while(k>0&&bd[k-1]>d2){bd[k]=bd[k-1];bv[k]=bv[k-1];k--;}bd[k]=d2;bv[k]=q[2];}
-      else if(d2<bd[K-1]){let k=K-1;while(k>0&&bd[k-1]>d2){bd[k]=bd[k-1];bv[k]=bv[k-1];k--;}bd[k]=d2;bv[k]=q[2];}}
-    let v=exacto;if(v==null){let sw=0,sv=0;for(let k=0;k<n;k++){const w=1/bd[k];sw+=w;sv+=w*bv[k];}v=sw?sv/sw:0;}
-    const c=claseMC(v,cortes);if(MA[o+3]>=128)area[c]++;const rgb=RGB[c];D[o]=rgb[0];D[o+1]=rgb[1];D[o+2]=rgb[2];D[o+3]=255;}
-  g.clearRect(0,0,W,H);g.putImageData(img,0,0);
-  // Hectáreas: proporción de cada clase × área oficial de los lotes (Area_ha); sin ese dato, el área de las celdas
-  const oficial=feats.reduce((a,f)=>a+(Number(f.properties.Area_ha)||0),0),celdas=area.reduce((a,b)=>a+b,0);
-  return {cv,limites:[[y1-H*dlat,x0],[y1,x0+W*dlon]],ha:area.map(n=>oficial&&celdas?n/celdas*oficial:n*CEL*CEL/10000)};
-}
+ENLACES_GER.tablero=()=>{enlazarRango();
+  const c=$('#gerCiclo');if(c)c.onchange=()=>{GER.umbralCiclo=Math.max(1,Number(c.value)||30);pintarGer();};};
 /* Límite de la plantación (cartografia/plantacion.geojson del repositorio de datos, el mismo que usa la App) */
 async function cargarPlantacionGer(){
   try{const t=await (await gh(`/contents/cartografia/plantacion.geojson?ref=${encodeURIComponent(SES.repo.rama)}`,'application/vnd.github.raw+json')).text();const g=JSON.parse(t);
@@ -2709,133 +2304,29 @@ async function cargarPlantacionGer(){
 function etiquetaLoteMC(m,lo){const c=centroLote(lo);if(c)L.marker(c,{icon:L.divIcon({className:'mc-etq',html:`<span>${esc(lo)}</span>`,iconSize:null}),interactive:false,keyboard:false}).addTo(m);}
 /* Control con la flecha del norte (como los mapas impresos) */
 const NorteMC=L.Control.extend({onAdd(){const d=L.DomUtil.create('div');d.innerHTML='<div style="font:700 13px sans-serif;color:#222;text-align:center;line-height:1">N<br><span style="font-size:24px">⬆</span></div>';return d;}});
-function montarMapaCalor(){
-  const el=$('#gerMapaCalor');if(!el)return;
-  if(GER.mc){try{GER.mcVista={c:GER.mc.getCenter(),z:GER.mc.getZoom()};GER.mc.off();GER.mc.remove();}catch(e){}GER.mc=null;}
-  const modo=GER.mcModo||'incid',C=MC_CLASES[modo];
-  if(GER.plant===undefined){GER.plant=null;cargarPlantacionGer().then(()=>{if(GER.plant&&$('#gerMapaCalor'))montarMapaCalor();});}
-  const sinFiltro=!FIL.lote.size&&!FIL.prog.size,plant=sinFiltro&&GER.plant?GER.plant:null;
-  const feats=LOTES?LOTES.features.filter(f=>f.geometry&&/Polygon/.test(f.geometry.type)&&enProg(f.properties._lote)&&loteSel(f.properties._lote)):[];
-  const casos=modo==='incid'?casosPCActivos():casosPCNuevos();
-  const n=new Map();for(const d of casos)n.set(d.lote,(n.get(d.lote)||0)+1);
-  const vals=new Map();for(const f of feats){const l=f.properties._lote,c=n.get(l)||0,tl=totalLote(l);vals.set(l,modo==='incid'?(tl?c/tl*100:0):c);}
-  const m=L.map(el,{zoomControl:true,attributionControl:false,preferCanvas:true,minZoom:11,maxZoom:20,zoomSnap:.25});GER.mc=m;
-  L.control.scale({imperial:false,position:'bottomleft'}).addTo(m);new NorteMC({position:'topright'}).addTo(m);
-  let sup=null;
-  if(feats.length){const key=modo+'|'+feats.length+'|'+[...vals].map(x=>x[0]+':'+x[1].toFixed(3)).join(',');
-    if(GER.mcCache&&GER.mcCache.key===key+(plant?'|P':''))sup=GER.mcCache.sup;else{sup=superficieMC(feats,vals,C.cortes,20,plant);GER.mcCache={key:key+(plant?'|P':''),sup};}
-    L.imageOverlay(sup.cv.toDataURL(),sup.limites,{opacity:1,interactive:false}).addTo(m);}
-  const capaL=L.geoJSON({type:'FeatureCollection',features:feats},{style:{color:'#111',weight:.8,fill:true,fillOpacity:0}}).addTo(m);
-  if(plant)L.geoJSON({type:'FeatureCollection',features:plant},{style:{color:'#000',weight:3,fill:false},interactive:false}).addTo(m);
-  const fmt=v=>modo==='incid'?num(v,2)+' %':num(v)+' caso'+(v===1?'':'s');
-  capaL.eachLayer(l=>{const lo=l.feature.properties._lote,v=vals.get(lo)||0;
-    l.bindTooltip(`<b>${esc(lo)}</b> · ${modo==='incid'?`${num(n.get(lo)||0)} casos activos · incidencia ${num(v,2)} %`:`${num(v)} casos nuevos`}`,{sticky:true});
-    if(GER.mcNombres!==false)etiquetaLoteMC(m,lo);});
-  // Etiquetas solo con suficiente acercamiento (si no, se tapan)
-  const etq=()=>{const z=m.getZoom();el.classList.toggle('mc-sin-etq',z<12);};m.on('zoomend',etq);
-  // Cada palma con caso al acercarse (zoom 17 o más)
-  const pal=L.layerGroup();for(const d of casos)L.circleMarker([d.lat,d.lng],{radius:3.5,color:'#000',weight:1,fillColor:'#d7191c',fillOpacity:1})
-    .bindTooltip(`${esc(d.lote)} · L${esc(d.linea??'?')} · P${esc(d.palma??'?')}<br>${esc(d.nivel2||'')} · ${esc(String(d.creado||'').slice(0,10))}`).addTo(pal);
-  const verPal=()=>{if(m.getZoom()>=17)pal.addTo(m);else m.removeLayer(pal);};m.on('zoomend',verPal);
-  if(GER.mcVista&&GER.mcVistaModo===modo)m.setView(GER.mcVista.c,GER.mcVista.z);else if(feats.length)m.fitBounds(capaL.getBounds(),{padding:[10,10]});else m.setView([1.52,-78.77],13);
-  GER.mcVistaModo=modo;verPal();etq();setTimeout(()=>m.invalidateSize(),60);
-  GER.mcCasos=casos.length;GER.mcHa=sup?sup.ha:[0,0,0,0,0];
-  $('#mcResumen').innerHTML=`<b>${num(casos.length)}</b> ${modo==='incid'?'casos activos':'casos nuevos'} en <b>${num(n.size)}</b> lotes`;
-  // Convenciones: incidencia → solo color y rango; casos nuevos → color, rango y número de casos de los lotes en cada rango
-  const casosClase=[0,0,0,0,0];if(modo==='nuevos')for(const [,v] of vals)casosClase[claseMC(v,C.cortes)]+=v;
-  $('#mcLeyenda').innerHTML=`<div style="background:#fff;color:#222;border-radius:12px;padding:12px 14px">
-      <div style="font-family:var(--t);font-size:17px;letter-spacing:1px;color:#555;margin-bottom:6px">${C.titulo}</div>
-      <table style="border-collapse:collapse;font-size:13px"><thead><tr style="color:#555"><th style="text-align:left;padding:3px 4px">${C.ley}</th>${modo==='nuevos'?'<th style="text-align:right;padding:3px 4px 3px 18px">Casos</th>':''}</tr></thead>
-      <tbody>${C.etq.map((t,i)=>`<tr data-mcc="${i}"><td style="padding:4px"><span style="display:inline-block;width:26px;height:14px;background:${MC_COL[i]};border:1px solid #555;vertical-align:middle;margin-right:8px"></span>${t}</td>${
-        modo==='nuevos'?`<td style="text-align:right;padding:4px 4px 4px 18px">${num(casosClase[i])}</td>`:''}</tr>`).join('')}</tbody></table></div>`;
-  const top=[...vals.entries()].filter(x=>x[1]>0).map(([l,v])=>({l,v,c:n.get(l)||0})).sort((a,b)=>b.v-a.v);
-  $('#mcTop').innerHTML=tablaGer([{t:'Lote',f:x=>`<b>${esc(x.l)}</b>`},{t:modo==='incid'?'Casos':'Casos nuevos',n:1,f:x=>num(x.c)},...(modo==='incid'?[{t:'Incidencia',n:1,f:x=>num(x.v,2)+' %'}]:[])],top,x=>`class="clic" data-mcl="${esc(x.l)}"`);
-  $$('#mcTop [data-mcl]').forEach(tr=>tr.onclick=()=>{const l=tr.dataset.mcl;let bb=null;capaL.eachLayer(y=>{if(y.feature.properties._lote===l)bb=y.getBounds();});if(bb)m.fitBounds(bb,{padding:[30,30],maxZoom:17});});
-  $$('#gerPanel [data-mcm]').forEach(b=>b.onclick=()=>{GER.mcModo=b.dataset.mcm;pintarGer();});
-  const nn=$('#mcNombres');if(nn)nn.onchange=()=>{GER.mcNombres=nn.checked;montarMapaCalor();};
-}
-/* Mapa de calor de los casos de PC vigentes sobre el mapa principal (ortofoto). */
-function alternarCalor(){
-  if(GER.calor){mapa.removeLayer(GER.calor);GER.calor=null;const c=$('#chCalor');if(c)c.remove();return;}
-  const casos=casosPCActivos();
-  GER.calor=L.layerGroup();
-  for(const d of casos){L.circle([d.lat,d.lng],{radius:45,stroke:false,fillColor:'#ff3d00',fillOpacity:.10,interactive:false}).addTo(GER.calor);
-    L.circle([d.lat,d.lng],{radius:18,stroke:false,fillColor:'#ffd600',fillOpacity:.22,interactive:false}).addTo(GER.calor);}
-  GER.calor.addTo(mapa);
-  const ch=document.createElement('span');ch.className='chip';ch.id='chCalor';ch.title='Quitar el mapa de calor';ch.innerHTML=`🔥 Calor PC: ${num(casos.length)} casos ✕`;ch.onclick=()=>alternarCalor();$('#btDatos').after(ch);
-  if(casos.length){try{mapa.fitBounds(L.latLngBounds(casos.map(d=>[d.lat,d.lng])),{padding:[40,40],maxZoom:16});}catch(e){}}
-  else toast('No hay casos de PC vigentes en el periodo y filtros cargados.');
-}
-
-/* ---------------- CIRUGÍA: ciclo censo → cirugía ---------------- */
-/* Programador de cirugías: trabaja sobre el mapa (casos de PC, parejas y rutas), por eso se abre en el modo de cirugías del visor. */
-function pintarProgCir(){
-  return `<div class="ger-sec"><h3>Programador de cirugías</h3>
-    <p class="tenue">Reparte los casos de pudrición de cogollo entre las parejas de cirugía (cirujano + auxiliar) según su eficiencia, con rutas óptimas sobre el mapa,
-      calendario al día hábil siguiente, correcciones versionadas y seguimiento de lo operado. Lo programado llega a la App de cada cirujano y auxiliar.</p>
-    <div class="ger-par"><button class="btn prim" id="gerAbrirCir">✚ Abrir el programador de cirugías en el mapa</button>
-      <button class="btn mini" data-gt-ir="cirugia">Ver indicadores de cirugía</button></div>
-    <p class="tenue">También se abre con el botón <b>✚ CIRUGÍAS</b> de la parte superior. Para volver, toque de nuevo <b>✚ CIRUGÍAS</b> y luego <b>🧭 COORDINACIÓN</b>.</p></div>`;
-}
-ENLACES_GER.progcir=()=>{const b=$('#gerAbrirCir');if(b)b.onclick=()=>{alternarGerencia(false);if(!CIR.on)alternarCirugia(true);};
-  const v=document.querySelector('#gerPanel [data-gt-ir]');if(v)v.onclick=()=>{GER.tab=v.dataset.gtIr;pintarGer();};};
-function pintarCirGer(){
-  if(!CIR.cargado)return `<div class="ger-aviso">${CIR.cargando?'Cargando el censo de los últimos 45 días y las cirugías…':'Los indicadores de cirugía usan el censo de los últimos 45 días y las jornadas de cirugía.'}
-    ${CIR.cargando?'':'<div style="margin-top:8px"><button class="btn mini prim" id="gerCirCargar">Cargar datos de cirugía</button></div>'}</div>`;
-  const hoy=hoyISO();const casos=new Map();
-  for(const d of [...CIR.diags,...CIR.correcciones]){if(!esCasoCirugia(d))continue;const k=String(d.palma_id);const t=tDe(d);const u=casos.get(k);if(!u||t<u.t)casos.set(k,{t,d});}
-  const filas=[];
-  for(const [k,{t,d}] of casos){const vence=habilMas(fechaISO(new Date(t)));const c=CIR.cirugias.filter(x=>String(x.palma_id)===k&&tDe(x)>=t-60000).sort((a,b)=>tDe(a)-tDe(b))[0];
-    const tc=c?tDe(c):null;filas.push({palma_id:k,lote:d.lote,linea:d.linea,palma:d.palma,n2:d.nivel2||'',censo:fechaISO(new Date(t)),vence,cir:tc?fechaISO(new Date(tc)):null,
-      horas:tc?(tc-t)/3600000:null,atiempo:tc?fechaISO(new Date(tc))<=vence:null,vencido:!tc&&vence<hoy,pareja:c&&c._j&&c._j.pareja?`${nombreCorto(c._j.pareja.cirujano&&c._j.pareja.cirujano.nombre)} + ${nombreCorto(c._j.pareja.auxiliar&&c._j.pareja.auxiliar.nombre)}`:''});}
-  const oper=filas.filter(x=>x.cir),hs=oper.map(x=>x.horas).sort((a,b)=>a-b),med=hs.length?hs[Math.floor(hs.length/2)]:null,prom=hs.length?hs.reduce((a,b)=>a+b,0)/hs.length:null;
-  const venc=filas.filter(x=>x.vencido),evaluables=filas.filter(x=>x.vence<=hoy),aTiempo=evaluables.filter(x=>x.atiempo).length;
-  const cump=evaluables.length?aTiempo/evaluables.length*100:null;
-  const kp=`<div class="ger-kpis">${kpi(num(filas.length),'Casos de cirugía (45 días)')}${kpi(num(oper.length),'Operados')}${kpi(num(CIR.pend.length),'Pendientes hoy',CIR.pend.length?'med':'ok')}
-    ${kpi(num(venc.length),'Vencidos sin operar',venc.length?'mal':'ok')}${kpi(cump==null?'—':num(cump,0)+' %','Operados a tiempo (D+1 hábil)',cump==null?'':cump>=90?'ok':cump>=70?'med':'mal')}
-    ${kpi(prom==null?'—':num(prom/24,1)+' d','Tiempo promedio caso → cirugía')}${kpi(med==null?'—':num(med/24,1)+' d','Mediana caso → cirugía')}</div>`;
-  // Por pareja
-  const pm=new Map();for(const c of CIR.cirugias){const j=c._j||{};const p=j.pareja?`${nombreCorto(j.pareja.cirujano&&j.pareja.cirujano.nombre)} + ${nombreCorto(j.pareja.auxiliar&&j.pareja.auxiliar.nombre)}`:(j.evaluador||'—');
-    let f=pm.get(p);if(!f)pm.set(p,f={pareja:p,cir:0,dias:new Set(),atiempo:0,eval:0});f.cir++;f.dias.add(fechaISO(new Date(tDe(c))));}
-  for(const x of oper){const f=pm.get(x.pareja);if(f&&x.vence<=hoy){f.eval++;if(x.atiempo)f.atiempo++;}}
-  const tPar=tablaGer([{t:'Pareja',f:x=>esc(x.pareja)},{t:'Cirugías',n:1,f:x=>num(x.cir)},{t:'Días con cirugía',n:1,f:x=>num(x.dias.size)},{t:'Cirugías/día',n:1,f:x=>num(x.cir/Math.max(1,x.dias.size),1)},
-    {t:'A tiempo',n:1,f:x=>x.eval?num(x.atiempo/x.eval*100,0)+' %':'—'}],[...pm.values()].sort((a,b)=>b.cir-a.cir));
-  // Por lote
-  const lm=new Map();for(const x of filas){let f=lm.get(x.lote);if(!f)lm.set(x.lote,f={lote:x.lote,casos:0,oper:0,pend:0,venc:0});f.casos++;if(x.cir)f.oper++;else f.pend++;if(x.vencido)f.venc++;}
-  const tLote=tablaGer([{t:'Lote',f:x=>`<b>${esc(x.lote)}</b>`},{t:'Casos',n:1,f:x=>num(x.casos)},{t:'Operados',n:1,f:x=>num(x.oper)},{t:'Pendientes',n:1,f:x=>num(x.pend)},{t:'Vencidos',n:1,f:x=>x.venc?`<span class="ger-chip mal">${x.venc}</span>`:'0'}],
-    [...lm.values()].sort((a,b)=>b.venc-a.venc||b.pend-a.pend||ordenNat(a.lote,b.lote)));
-  const tVenc=tablaGer([{t:'Palma',f:x=>`<b>${esc(x.lote)} · L${esc(x.linea??'?')} · P${esc(x.palma??'?')}</b>`},{t:'Diagnóstico',f:x=>esc(x.n2)},{t:'Censo',f:x=>esc(x.censo)},{t:'Vencía',f:x=>esc(x.vence)},
-    {t:'Atraso',n:1,f:x=>`<span class="ger-chip mal">${diasEntre(x.vence,hoy)} d</span>`}],venc.sort((a,b)=>a.vence.localeCompare(b.vence)).slice(0,60));
-  return `<p class="tenue">Censo de los últimos 45 días y jornadas de cirugía. Un caso cuenta desde la primera vez que la palma queda como caso de cirugía (PC inicial, avanzada o reincidente).</p>${kp}
-    <div class="ger-sec"><h3>Por pareja</h3>${tPar}</div><div class="ger-sec"><h3>Por lote</h3>${tLote}</div>
-    <div class="ger-sec"><h3>Casos vencidos sin operar (${num(venc.length)})</h3>${tVenc}</div>
-    <div style="margin-top:12px"><button class="btn mini" id="gerCirRecargar">↻ Volver a cargar</button></div>`;
-}
-ENLACES_GER.cirugia=()=>{const b=$('#gerCirCargar')||$('#gerCirRecargar');if(b)b.onclick=async()=>{CIR.cargado=false;const t=cirCargar();pintarGer();await t;pintarGer();};};
-
 /* ---------------- SINCRONIZACIÓN ---------------- */
 const normN=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
 async function cargarSync(){
   GER.cargandoSync=true;pintarGer();
   try{
-    const us=await cirUsuarios();
+    const us=await usuariosPaquete();
     const desde=new Date(Date.now()-30*86400000).toISOString();const envios=[];
     for(let page=1;page<=30;page++){
       const l=await (await gh(`/commits?sha=${encodeURIComponent(SES.repo.rama)}&since=${encodeURIComponent(desde)}&per_page=100&page=${page}`)).json();
       if(!Array.isArray(l)||!l.length)break;
       for(const c of l){const m=String(c.commit&&c.commit.message||'');if(!m.startsWith('Polinización'))continue;
-        const u=(m.match(/·\s*u:([^\s·]+)\s*$/m)||[])[1]||null;const cir=/· Cirugía ·/.test(m);
-        const partes=m.split('\n')[0].split('·').map(s=>s.trim());const ev=cir?partes[2]:partes[1];const fecha=(m.match(/\d{4}-\d{2}-\d{2}/)||[])[0]||null;
-        envios.push({u,ev,cir,fecha,t:Date.parse(c.commit.committer&&c.commit.committer.date||c.commit.author.date)});}
+        const u=(m.match(/·\s*u:([^\s·]+)\s*$/m)||[])[1]||null;
+        const partes=m.split('\n')[0].split('·').map(s=>s.trim());const ev=partes[1];const fecha=(m.match(/\d{4}-\d{2}-\d{2}/)||[])[0]||null;
+        envios.push({u,ev,fecha,t:Date.parse(c.commit.committer&&c.commit.committer.date||c.commit.author.date)});}
       if(l.length<100)break;}
     const porNombre=new Map(us.map(x=>[normN(x.nombre),x.u]));
     const ult=new Map();
-    for(const e of envios){const u=e.u||porNombre.get(normN(e.ev))||('?'+normN(e.ev));let f=ult.get(u);if(!f)ult.set(u,f={t:0,fecha:null,n7:0,n30:0,cir:0});
-      if(e.t>f.t){f.t=e.t;f.fecha=e.fecha;}f.n30++;if(Date.now()-e.t<=7*86400000)f.n7++;if(e.cir)f.cir++;}
+    for(const e of envios){const u=e.u||porNombre.get(normN(e.ev))||('?'+normN(e.ev));let f=ult.get(u);if(!f)ult.set(u,f={t:0,fecha:null,n7:0,n30:0});
+      if(e.t>f.t){f.t=e.t;f.fecha=e.fecha;}f.n30++;if(Date.now()-e.t<=7*86400000)f.n7++;}
     const filas=[];
-    for(const x of us){if(x.inactivo)continue;const lab=x.labores&&x.labores.length?x.labores:(['admin','analista','superadmin','supervisor'].includes(x.rol)?['censo','cirugia']:['censo']);
+    for(const x of us){if(x.inactivo)continue;
       if(x.rol!=='operario')continue; // solo operarios de campo
-      const f=ult.get(x.u)||null;filas.push({u:x.u,nombre:x.nombre,cargo:x.cargo||'',lab,ult:f&&f.t||null,fecha:f&&f.fecha,n7:f?f.n7:0,n30:f?f.n30:0});}
+      const f=ult.get(x.u)||null;filas.push({u:x.u,nombre:x.nombre,cargo:x.cargo||'',ult:f&&f.t||null,fecha:f&&f.fecha,n7:f?f.n7:0,n30:f?f.n30:0});}
     GER.sync={filas,cuando:Date.now(),envios:envios.length};
   GER.syncErr=null;}catch(e){toast(e.message,6000);GER.sync=GER.sync||null;GER.syncErr=e.message;}   // sin reintento automático: se consulta con el botón
   finally{GER.cargandoSync=false;pintarGer();}
@@ -2848,7 +2339,7 @@ function pintarSync(){
     .sort((a,b)=>({nunca:0,mal:1,med:2,ok:3}[a.estado]-{nunca:0,mal:1,med:2,ok:3}[b.estado])||(b.dias??1e9)-(a.dias??1e9)||ordenNat(a.nombre,b.nombre));
   const nMal=filas.filter(x=>x.estado==='mal').length,nNunca=filas.filter(x=>x.estado==='nunca').length,nOk=filas.filter(x=>x.estado==='ok'||x.estado==='med').length;
   const chip=x=>x.estado==='nunca'?'<span class="ger-chip gris">Sin envíos en 30 días</span>':x.estado==='mal'?`<span class="ger-chip mal">${x.dias} días sin sincronizar</span>`:x.estado==='med'?`<span class="ger-chip med">Hace ${x.dias} día(s)</span>`:'<span class="ger-chip ok">Hoy</span>';
-  const t=tablaGer([{t:'Operario',f:x=>`<b>${esc(x.nombre)}</b><br><span class="tenue">${esc(x.u)}${x.cargo?' · '+esc(x.cargo):''}</span>`},{t:'Labores',f:x=>esc(x.lab.map(l=>l==='cirugia'?'Cirugía':'Censo').join(', '))},
+  const t=tablaGer([{t:'Operario',f:x=>`<b>${esc(x.nombre)}</b><br><span class="tenue">${esc(x.u)}${x.cargo?' · '+esc(x.cargo):''}</span>`},
     {t:'Último envío',f:x=>x.ult?esc(new Date(x.ult).toLocaleString('es-CO',{dateStyle:'medium',timeStyle:'short'})):'—'},{t:'Jornada',f:x=>esc(x.fecha||'—')},{t:'Estado',f:chip},
     {t:'Envíos 7 días',n:1,f:x=>num(x.n7)},{t:'Envíos 30 días',n:1,f:x=>num(x.n30)}],filas);
   return `<div class="ger-kpis">${kpi(num(filas.length),'Operarios activos')}${kpi(num(nOk),'Al día',nOk?'ok':'')}${kpi(num(nMal),`Más de ${N} días sin sincronizar`,nMal?'mal':'ok')}${kpi(num(nNunca),'Sin envíos en 30 días',nNunca?'med':'ok')}</div>
@@ -2923,7 +2414,7 @@ dget('kv','ger_revisados').then(v=>{if(Array.isArray(v))GER.revisados=new Set(v)
    El supervisor vuelve a diagnosticar, sin ver el diagnóstico original, una muestra aleatoria de palmas censadas.
    La muestra se guarda en el repositorio de datos (auditoria/AUD-AAAAMMDD-HHMM.json); la App la descarga para supervisores
    y marca los diagnósticos que hacen sobre esas palmas (campo «auditoria»). Aquí se mide la concordancia por operario. */
-async function mapaUsuarios(){const us=await cirUsuarios();return new Map(us.map(x=>[x.u,x]));}
+async function mapaUsuarios(){const us=await usuariosPaquete();return new Map(us.map(x=>[x.u,x]));}
 const esCensadorU=(u,m)=>{const x=m.get(u);return x?x.rol==='operario':/^\d+$/.test(String(u));};
 async function generarMuestra(){
   const A=GER.aud,um=await mapaUsuarios();const porOp=new Map();
@@ -3200,10 +2691,10 @@ function enlazarCiclo(){
 }
 function pintarPlanCenso(){
   const P=GER.plan;if(!P.fecha)P.fecha=(()=>{const h=new Date();const f=hoyISO();return h.getHours()<10&&esHabil(f)?f:habilMas(f);})();
-  if(P.ops==null&&!P.cargandoOps){P.cargandoOps=true;cirUsuarios().then(us=>{const O=resumenOperarios();
-      P.ops=us.filter(x=>!x.inactivo&&x.rol==='operario'&&(!x.labores||!x.labores.length||x.labores.includes('censo'))).map(x=>{const r=O.find(o=>o.usuario===x.u);return {usuario:x.u,nombre:x.nombre,activo:true,meta:r&&r.ha_dia>0?+r.ha_dia.toFixed(1):15};});})
+  if(P.ops==null&&!P.cargandoOps){P.cargandoOps=true;usuariosPaquete().then(us=>{const O=resumenOperarios();
+      P.ops=us.filter(x=>!x.inactivo&&x.rol==='operario'&&(!x.labores||!x.labores.length||x.labores.includes(LABOR_VISOR))).map(x=>{const r=O.find(o=>o.usuario===x.u);return {usuario:x.u,nombre:x.nombre,activo:true,meta:r&&r.ha_dia>0?+r.ha_dia.toFixed(1):15};});})
     .catch(e=>toast(e.message,6000)).finally(()=>{P.cargandoOps=false;pintarGer();});}
-  const ciclo=tarjetaModoProg('censo')+pintarCiclo();
+  const ciclo=tarjetaModoProg(LABOR_VISOR)+pintarCiclo();
   if(GER.cic.c)return ciclo+`<details class="ger-sec"><summary style="cursor:pointer"><b>Propuesta automática por días sin censo</b> (alternativa al ciclo aprobado)</summary>${pintarPropuesta()}</details>`;
   return ciclo+pintarPropuesta();
 }
@@ -3233,19 +2724,17 @@ ENLACES_GER.plan=()=>{enlazarRango();enlazarCiclo();enlazarModoProg();const P=GE
     try{await ghPut(ruta,JSON.stringify(plan,null,1),`Plan de censo ${P.fecha} (${plan.asignaciones.length} operarios)`,sha);P.guardado=true;toast('✅ Plan guardado: cada operario verá sus lotes al iniciar la jornada.');}
     catch(e){toast(e.message,6000);}pintarGer();};};
 /* ---------------- LÍNEA DE TIEMPO DE LA PALMA ----------------
-   Censo → cirugía → recuperación → alta, con los diagnósticos cargados en el visor y, si están cargados, los de cirugía. */
+   Registros de la palma cargados en el visor. */
 function historiaPalma(pid){
   const ev=[];const k=String(pid);
   for(const j of JOR)for(const d of j.diags)if(String(d.palma_id)===k)ev.push({t:Date.parse(d.creado),tipo:'Censo',txt:[d.nivel1,d.nivel2].filter(Boolean).join(' › ')||d.estado_nombre||d.estado,quien:j.evaluador,d:{...d,_j:j}});
-  if(CIR.cargado){for(const d of CIR.correcciones)if(String(d.palma_id)===k)ev.push({t:tDe(d),tipo:d.origen==='caso_nuevo'?'Caso nuevo (cirujano)':'Corrección (cirujano)',txt:[d.nivel1,d.nivel2].filter(Boolean).join(' › '),quien:d.evaluador||''});
-    for(const c of CIR.cirugias)if(String(c.palma_id)===k)ev.push({t:tDe(c),tipo:'Cirugía',txt:[c.tipo_cirugia,c.producto].filter(Boolean).join(' · ')||'Cirugía realizada',quien:c._j&&c._j.evaluador||''});}
   return ev.filter(e=>Number.isFinite(e.t)).sort((a,b)=>a.t-b.t);
 }
 function verHistoriaPalma(d){
   const ev=historiaPalma(d.palma_id);const ult=ev[ev.length-1];
   const enRec=ult&&/RECUPERACI/i.test(ult.txt||'');const dias=ult?Math.floor((Date.now()-ult.t)/864e5):0;
-  const html=`<b class="h">🕘 ${esc(etiquetaDiag(d))}</b><div style="margin:6px 0 2px" class="tenue">${ev.length} evento(s) en los datos cargados${CIR.cargado?'':' (cargue Cirugías para ver también las cirugías)'}</div>
-    <div style="max-height:260px;overflow:auto">${ev.map(e=>`<div style="border-left:3px solid ${e.tipo==='Cirugía'?'#2f93d5':/RECUPERACI/i.test(e.txt)?'#ff9f1c':/DE ALTA/i.test(e.txt)?'#00e676':'#e53935'};padding:3px 8px;margin:4px 0">
+  const html=`<b class="h">🕘 ${esc(etiquetaDiag(d))}</b><div style="margin:6px 0 2px" class="tenue">${ev.length} evento(s) en los datos cargados</div>
+    <div style="max-height:260px;overflow:auto">${ev.map(e=>`<div style="border-left:3px solid ${/RECUPERACI/i.test(e.txt)?'#ff9f1c':/DE ALTA/i.test(e.txt)?'#00e676':'#e53935'};padding:3px 8px;margin:4px 0">
       <b>${esc(new Date(e.t).toLocaleDateString('es-CO'))}</b> · ${esc(e.tipo)}<br>${esc(e.txt)}<br><span class="tenue">${esc(e.quien||'')}</span></div>`).join('')}</div>
     ${enRec&&dias>30?`<div class="aviso" style="margin-top:6px">⏰ En recuperación sin nueva revisión hace ${dias} días.</div>`:''}`;
   L.popup({maxWidth:340,minWidth:260}).setLatLng([d.lat,d.lng]).setContent(html).openOn(mapa);
@@ -3337,7 +2826,7 @@ ENLACES_GER.reportes=()=>{const r=$('#repRecargar');if(r)r.onclick=()=>{GER.repo
 
 
 /* =====================================================================
-   INTERRUPTOR «LIBRE / SEGÚN PROGRAMACIÓN» por labor (censo y plagas).
+   INTERRUPTOR «LIBRE / SEGÚN PROGRAMACIÓN» de la labor (polinización).
    Se guarda en config/modo_programacion.json; la App lo lee al abrir la labor.
    ===================================================================== */
 const MPROG={c:null,sha:null,cargando:false,err:null,guardando:false};
@@ -3352,7 +2841,7 @@ function tarjetaModoProg(labor){
   if(MPROG.c==null&&!MPROG.cargando&&!MPROG.err){MPROG.cargando=true;cargarModoProg().catch(e=>{MPROG.err=e.message;}).finally(()=>{MPROG.cargando=false;pintarGer();});}
   if(MPROG.err)return `<div class="ger-sec"><div class="ger-aviso ger-mal">⚠ No se pudo leer el modo de programación: ${esc(MPROG.err)} <button class="btn mini" data-mprog-re>Reintentar</button></div></div>`;
   if(MPROG.c==null)return '<div class="ger-sec"><p class="tenue">Consultando el modo de programación…</p></div>';
-  const prog=modoProgDe(MPROG.c,labor)==='programado',x=MPROG.c[labor]||{},quien=labor==='plagas'?'auxiliar':'operario';
+  const prog=modoProgDe(MPROG.c,labor)==='programado',x=MPROG.c[labor]||{},quien='operario';
   return `<div class="ger-sec" id="mprog_${labor}" style="border-left:4px solid ${prog?'#22d39a':'#ffc53d'}">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
       <div><b>Elección de lotes en la App · ${esc(LABORES_MODO_PROG[labor])}:</b> <span class="ger-chip ${prog?'ok':'med'}" data-mprog-estado="${labor}">${prog?'🔒 SEGÚN PROGRAMACIÓN':'🔓 LIBRE'}</span>
@@ -3514,7 +3003,7 @@ async function calcularAvanceMapa(feats){
     for(const id0 of ids){const id=String(id0);if(ult.get(id)===j.fecha)continue;ult.set(id,j.fecha);vis.set(id,(vis.get(id)||0)+1);}}
   const palmas=[],porLote=new Map();
   for(const f of feats){const l=f.properties._lote;const d=await chunkLote(l);const r={lote:l,tot:0,v:0,c:[0,0,0,0]};
-    for(const a of d){if(a[3]===0||a[4]==null||(typeof VAJ!=='undefined'&&VAJ.has(String(a[0]))))continue;const n=Math.min(3,vis.get(String(a[0]))||0);
+    for(const a of d){if(a[3]===0||a[4]==null)continue;const n=Math.min(3,vis.get(String(a[0]))||0);
       palmas.push(a[4],a[5],n);r.tot++;r.c[n]++;if(n)r.v++;}
     porLote.set(l,r);}
   GER.avCache={key,palmas,porLote,sinIds};return GER.avCache;
@@ -3606,677 +3095,6 @@ function descargarAvancePNG(){
 }
 
 /* =====================================================================
-   PROGRAMADOR, SEGUIMIENTO Y APROBACIÓN DE LA ERRADICACIÓN (visor web · Coordinación)
-   · Casos: palmas cuyo último diagnóstico (censo o corrección de cirujano/erradicador) es PC cráter (o «para erradicar»),
-     palma espontánea o yarumo, sin erradicación posterior. Plazo: día hábil siguiente. Prioridad: cráter → espontánea → yarumo.
-   · Equipos mixtos: erradicador solo o con auxiliar; eficiencia de 5 a 30 palmas por día.
-   · Programación en erradicacion/programacion/AAAA-MM-DD.json (la descarga la App).
-   · Aprobaciones (analista de datos o super administrador): las palmas erradicadas (cráter y espontáneas) pasan a
-     existencia 0 en cartografia/ajustes_existencia.json; si se rechaza, la palma vuelve a quedar pendiente.
-   ===================================================================== */
-const ERR={on:false,cargado:false,cargando:false,diags:[],correcciones:[],errs:[],jornadas:[],pend:[],usuarios:[],equipos:[],prog:null,progSha:null,
-  capa:L.layerGroup(),fecha:null,tab:'prog',aj:null,ajSha:null,productos:null,selAprob:new Set()};
-const COLORES_EQ=['#ff8a65','#4fb3ff','#c77dff','#22d39a','#f2a33a','#e57373'];
-const puedeAprobarErr=()=>!!SES&&['analista','superadmin'].includes(SES.rol);
-const tipoErrTxt=t=>(TIPOS_ERR[t]||{}).t||t||'';
-
-(function montarErradicacion(){
-  const css=document.createElement('style');css.textContent=`
-  body.modo-err #filtros,body.modo-err nav.tabs,body.modo-err #panel{display:none!important}
-  #errPanel{flex:1;overflow:auto;padding:12px 14px 30px;display:none}
-  body.modo-err #errPanel{display:block}
-  .err-tipo{border-radius:999px;padding:1px 7px;font-size:11px;font-weight:700;background:rgba(255,138,101,.15);color:#ff8a65;border:1px solid rgba(255,138,101,.45);white-space:nowrap}`;
-  document.head.appendChild(css);
-  const p=document.createElement('div');p.id='errPanel';$('aside').appendChild(p);
-  // Acceso directo en la cabecera, junto a ✚ CIRUGÍAS (también está en 🧭 COORDINACIÓN → Programador de erradicación)
-  const bt=document.createElement('button');bt.className='btn mini';bt.id='btErr';bt.innerHTML='🪓 ERRADICACIÓN';bt.title='Programador, seguimiento y aprobaciones de la erradicación';
-  const c=$('#btCir');if(c)c.after(bt);else $('#chDatos').before(bt);bt.onclick=()=>{if(GER.on)alternarGerencia(false);alternarErr();};
-})();
-function alternarErr(on){
-  ERR.on=on==null?!ERR.on:on;if(ERR.on&&typeof CIR!=='undefined'&&CIR.on)alternarCirugia(false);
-  document.body.classList.toggle('modo-err',ERR.on);{const b=$('#btErr');if(b)b.classList.toggle('prim',ERR.on);}
-  for(const c of [capaRec,capaDiag,capaPar])ERR.on?mapa.removeLayer(c):(c.addTo(mapa));
-  if(ERR.on){ERR.capa.addTo(mapa);if(!ERR.cargado&&!ERR.cargando)errCargar();else pintarErr();}
-  else mapa.removeLayer(ERR.capa);
-}
-const erradicadores=()=>ERR.usuarios.filter(x=>!x.inactivo&&(x.labores||[]).includes('erradicacion')&&(x.rol_erradicacion||'erradicador')==='erradicador');
-const auxiliaresErr=()=>ERR.usuarios.filter(x=>!x.inactivo&&(x.labores||[]).includes('erradicacion'));
-
-/* ---------- Ajustes de existencia aprobados (compartido con el resto del visor) ---------- */
-let VAJ=new Set();
-async function cargarAjustesVisor(){
-  try{const j=await (await gh(`/contents/cartografia/ajustes_existencia.json?ref=${encodeURIComponent(SES.repo.rama)}`)).json();ERR.ajSha=j.sha;ERR.aj=JSON.parse(DEC.decode(deB64(j.content.replace(/\s/g,''))));}
-  catch(e){if(e.status&&e.status!==404)console.warn('ajustes',e);ERR.aj=null;ERR.ajSha=null;}
-  if(!ERR.aj)ERR.aj={formato:'polinizacion-ajustes-existencia-1',ajustes:[],rechazos:[]};ERR.aj.ajustes=ERR.aj.ajustes||[];ERR.aj.rechazos=ERR.aj.rechazos||[];
-  VAJ=new Set(ERR.aj.ajustes.filter(x=>Number(x.existe)===0).map(x=>String(x.palma_id)));CHUNK.clear();
-}
-{const _chunk=chunkLote;chunkLote=async function(l){const d=await _chunk(l);if(VAJ.size)for(const a of d)if(VAJ.has(String(a[0])))a[3]=0;return d;};}
-
-/* ---------- Carga: censo (45 días), correcciones de cirugía y jornadas de erradicación ---------- */
-async function errCargar(){
-  ERR.cargando=true;pintarErr('Cargando el censo de los últimos 45 días, cirugías y erradicaciones…');
-  try{
-    ERR.usuarios=await cirUsuarios();await cargarAjustesVisor();
-    const hoy=hoyISO(),d1=hoyISO(new Date(Date.now()-45*86400000));
-    const [dC,dX,dE]=await Promise.all([listarDias('jornadas',d1,hoy),listarDias('cirugia/jornadas',d1,hoy),listarDias('erradicacion/jornadas',d1,hoy)]);
-    const arch=[];
-    for(const [dias,k] of [[dC,'c'],[dX,'x'],[dE,'e']])await enParalelo(dias,6,async d=>{for(const f of await arbol(d.sha))if(f.type==='blob')arch.push({...f,dia:d.path,k});});
-    const zips=new Map(arch.filter(f=>f.path.endsWith('_fotos.zip')).map(f=>[f.k+'/'+f.dia+'/'+f.path,f.sha]));
-    const diags=[],corr=[],errs=[],jors=[];let n=0;const geos=arch.filter(f=>f.path.endsWith('.geojson'));
-    await enParalelo(geos,6,async f=>{try{const g=JSON.parse(await blobTexto(f.sha));const zip=zips.get(f.k+'/'+f.dia+'/'+f.path.replace(/\.geojson$/,'_fotos.zip'));
-      if(f.k==='c'){const j=normalizar(g,f,zip);for(const d of j.diags){d._j=j;diags.push(d);}}
-      else{const h=g.jornada||{};const j={...h,zipSha:zip,ruta:f.dia+'/'+f.path};if(f.k==='e')jors.push(j);
-        for(const ft of g.features||[]){const p=ft.properties||{};const ll=ft.geometry&&ft.geometry.type==='Point'?{lng:ft.geometry.coordinates[0],lat:ft.geometry.coordinates[1]}:{};
-          const o={...p,...ll,_j:j,_labor:f.k==='e'?'erradicacion':'cirugia'};
-          if(p.tipo==='erradicacion')errs.push(o);else if(p.tipo==='diagnostico')corr.push(o);}}
-    }catch(e){console.warn('archivo ilegible',f.path,e);}n++;pintarErr(`Leyendo archivos: ${n} de ${geos.length}`);});
-    ERR.diags=diags;ERR.correcciones=corr;ERR.errs=errs;ERR.jornadas=jors;
-    calcularPendErr();ERR.cargado=true;
-    const g=await dget('kv','err_equipos');ERR.equipos=Array.isArray(g)&&g.length?g:equiposIniciales();
-    if(!ERR.fecha)ERR.fecha=esHabil(hoyISO())&&new Date().getHours()<12?hoyISO():habilMas(hoyISO());
-    await leerProgErr(ERR.fecha);
-    try{const c=await (await gh(`/contents/config/erradicacion.json?ref=${encodeURIComponent(SES.repo.rama)}`,'application/vnd.github.raw+json')).text();ERR.productos=(JSON.parse(c).productos||[]).filter(Boolean);}catch(e){ERR.productos=null;}
-  }catch(e){toast(e.message,6000);}
-  finally{ERR.cargando=false;pintarErr();}
-}
-function equiposIniciales(){const e=erradicadores();return e.length?e.slice(0,3).map(x=>({erradicador:x.u,auxiliar:'',ef:20})):[{erradicador:'',auxiliar:'',ef:20}];}
-const rechazada=e=>ERR.aj&&ERR.aj.rechazos.some(r=>r.erradicacion_id===e.id);
-const aprobada=e=>ERR.aj&&ERR.aj.ajustes.some(a=>a.erradicacion_id===e.id);
-function calcularPendErr(){
-  const ult=new Map(),ultE=new Map();
-  const ponD=(d,clase)=>{const k=String(d.palma_id);const t=tDe(d);const u=ult.get(k);if(!u||t>=u.t)ult.set(k,{t,d,clase});};
-  ERR.diags.forEach(d=>ponD(d,'censo'));ERR.correcciones.forEach(d=>ponD(d,d.origen==='caso_nuevo'?'caso_nuevo':'correccion'));
-  for(const e of ERR.errs){if(rechazada(e))continue;const k=String(e.palma_id);const t=tDe(e);const u=ultE.get(k);if(!u||t>u.t)ultE.set(k,{t,e});}
-  const pend=[];
-  for(const [k,{t,d,clase}] of ult){const tipo=tipoErradicacion(d);if(!tipo||VAJ.has(k))continue;const e=ultE.get(k);if(e&&e.t>=t-60000)continue;
-    const f=fechaISO(new Date(t));pend.push({palma_id:k,lote:d.lote,linea:d.linea,palma:d.palma,lat:d.lat,lng:d.lng,tipo,diagnostico:[d.nivel1||d.n1,d.nivel2||d.n2].filter(Boolean).join(' · '),
-      fecha_censo:f,vence:habilMas(f),censador:d.evaluador||'',diag_id:d.id||'',origen:clase,creado:new Date(t).toISOString()});}
-  ERR.pend=pend.sort((a,b)=>a.vence.localeCompare(b.vence)||(TIPOS_ERR[a.tipo].p-TIPOS_ERR[b.tipo].p)||ordenNat(a.lote,b.lote));
-  // Cumplimiento del plazo (30 días): casos que se volvieron «para erradicar» y si se erradicaron a tiempo
-  const desde=Date.now()-30*86400000;let tot=0,ok=0;
-  for(const d of [...ERR.diags,...ERR.correcciones]){if(!tipoErradicacion(d))continue;const t=tDe(d);if(t<desde)continue;const vence=habilMas(fechaISO(new Date(t)));
-    if(vence>hoyISO())continue;tot++;const e=ERR.errs.find(x=>String(x.palma_id)===String(d.palma_id)&&tDe(x)>=t-60000&&!rechazada(x));if(e&&fechaISO(new Date(tDe(e)))<=vence)ok++;}
-  ERR.cumplimiento=tot?Math.round(ok/tot*100):null;ERR.cumpTot=tot;
-}
-
-/* ---------- Programación ---------- */
-function generarProgErr(){
-  const fecha=ERR.fecha;const eqs=ERR.equipos.filter(p=>p.erradicador);
-  if(!eqs.length){toast('Defina al menos un equipo con su erradicador.');return;}
-  const cap=eqs.reduce((s,p)=>s+(Number(p.ef)||20),0);
-  const cand=ERR.pend.filter(o=>o.fecha_censo<=fecha);
-  const sel=cand.slice(0,cap),quedan=cand.slice(cap);
-  const asig=repartir(sel,eqs);const of=oficinaCentral();
-  const out=eqs.map((p,j)=>{const er=ERR.usuarios.find(u=>u.u===p.erradicador)||{},ax=p.auxiliar?(ERR.usuarios.find(u=>u.u===p.auxiliar)||{}):null;
-    const ords=sel.filter((_,i)=>asig[i]===j);let ruta={orden:ords.map((_,i)=>i),geometria:[],tramos_m:[],km:0};
-    try{if(VIAS.gj&&ords.length)ruta=rutaOptima(VIAS.gj,of,ords,{dentro:(lng,lat)=>!!loteDe(lat,lng)});}catch(e){console.warn('ruta',e);}
-    const ordenes=ruta.orden.map((ix,n)=>({...ords[ix],orden:n+1,id:`err-${fecha}-${ords[ix].palma_id}`,tramo_m:ruta.tramos_m[n]||null}));
-    return {n:j+1,color:COLORES_EQ[j%COLORES_EQ.length],erradicador:{u:p.erradicador,nombre:er.nombre||p.erradicador},auxiliar:p.auxiliar?{u:p.auxiliar,nombre:ax.nombre||p.auxiliar}:null,
-      eficiencia:Number(p.ef)||20,km:ruta.km,km_campo:+((ruta.tramos_m||[]).slice(1,-1).reduce((a,b)=>a+b,0)/1000).toFixed(2),ruta:ruta.geometria,ordenes};});
-  ERR.prog={formato:'polinizacion-programacion-erradicacion-1',fecha,generado:new Date().toISOString(),por:SES.u,por_nombre:SES.nombre,oficina:of,equipos:out,
-    sin_programar:quedan.map(o=>({palma_id:o.palma_id,lote:o.lote,linea:o.linea,palma:o.palma,tipo:o.tipo,vence:o.vence})),enviada:false};
-  dput('kv','err_equipos',ERR.equipos);pintarErr();toast(`Programación lista: ${sel.length} palma(s) en ${out.length} equipo(s). Revise y envíela a los celulares.`,4500);
-}
-async function leerProgErr(fecha){
-  ERR.prog=null;ERR.progSha=null;
-  try{const j=await (await gh(`/contents/erradicacion/programacion/${fecha}.json?ref=${encodeURIComponent(SES.repo.rama)}`)).json();
-    ERR.progSha=j.sha;ERR.prog={...JSON.parse(DEC.decode(deB64(j.content.replace(/\s/g,'')))),enviada:true};}
-  catch(e){if(e.status!==404)toast(e.message,5000);}
-}
-async function enviarProgErr(){
-  if(!ERR.prog)return;const b=$('#errEnviar');if(b){b.disabled=true;b.textContent='Enviando…';}
-  try{const datos={...ERR.prog};delete datos.enviada;datos.enviado=new Date().toISOString();
-    let sha=ERR.progSha;if(!sha){try{sha=(await (await gh(`/contents/erradicacion/programacion/${ERR.prog.fecha}.json?ref=${encodeURIComponent(SES.repo.rama)}`)).json()).sha;}catch(e){}}
-    ERR.progSha=await ghPut(`erradicacion/programacion/${ERR.prog.fecha}.json`,JSON.stringify(datos),`Programación de erradicación ${ERR.prog.fecha} · ${SES.nombre}`,sha);
-    ERR.prog={...datos,enviada:true};toast('✓ Programación enviada. Los equipos la reciben al iniciar la jornada de erradicación.',5000);}
-  catch(e){toast('No se pudo enviar: '+e.message,6000);}
-  finally{pintarErr();}
-}
-
-/* ---------- Aprobación de existencia 0 ---------- */
-const porAprobar=()=>ERR.errs.filter(e=>(e.requiere_aprobacion===true||e.requiere_aprobacion==='true'||(TIPOS_ERR[e.tipo_erradicacion]||{}).existencia)&&!aprobada(e)&&!rechazada(e)).sort((a,b)=>tDe(a)-tDe(b));
-async function guardarAjustes(mutar,msg){
-  // Se vuelve a leer el archivo justo antes de escribir para no pisar otra aprobación hecha al mismo tiempo
-  await cargarAjustesVisor();mutar(ERR.aj);ERR.aj.formato='polinizacion-ajustes-existencia-1';ERR.aj.actualizado=new Date().toISOString();ERR.aj.actualizado_por=SES.u;
-  ERR.ajSha=await ghPut('cartografia/ajustes_existencia.json',JSON.stringify(ERR.aj,null,1),msg,ERR.ajSha);
-  VAJ=new Set(ERR.aj.ajustes.filter(x=>Number(x.existe)===0).map(x=>String(x.palma_id)));CHUNK.clear();
-}
-async function aprobarErr(lista){
-  if(!puedeAprobarErr()||!lista.length)return;
-  if(!confirm(`¿Aprobar ${lista.length} palma(s) erradicada(s)?\n\nQuedarán con existencia 0: salen de los casos activos de PC y de la incidencia en la App, el visor y los reportes.`))return;
-  try{const ahora=new Date().toISOString();
-    await guardarAjustes(aj=>{for(const e of lista){if(aj.ajustes.some(a=>a.erradicacion_id===e.id))continue;
-      aj.ajustes.push({palma_id:String(e.palma_id),lote:e.lote,linea:e.linea,palma:e.palma,existe:0,motivo:'erradicada',tipo:e.tipo_erradicacion,metodo:e.metodo,producto:e.producto||'',dosis:e.dosis??null,
-        erradicacion_id:e.id,fecha_erradicacion:fechaISO(new Date(tDe(e))),erradicador:e.erradicador_nombre||e.erradicador||'',aprobado_por:SES.u,aprobado_nombre:SES.nombre,aprobado:ahora});}},
-      `Existencia 0 aprobada: ${lista.length} palma(s) erradicada(s) · ${SES.nombre}`);
-    ERR.selAprob.clear();calcularPendErr();toast(`✓ ${lista.length} palma(s) aprobadas con existencia 0.`,4500);}
-  catch(e){toast('No se pudo guardar: '+e.message,6000);}
-  pintarErr();
-}
-async function rechazarErr(e){
-  if(!puedeAprobarErr())return;const m=prompt('Motivo del rechazo (la palma vuelve a quedar pendiente de erradicar):','');if(m==null)return;
-  try{await guardarAjustes(aj=>{if(!aj.rechazos.some(r=>r.erradicacion_id===e.id))aj.rechazos.push({erradicacion_id:e.id,palma_id:String(e.palma_id),lote:e.lote,linea:e.linea,palma:e.palma,motivo:m.trim(),por:SES.u,por_nombre:SES.nombre,fecha:new Date().toISOString()});},
-      `Erradicación rechazada: ${e.lote} L${e.linea} P${e.palma} · ${SES.nombre}`);
-    calcularPendErr();toast('Rechazada: la palma vuelve a la lista de pendientes.',4000);}
-  catch(err){toast('No se pudo guardar: '+err.message,6000);}
-  pintarErr();
-}
-
-/* ---------- Pintado ---------- */
-function pintarMapaErr(){
-  ERR.capa.clearLayers();const pop=o=>`<b>${esc(etqPalma(o))}</b><br><span class="err-tipo">${esc(tipoErrTxt(o.tipo))}</span> · ${esc(o.diagnostico||'')}<br>Reporte ${fechaCorta(o.fecha_censo)} · vence ${fechaCorta(o.vence)}<br>${esc(nombreCorto(o.censador||''))}`;
-  if(ERR.tab==='prog'&&ERR.prog){for(const p of ERR.prog.equipos){
-      if(p.ruta&&p.ruta.length>1){L.polyline(p.ruta.map(([x,y])=>[y,x]),{renderer:rend,color:'#06140f',weight:7,opacity:.6,interactive:false}).addTo(ERR.capa);
-        L.polyline(p.ruta.map(([x,y])=>[y,x]),{renderer:rend,color:p.color,weight:4,opacity:.95,dashArray:'8 6',interactive:false}).addTo(ERR.capa);}
-      for(const o of p.ordenes)marcadorNum(o,p.color,o.orden).bindPopup(pop(o)+`<br>Equipo ${p.n} · orden ${o.orden}`,{maxWidth:300}).addTo(ERR.capa);}
-    const prog=new Set(ERR.prog.equipos.flatMap(p=>p.ordenes.map(o=>String(o.palma_id))));
-    for(const o of ERR.pend)if(!prog.has(String(o.palma_id))&&o.lat!=null)L.circleMarker([o.lat,o.lng],{renderer:rend,radius:6,color:'#fff',weight:1.5,fillColor:'#bf360c',fillOpacity:.9}).bindPopup(pop(o)+'<br>Sin programar',{maxWidth:300}).addTo(ERR.capa);}
-  else if(ERR.tab==='prog'){for(const o of ERR.pend)if(o.lat!=null)L.circleMarker([o.lat,o.lng],{renderer:rend,radius:6,color:'#fff',weight:1.5,fillColor:o.vence<ERR.fecha?'#ff1744':'#bf360c',fillOpacity:.9}).bindPopup(pop(o),{maxWidth:300}).addTo(ERR.capa);}
-  else for(const e of (ERR.tab==='aprob'?porAprobar():ERR.errs))if(e.lat!=null)L.circleMarker([e.lat,e.lng],{renderer:rend,radius:6,color:'#fff',weight:1.5,fillColor:'#5c6b64',fillOpacity:.9})
-    .bindPopup(`<b>${esc(etqPalma(e))}</b><br>${esc(tipoErrTxt(e.tipo_erradicacion))} · ${esc(e.metodo||'')}${e.producto?' · '+esc(e.producto)+' '+esc(e.dosis)+' '+esc(e.dosis_unidad||'ml'):''}<br>${esc(fechaCorta(new Date(tDe(e))))} · ${esc(nombreCorto(e.erradicador_nombre||e.erradicador||''))}`,{maxWidth:300}).addTo(ERR.capa);
-}
-function filaErr(e,i,conAcc){
-  const sel=ERR.selAprob.has(e.id);
-  return `<tr data-ll="${e.lat},${e.lng}">${conAcc?`<td><input type="checkbox" data-sela="${esc(e.id)}" ${sel?'checked':''} aria-label="Seleccionar"></td>`:''}<td>${esc(fechaCorta(new Date(tDe(e))))}</td><td>${esc(etqPalma(e))}</td>
-    <td><span class="err-tipo">${esc(tipoErrTxt(e.tipo_erradicacion))}</span>${e.origen==='caso_nuevo'?'<br><span class="tenue">caso nuevo</span>':''}</td>
-    <td>${esc(e.metodo||'')}${e.producto?`<br><span class="tenue">${esc(e.producto)} · ${esc(e.dosis)} ${esc(e.dosis_unidad||'ml')}</span>`:''}</td>
-    <td>${esc(nombreCorto(e.erradicador_nombre||e.erradicador||''))}${e.auxiliar_nombre?`<br><span class="tenue">${esc(nombreCorto(e.auxiliar_nombre))}</span>`:''}</td>
-    <td>${(e.fotos||'').split('|').filter(Boolean).length?`<button class="btn mini" data-fote="${i}">Ver</button>`:'—'}</td>
-    ${conAcc?`<td><button class="btn mini prim" data-apr="${i}">Aprobar</button> <button class="btn mini" data-rec="${i}">Rechazar</button></td>`:`<td>${aprobada(e)?'<span class="ger-chip ok">existencia 0</span>':rechazada(e)?'<span class="ger-chip mal">rechazada</span>':(TIPOS_ERR[e.tipo_erradicacion]||{}).existencia?'<span class="ger-chip med">por aprobar</span>':'<span class="ger-chip gris">no aplica</span>'}</td>`}</tr>`;
-}
-function exportarErrCSV(){
-  const cols=['fecha','lote','linea','palma','tipo','metodo','producto','dosis','unidad','erradicador','auxiliar','reporte_censo','censador','fecha_reporte','vence','a_tiempo','duracion_min','estado_aprobacion','origen','observaciones'];
-  const filas=[...ERR.errs].sort((a,b)=>tDe(a)-tDe(b)).map(e=>[fechaISO(new Date(tDe(e))),e.lote,e.linea,e.palma,tipoErrTxt(e.tipo_erradicacion),e.metodo,e.producto||'',e.dosis??'',e.dosis_unidad||'',e.erradicador_nombre||e.erradicador||'',e.auxiliar_nombre||'',
-    e.diag_censo||'',e.censador||'',e.fecha_censo||'',e.vence||'',e.a_tiempo===false||e.a_tiempo==='false'?'No':'Sí',e.duracion_min??'',aprobada(e)?'Aprobada (existencia 0)':rechazada(e)?'Rechazada':(TIPOS_ERR[e.tipo_erradicacion]||{}).existencia?'Por aprobar':'No aplica',e.origen||'',e.observaciones||'']
-    .map(v=>String(v??'').replace(/[;\r\n]+/g,' ')).join(';'));
-  descargar(`erradicaciones_${hoyISO()}.csv`,'﻿'+[cols.join(';'),...filas].join('\r\n'),'text/csv');
-}
-function pintarErr(msg){
-  const P=$('#errPanel');if(!P)return;
-  const salir='<button class="btn mini" id="errSalir" title="Volver al visor">✕ Salir</button>';
-  if(!ERR.cargado){P.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h3>Erradicación</h3>${salir}</div><div class="tenue">${esc(msg||'Preparando…')}</div>`;const s=$('#errSalir');if(s)s.onclick=()=>alternarErr(false);return;}
-  const f=ERR.fecha;const venc=ERR.pend.filter(o=>o.vence<f).length,venceF=ERR.pend.filter(o=>o.vence===f).length;const nApr=porAprobar().length;
-  const tabs=`<div class="cir-tabs" style="flex-wrap:wrap"><button class="btn mini ${ERR.tab==='prog'?'on':''}" data-et="prog">PROGRAMACIÓN</button><button class="btn mini ${ERR.tab==='seg'?'on':''}" data-et="seg">SEGUIMIENTO</button>
-    ${puedeAprobarErr()?`<button class="btn mini ${ERR.tab==='aprob'?'on':''}" data-et="aprob">APROBACIONES${nApr?' ('+nApr+')':''}</button>`:''}<button class="btn mini" id="errRec" title="Volver a leer los datos">↻</button>${salir}</div>`;
-  let h=tabs;
-  if(ERR.tab==='prog'){
-    const prods=(ERR.productos&&ERR.productos.length?ERR.productos:PRODUCTOS_ERR);
-    h+=`<div class="kpis"><div class="kpi"><b>${num(ERR.pend.length)}</b><span>Casos pendientes</span></div><div class="kpi"><b class="venc">${num(venc)}</b><span>Vencidos</span></div><div class="kpi"><b class="hoyv">${num(venceF)}</b><span>Vencen el ${esc(fechaCorta(f))}</span></div></div>
-    <div class="kpis">${Object.entries(TIPOS_ERR).map(([k,v])=>`<div class="kpi"><b>${num(ERR.pend.filter(o=>o.tipo===k).length)}</b><span>${esc(v.t)}</span></div>`).join('')}</div>
-    <label class="campo" for="errFecha">Programar para</label>
-    <div style="display:flex;gap:8px;align-items:center"><input type="date" id="errFecha" value="${f}"><span class="tenue">${esFestivo(f)?'⚠ Festivo: '+esc(esFestivo(f)):esHabil(f)?esc(fechaCorta(f)):'⚠ Domingo'}</span></div>
-    <h3>Equipos y eficiencia (palmas/día)</h3>
-    ${ERR.equipos.map((p,i)=>`<div class="cir-par"><div class="cab"><i style="background:${COLORES_EQ[i%COLORES_EQ.length]}"></i><b>Equipo ${i+1}</b>${ERR.equipos.length>1?`<button class="btn mini" data-qe="${i}" style="margin-left:auto">Quitar</button>`:''}</div>
-      <label class="campo" for="ee${i}">Erradicador</label><select id="ee${i}" data-e="${i}" data-k="erradicador"><option value="">—</option>${erradicadores().map(u=>`<option value="${esc(u.u)}" ${u.u===p.erradicador?'selected':''}>${esc(u.nombre)}</option>`).join('')}</select>
-      <label class="campo" for="ea${i}">Auxiliar</label><select id="ea${i}" data-e="${i}" data-k="auxiliar"><option value="">— Trabaja solo —</option>${auxiliaresErr().filter(u=>u.u!==p.erradicador).map(u=>`<option value="${esc(u.u)}" ${u.u===p.auxiliar?'selected':''}>${esc(u.nombre)} · ${esc(u.rol_erradicacion==='auxiliar'?'auxiliar':'erradicador')}</option>`).join('')}</select>
-      <div class="cir-ef"><span>Eficiencia</span><select data-e="${i}" data-k="ef" aria-label="Eficiencia del equipo ${i+1}">${EFICIENCIAS_ERR.map(v=>`<option value="${v}" ${Number(p.ef)===v?'selected':''}>${v} palmas/día</option>`).join('')}</select></div></div>`).join('')}
-    ${ERR.equipos.length<6?'<button class="btn mini" id="errMasEq">+ Agregar equipo</button>':''}
-    <p class="tenue" style="font-size:12.5px;margin:8px 0 0">Productos químicos: <b>${esc(prods.join(', '))}</b> <button class="btn mini" id="errProds">Editar</button></p>
-    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn prim" id="errGenerar">GENERAR PROGRAMACIÓN</button>${ERR.prog?`<button class="btn nar" id="errEnviar">${ERR.prog.enviada?'REENVIAR A LOS CELULARES':'ENVIAR A LOS CELULARES'}</button>`:''}</div>`;
-    if(ERR.prog){const tot=ERR.prog.equipos.reduce((s,p)=>s+p.ordenes.length,0);
-      h+=`<p class="tenue" style="margin:8px 0">${ERR.prog.enviada?'✓ Enviada':'Sin enviar'} · generada ${esc(fechaCorta(ERR.prog.generado))} ${hhmm(ERR.prog.generado)} por ${esc(ERR.prog.por_nombre||ERR.prog.por)} · ${num(tot)} palmas</p>`;
-      if(ERR.prog.sin_programar&&ERR.prog.sin_programar.length)h+=`<div class="cir-aviso">${num(ERR.prog.sin_programar.length)} caso(s) quedan para el siguiente día hábil (${esc(fechaCorta(habilMas(f)))}): la capacidad de los equipos no alcanza. Aumente la eficiencia o agregue un equipo.</div>`;
-      for(const p of ERR.prog.equipos)h+=`<h3 style="color:${p.color}">Equipo ${p.n} · ${p.ordenes.length} palmas · ${p.km_campo??p.km??'—'} km en campo</h3><div class="tenue" style="font-size:12.5px;margin:-4px 0 6px">${esc(p.erradicador.nombre)} (erradicador)${p.auxiliar?' · '+esc(p.auxiliar.nombre)+' (auxiliar)':' · trabaja solo'}</div>
-        <table class="t"><thead><tr><th>#</th><th>Palma</th><th>Erradicar</th><th>Reporte</th><th>Vence</th></tr></thead><tbody>${p.ordenes.map(o=>`<tr data-ll="${o.lat},${o.lng}"><td>${o.orden}</td><td>${esc(etqPalma(o))}</td><td><span class="err-tipo">${esc(tipoErrTxt(o.tipo))}</span>${o.origen==='caso_nuevo'?' · nuevo':''}</td><td>${esc(fechaCorta(o.fecha_censo))}<br><span class="tenue">${esc(nombreCorto(o.censador))}</span></td><td class="${o.vence<f?'venc':o.vence===f?'hoyv':''}">${esc(fechaCorta(o.vence))}</td></tr>`).join('')}</tbody></table>`;}
-    else h+=`<h3>Casos pendientes</h3>${ERR.pend.length?`<table class="t"><thead><tr><th>Palma</th><th>Erradicar</th><th>Reporte</th><th>Vence</th></tr></thead><tbody>${ERR.pend.map(o=>`<tr data-ll="${o.lat},${o.lng}"><td>${esc(etqPalma(o))}</td><td><span class="err-tipo">${esc(tipoErrTxt(o.tipo))}</span></td><td>${esc(fechaCorta(o.fecha_censo))}<br><span class="tenue">${esc(nombreCorto(o.censador))}</span></td><td class="${o.vence<f?'venc':o.vence===f?'hoyv':''}">${esc(fechaCorta(o.vence))}</td></tr>`).join('')}</tbody></table>`:'<div class="tenue">No hay palmas pendientes de erradicar en los últimos 45 días.</div>'}`;
-  }else if(ERR.tab==='seg'){
-    const es=[...ERR.errs].sort((a,b)=>tDe(b)-tDe(a));ERR._lista=es;
-    const q=es.filter(e=>e.metodo==='Química');const dosis=new Map();for(const e of q){const k=(e.producto||'—')+' ('+(e.dosis_unidad||'ml')+')';dosis.set(k,(dosis.get(k)||0)+(Number(e.dosis)||0));}
-    const porEq=new Map();for(const e of es){const k=e.erradicador_nombre||e.erradicador||'—';const x=porEq.get(k)||{n:0,dias:new Set(),aux:new Set()};x.n++;x.dias.add(fechaISO(new Date(tDe(e))));if(e.auxiliar_nombre)x.aux.add(e.auxiliar_nombre);porEq.set(k,x);}
-    const aTiempo=es.filter(e=>!(e.a_tiempo===false||e.a_tiempo==='false')).length;
-    h+=`<div class="kpis"><div class="kpi"><b>${num(es.length)}</b><span>Erradicadas (45 días)</span></div><div class="kpi"><b>${ERR.cumplimiento==null?'—':ERR.cumplimiento+' %'}</b><span>Cumplimiento del plazo (30 días)</span></div><div class="kpi"><b>${num(nApr)}</b><span>Por aprobar (existencia 0)</span></div></div>
-      <div class="kpis">${Object.entries(TIPOS_ERR).map(([k,v])=>`<div class="kpi"><b>${num(es.filter(e=>e.tipo_erradicacion===k).length)}</b><span>${esc(v.t)}</span></div>`).join('')}</div>
-      <div class="kpis"><div class="kpi"><b>${num(es.length-q.length)}</b><span>Con motosierra</span></div><div class="kpi"><b>${num(q.length)}</b><span>Químicas</span></div><div class="kpi"><b>${num(es.length?aTiempo/es.length*100:0,0)} %</b><span>A tiempo</span></div></div>
-      ${dosis.size?`<h3>Producto aplicado</h3><table class="t"><thead><tr><th>Producto</th><th>Palmas</th><th>Dosis total</th></tr></thead><tbody>${[...dosis].map(([k,v])=>`<tr><td>${esc(k)}</td><td>${num(q.filter(e=>(e.producto||'—')+' ('+(e.dosis_unidad||'ml')+')'===k).length)}</td><td>${num(v,1)}</td></tr>`).join('')}</tbody></table>`:''}
-      <h3>Rendimiento por erradicador</h3><table class="t"><thead><tr><th>Erradicador</th><th>Palmas</th><th>Días</th><th>Palmas/día</th></tr></thead><tbody>${[...porEq].sort((a,b)=>b[1].n-a[1].n).map(([k,x])=>`<tr><td>${esc(nombreCorto(k))}${x.aux.size?`<br><span class="tenue">con ${esc([...x.aux].map(nombreCorto).join(', '))}</span>`:''}</td><td>${num(x.n)}</td><td>${num(x.dias.size)}</td><td>${num(x.n/Math.max(1,x.dias.size),1)}</td></tr>`).join('')||'<tr><td colspan="4" class="tenue">Sin datos.</td></tr>'}</tbody></table>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px"><h3 style="margin:0">Palmas erradicadas</h3><button class="btn mini" id="errCsv">⬇ Exportar (CSV)</button></div>
-      ${es.length?`<table class="t"><thead><tr><th>Fecha</th><th>Palma</th><th>Tipo</th><th>Método</th><th>Equipo</th><th>Fotos</th><th>Estado</th></tr></thead><tbody>${es.map((e,i)=>filaErr(e,i,false)).join('')}</tbody></table>`:'<div class="tenue">Aún no hay erradicaciones sincronizadas.</div>'}
-      <h3>Correcciones del erradicador</h3>${(()=>{const c=ERR.correcciones.filter(x=>x._labor==='erradicacion'&&x.origen==='correccion');return c.length?`<table class="t"><thead><tr><th>Palma</th><th>Reporte (antes)</th><th>Erradicador (vigente)</th></tr></thead><tbody>${c.map(x=>`<tr data-ll="${x.lat},${x.lng}"><td>${esc(etqPalma(x))}</td><td class="tenue">${esc(x.corrige_texto||'')}<br>${esc(nombreCorto(x.corrige_evaluador||''))}</td><td><b>${esc([x.nivel1,x.nivel2].filter(Boolean).join(' · '))}</b><br><span class="tenue">${esc(nombreCorto(x.evaluador))} · ${esc(fechaCorta(new Date(tDe(x))))}</span></td></tr>`).join('')}</tbody></table>`:'<div class="tenue">Sin correcciones.</div>';})()}`;
-  }else{
-    const l=porAprobar();ERR._lista=l;
-    h+=`<p class="tenue">Palmas erradicadas (PC cráter y espontáneas) que esperan su aprobación para quedar con <b>existencia 0</b>. Revise las fotos de antes y después. Los yarumos no cambian ninguna palma.</p>
-      ${l.length?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0"><button class="btn mini" id="errSelTodo">Seleccionar todas</button><button class="btn prim mini" id="errAprSel" ${ERR.selAprob.size?'':'disabled'}>Aprobar seleccionadas (${ERR.selAprob.size})</button></div>
-        <table class="t"><thead><tr><th></th><th>Fecha</th><th>Palma</th><th>Tipo</th><th>Método</th><th>Equipo</th><th>Fotos</th><th>Decisión</th></tr></thead><tbody>${l.map((e,i)=>filaErr(e,i,true)).join('')}</tbody></table>`:'<div class="tenue">No hay palmas por aprobar.</div>'}
-      ${ERR.aj&&ERR.aj.ajustes.length?`<p class="tenue" style="margin-top:10px">${num(ERR.aj.ajustes.length)} palma(s) con existencia 0 aprobada en total.</p>`:''}`;
-  }
-  P.innerHTML=h;
-  P.querySelectorAll('[data-et]').forEach(b=>b.onclick=()=>{ERR.tab=b.dataset.et;pintarErr();});
-  $('#errSalir').onclick=()=>alternarErr(false);
-  const rec=$('#errRec');if(rec)rec.onclick=()=>{ERR.cargado=false;errCargar();};
-  const fi=$('#errFecha');if(fi)fi.onchange=async()=>{ERR.fecha=fi.value||hoyISO();await leerProgErr(ERR.fecha);pintarErr();};
-  P.querySelectorAll('select[data-e]').forEach(s=>s.onchange=()=>{const q=ERR.equipos[+s.dataset.e];q[s.dataset.k]=s.dataset.k==='ef'?+s.value:s.value;dput('kv','err_equipos',ERR.equipos);pintarErr();});
-  P.querySelectorAll('[data-qe]').forEach(b=>b.onclick=()=>{ERR.equipos.splice(+b.dataset.qe,1);dput('kv','err_equipos',ERR.equipos);pintarErr();});
-  const mas=$('#errMasEq');if(mas)mas.onclick=()=>{ERR.equipos.push({erradicador:'',auxiliar:'',ef:20});pintarErr();};
-  const g=$('#errGenerar');if(g)g.onclick=generarProgErr;
-  const en=$('#errEnviar');if(en)en.onclick=enviarProgErr;
-  const pr=$('#errProds');if(pr)pr.onclick=async()=>{const v=prompt('Productos químicos para la erradicación, separados por coma:',(ERR.productos&&ERR.productos.length?ERR.productos:PRODUCTOS_ERR).join(', '));if(v==null)return;
-    const l=v.split(',').map(x=>x.trim()).filter(Boolean);if(!l.length)return;
-    try{let sha=null;try{sha=(await (await gh(`/contents/config/erradicacion.json?ref=${encodeURIComponent(SES.repo.rama)}`)).json()).sha;}catch(e){}
-      await ghPut('config/erradicacion.json',JSON.stringify({formato:'polinizacion-config-erradicacion-1',productos:l,dosis_unidad:DOSIS_UNIDAD_ERR,actualizado:new Date().toISOString(),por:SES.u},null,1),`Erradicación: productos químicos (${l.join(', ')})`,sha);
-      ERR.productos=l;toast('✓ Productos guardados. Los celulares los toman al iniciar la jornada.');}catch(e){toast(e.message,6000);}pintarErr();};
-  const csv=$('#errCsv');if(csv)csv.onclick=exportarErrCSV;
-  P.querySelectorAll('tr[data-ll]').forEach(tr=>tr.onclick=ev=>{if(ev.target.closest('button,input'))return;const [a,b]=tr.dataset.ll.split(',').map(Number);if(isFinite(a)&&isFinite(b))mapa.setView([a,b],18);});
-  P.querySelectorAll('[data-fote]').forEach(b=>b.onclick=ev=>{ev.stopPropagation();const e=ERR._lista[+b.dataset.fote];verFotos({...e,_j:e._j});});
-  P.querySelectorAll('[data-apr]').forEach(b=>b.onclick=ev=>{ev.stopPropagation();aprobarErr([ERR._lista[+b.dataset.apr]]);});
-  P.querySelectorAll('[data-rec]').forEach(b=>b.onclick=ev=>{ev.stopPropagation();rechazarErr(ERR._lista[+b.dataset.rec]);});
-  P.querySelectorAll('[data-sela]').forEach(c=>c.onchange=()=>{c.checked?ERR.selAprob.add(c.dataset.sela):ERR.selAprob.delete(c.dataset.sela);pintarErr();});
-  const st=$('#errSelTodo');if(st)st.onclick=()=>{for(const e of porAprobar())ERR.selAprob.add(e.id);pintarErr();};
-  const as=$('#errAprSel');if(as)as.onclick=()=>aprobarErr(porAprobar().filter(e=>ERR.selAprob.has(e.id)));
-  pintarMapaErr();
-}
-
-/* ---------- Pestaña en Coordinación ---------- */
-function pintarProgErrGer(){
-  return `<div class="ger-sec"><h3>Programador de erradicación</h3>
-    <p class="tenue">Programa la erradicación de las palmas reportadas por el censo como <b>PC cráter</b>, <b>palmas espontáneas</b> y <b>yarumos</b>, al día hábil siguiente, con equipos de un erradicador solo o con su auxiliar (eficiencia de 5 a 30 palmas por día) y rutas sobre el mapa.
-      Incluye el seguimiento (método, producto y dosis, rendimiento, cumplimiento del plazo, fotos de antes y después, exportación) y las <b>aprobaciones</b> de existencia 0 (analista de datos y super administrador).</p>
-    <div class="ger-par"><button class="btn prim" id="gerAbrirErr">🪓 Abrir el programador de erradicación en el mapa</button></div></div>`;
-}
-ENLACES_GER.progerr=()=>{const b=$('#gerAbrirErr');if(b)b.onclick=()=>{alternarGerencia(false);if(!ERR.on)alternarErr(true);};};
-
-/* =====================================================================
-   MONITOREO DE PLAGAS (visor web · Coordinación)
-   Lee las jornadas de plagas/jornadas de los últimos días: resumen por plaga y por lote, palmas muestreadas con fotos,
-   exportación a CSV y los puntos en el mapa (rojo = con daño, verde = sin daño).
-   ===================================================================== */
-GER.plg={dias:30,cargando:false,datos:null,capa:null,sub:'prog'};
-/* Acceso directo en la cabecera, junto a ✚ CIRUGÍAS y ERRADICACIÓN: datos del monitoreo en el mapa (como el censo) */
-(function botonPlagas(){const bt=document.createElement('button');bt.className='btn mini';bt.id='btPlg';bt.innerHTML='🐛 PLAGAS';bt.title='Programación y resultados del monitoreo de plagas';
-  const r=$('#btErr')||$('#btCir');if(r)r.after(bt);else $('#chDatos').before(bt);
-  bt.onclick=()=>alternarPlgMapa();})();
-async function cargarPlagasVisor(){
-  const G=GER.plg;G.cargando=true;pintarGer();
-  try{const ini=GER.plgc&&GER.plgc.as&&GER.plgc.as.inicio;const nd=Math.max(G.dias,ini?diasEntre(ini,hoyISO())+1:0);
-    const hoy=hoyISO(),d1=hoyISO(new Date(Date.now()-nd*86400000));
-    const dias=await listarDias('plagas/jornadas',d1,hoy);const arch=[];
-    await enParalelo(dias,6,async d=>{for(const f of await arbol(d.sha))if(f.type==='blob')arch.push({...f,dia:d.path});});
-    const zips=new Map(arch.filter(f=>f.path.endsWith('_fotos.zip')).map(f=>[f.dia+'/'+f.path,f.sha]));
-    const regs=[],jors=[];
-    await enParalelo(arch.filter(f=>f.path.endsWith('.geojson')),6,async f=>{try{const g=JSON.parse(await blobTexto(f.sha));const h=g.jornada||{};
-      const j={...h,zipSha:zips.get(f.dia+'/'+f.path.replace(/\.geojson$/,'_fotos.zip')),ruta:f.dia+'/'+f.path};jors.push(j);
-      for(const ft of g.features||[]){const p=ft.properties||{};
-        if(p.tipo==='recorrido'&&ft.geometry){j.track=ft.geometry.type==='LineString'?ft.geometry.coordinates:[ft.geometry.coordinates];continue;}
-        if(p.tipo!=='monitoreo')continue;const c=ft.geometry&&ft.geometry.coordinates;
-        let pl=p.plagas;if(typeof pl==='string')try{pl=JSON.parse(pl);}catch(e){pl=[];}
-        regs.push({...p,plagas:Array.isArray(pl)?pl:[],lng:c?c[0]:p.lng,lat:c?c[1]:p.lat,_j:j});}}catch(e){console.warn('archivo ilegible',f.path,e);}});
-    regs.sort((a,b)=>String(b.creado).localeCompare(String(a.creado)));G.datos={regs,jors,desde:d1,hasta:hoy};}
-  catch(e){toast(e.message,6000);G.datos=G.datos||{regs:[],jors:[]};}
-  G.cargando=false;pintarGer();
-}
-const estTxtV=x=>ESTADOS_PLAGA.filter(e=>Number(x[e.k])>0).map(e=>`${e.t} ${x[e.k]}`).join(' · ')||'sin individuos';
-function pintarPlagasGer(){
-  const G=GER.plg;
-  if(!G.datos&&!G.cargando){cargarPlagasVisor();}
-  const sub=`<div class="ger-par"><button class="btn mini ${G.sub==='prog'?'prim':''}" data-psub="prog">Programación</button><button class="btn mini ${G.sub==='res'?'prim':''}" data-psub="res">Resultados</button></div>`;
-  if(G.sub==='prog')return sub+tarjetaModoProg('plagas')+pintarProgPlagas();
-  return sub+pintarResPlagas();
-}
-function pintarResPlagas(){
-  const G=GER.plg;
-  const par=`<div class="ger-par">Últimos <select id="plgDias">${[7,15,30,60,90].map(d=>`<option value="${d}" ${G.dias===d?'selected':''}>${d} días</option>`).join('')}</select>
-    <button class="btn mini" id="plgRec">↻ Volver a leer</button>${G.datos&&G.datos.regs.length?'<button class="btn mini" id="plgCsv">⬇ Exportar (CSV)</button><button class="btn mini prim" id="plgMapa">'+(G.capa?'Quitar del mapa':'Ver en el mapa')+'</button>':''}</div>`;
-  if(G.cargando||!G.datos)return `<div class="ger-sec"><h3>Monitoreo de plagas</h3>${par}<p class="tenue">Leyendo las jornadas de monitoreo de plagas…</p></div>`;
-  const R=G.datos.regs;
-  if(!R.length)return `<div class="ger-sec"><h3>Monitoreo de plagas</h3>${par}<p class="tenue">Aún no hay jornadas de monitoreo de plagas sincronizadas en este periodo.</p></div>`;
-  const conD=R.filter(r=>r.dano===true||r.dano==='true').length;
-  const porPlaga=PLAGAS.map(p=>{const xs=R.flatMap(r=>r.plagas.filter(x=>x.plaga===p.id));const o={plaga:p.n,palmas:xs.length,dano:xs.filter(x=>x.dano===true||x.dano==='true').length};
-    for(const e of ESTADOS_PLAGA)o[e.k]=xs.reduce((a,x)=>a+(Number(x[e.k])||0),0);return o;}).filter(x=>x.palmas);
-  const lotes=new Map();for(const r of R){const l=lotes.get(r.lote)||{lote:r.lote,n:0,d:0,pl:new Map(),muestreo:new Set()};l.n++;if(r.dano===true||r.dano==='true')l.d++;l.muestreo.add(r.muestreo);
-    for(const x of r.plagas)l.pl.set(x.plaga,(l.pl.get(x.plaga)||0)+1);lotes.set(r.lote,l);}
-  const tLotes=[...lotes.values()].sort((a,b)=>b.d-a.d||ordenNat(a.lote,b.lote));G._regs=R;
-  return `<div class="ger-sec"><h3>Monitoreo de plagas</h3>${par}
-    <div class="ger-kpis">${kpi(num(G.datos.jors.length),'Jornadas')}${kpi(num(R.length),'Palmas muestreadas')}${kpi(num(conD),'Con daño',conD?'mal':'ok')}${kpi(num(R.length?conD/R.length*100:0,1)+' %','Palmas con daño')}${kpi(num(lotes.size),'Lotes')}</div></div>
-    <div class="ger-sec"><h3>Por plaga</h3>${tablaGer([{t:'Plaga',f:x=>`<b>${esc(x.plaga)}</b>`},{t:'Palmas con la plaga',n:1,f:x=>num(x.palmas)},{t:'Con daño',n:1,f:x=>num(x.dano)},
-      ...ESTADOS_PLAGA.map(e=>({t:e.t,n:1,f:x=>num(x[e.k])}))],porPlaga)}</div>
-    <div class="ger-sec"><h3>Por lote</h3>${tablaGer([{t:'Lote',f:x=>`<b>${esc(x.lote)}</b>`},{t:'Muestreo',f:x=>esc([...x.muestreo].map(m=>(MUESTREOS.find(y=>y.id===m)||{}).t||m).join(', '))},{t:'Palmas muestreadas',n:1,f:x=>num(x.n)},
-      {t:'Con daño',n:1,f:x=>x.d?`<span class="ger-chip mal">${num(x.d)} · ${num(x.d/x.n*100,0)} %</span>`:'0'},{t:'Plagas encontradas (palmas)',f:x=>esc([...x.pl].map(([k,v])=>`${(PLAGAS.find(p=>p.id===k)||{}).n||k} ${v}`).join(' · ')||'—')}],tLotes)}</div>
-    <div class="ger-sec"><h3>Palmas muestreadas (${num(R.length)})</h3>${tablaGer([{t:'Fecha',f:x=>esc(String(x.fecha||x.creado||'').slice(0,16).replace('T',' '))},{t:'Palma',f:x=>`<b>${esc(x.lote)} · L${esc(x.linea)} · P${esc(x.palma)}</b>`},
-      {t:'Muestreo',f:x=>esc((MUESTREOS.find(y=>y.id===x.muestreo)||{}).t||x.muestreo||'')},{t:'Hoja',n:1,f:x=>esc(x.hoja)},{t:'Plagas',f:x=>x.plagas.map(p=>`${esc(p.plaga_nombre||p.plaga)}: ${esc(estTxtV(p))}${p.dano===true||p.dano==='true'?' <span class="ger-chip mal">daño</span>':''}`).join('<br>')},
-      {t:'Transitabilidad',f:x=>esc(x.transitabilidad||'')},{t:'Operario',f:x=>esc(x.evaluador||'')},{t:'Foto',f:(x)=>String(x.fotos||'').split('|').filter(Boolean).length?`<button class="btn mini" data-pfo="${R.indexOf(x)}">Ver</button>`:'—'}],R.slice(0,300))}
-      ${R.length>300?'<p class="tenue">Se muestran las 300 más recientes; el CSV las trae todas.</p>':''}</div>`;
-}
-function exportarPlagasCSV(){
-  const R=GER.plg.datos.regs;const cols=['fecha','lote','linea','palma','muestreo','en_muestra','hoja','plaga',...ESTADOS_PLAGA.map(e=>e.t),'dano','transitabilidad','operario','observaciones'];
-  const filas=[];for(const r of R)for(const p of (r.plagas.length?r.plagas:[{}]))filas.push([String(r.fecha||r.creado||'').slice(0,16).replace('T',' '),r.lote,r.linea,r.palma,(MUESTREOS.find(y=>y.id===r.muestreo)||{}).t||r.muestreo||'',
-    r.en_muestra===false||r.en_muestra==='false'?'No':'Sí',r.hoja,p.plaga_nombre||p.plaga||'',...ESTADOS_PLAGA.map(e=>p[e.k]??''),p.dano===true||p.dano==='true'?'Sí':p.plaga?'No':'',r.transitabilidad||'',r.evaluador||'',r.observaciones||'']
-    .map(v=>String(v??'').replace(/[;\r\n]+/g,' ')).join(';'));
-  descargar(`monitoreo_plagas_${hoyISO()}.csv`,'﻿'+[cols.join(';'),...filas].join('\r\n'),'text/csv');
-}
-function alternarCapaPlagas(){
-  const G=GER.plg;if(G.capa){mapa.removeLayer(G.capa);G.capa=null;const c=$('#chPlg');if(c)c.remove();return;}
-  G.capa=L.layerGroup();const R=G.datos.regs.filter(r=>r.lat!=null);
-  for(const r of R){const d=r.dano===true||r.dano==='true';L.circleMarker([r.lat,r.lng],{renderer:rend,radius:6,color:'#fff',weight:1.2,fillColor:d?'#e53935':'#22d39a',fillOpacity:.95})
-    .bindPopup(`<b>${esc(r.lote)} · L${esc(r.linea)} · P${esc(r.palma)}</b><br>Hoja ${esc(r.hoja)} · ${esc((MUESTREOS.find(y=>y.id===r.muestreo)||{}).t||r.muestreo||'')}<br>${r.plagas.map(p=>`${esc(p.plaga_nombre||p.plaga)}: ${esc(estTxtV(p))}${p.dano===true||p.dano==='true'?' · daño':''}`).join('<br>')}<br><span class="tenue">${esc(r.evaluador||'')} · ${esc(String(r.fecha||r.creado||'').slice(0,10))}</span>`).addTo(G.capa);}
-  G.capa.addTo(mapa);if(R.length)mapa.fitBounds(L.latLngBounds(R.map(r=>[r.lat,r.lng])),{padding:[40,40],maxZoom:17});
-  const ch=document.createElement('span');ch.className='chip';ch.id='chPlg';ch.style.cursor='pointer';ch.title='Quitar del mapa';ch.innerHTML=`🐛 Plagas: ${num(R.length)} palmas ✕`;ch.onclick=()=>alternarCapaPlagas();$('#chDatos').before(ch);
-}
-ENLACES_GER.plagas=()=>{const G=GER.plg;
-  $$('#gerPanel [data-psub]').forEach(b=>b.onclick=()=>{G.sub=b.dataset.psub;pintarGer();});
-  if(G.sub==='prog'){enlazarModoProg();enlazarProgPlagas();}
-  const d=$('#plgDias');if(d)d.onchange=()=>{G.dias=Number(d.value)||30;G.datos=null;cargarPlagasVisor();};
-  const r=$('#plgRec');if(r)r.onclick=()=>{G.datos=null;cargarPlagasVisor();};
-  const c=$('#plgCsv');if(c)c.onclick=exportarPlagasCSV;
-  const m=$('#plgMapa');if(m)m.onclick=()=>{alternarCapaPlagas();if(G.capa)alternarGerencia(false);else pintarGer();};
-  $$('#gerPanel [data-pfo]').forEach(b=>b.onclick=()=>{const x=G._regs[+b.dataset.pfo];verFotos({...x,_j:x._j});});
-};
-
-/* =====================================================================
-   PROGRAMACIÓN DEL MONITOREO DE PLAGAS (ciclo de 18 días · unidades de ~30 ha)
-   plagas/programacion/ciclo.json: unidades (bloque P y mitad) con sus lotes y palmas (rangos de ids).
-   · Titular por posición del día (1…6): sigue con su siguiente unidad pendiente, a su ritmo.
-   · Avance: palmas de la muestra registradas dentro de la unidad (10×10 o el muestreo usado en el lote) desde el inicio de la vuelta;
-     con 90 % la unidad queda hecha; también se marca a mano.
-   · Plan del día en plagas/plan/AAAA-MM-DD.json (lo lee la App: «Su bloque de hoy»).
-   ===================================================================== */
-GER.plgc={c:null,cargando:false,err:null,as:null,asSha:null,planes:[],av:null,avKey:'',calc:false,dia:null,guardado:false};
-function unidadesPlg(){const C=GER.plgc;const m=new Map();for(const D of C.c.dias)for(const u of D.unidades)m.set(u.unidad,{...u,dia:D.dia});return m;}
-async function guardarAsigPlg(msg){const C=GER.plgc;C.as.actualizado=new Date().toISOString();C.as.actualizado_por=SES.u;
-  C.asSha=await ghPut('plagas/programacion/asignacion.json',JSON.stringify(C.as,null,1),msg,C.asSha);}
-async function cargarCicloPlg(){
-  const C=GER.plgc,rama=encodeURIComponent(SES.repo.rama),raw=async r=>JSON.parse(await (await gh(`/contents/${r}?ref=${rama}`,'application/vnd.github.raw+json')).text());
-  try{C.c=await raw('plagas/programacion/ciclo.json');}catch(e){C.c=false;if(e.status!==404)C.err=e.message;return;}
-  try{const j=await (await gh(`/contents/plagas/programacion/asignacion.json?ref=${rama}`)).json();C.asSha=j.sha;C.as=JSON.parse(DEC.decode(deB64(j.content.replace(/\s/g,''))));}catch(e){if(e.status!==404)throw e;C.as=null;}
-  if(!C.as)C.as={formato:'polinizacion-asignacion-plagas-1',ciclo_version:C.c.version,vuelta:1,inicio:null,titulares:{},manual:{}};
-  C.as.titulares=C.as.titulares||{};C.as.manual=C.as.manual||{};C.planes=[];
-  try{const l=await (await gh(`/contents/plagas/plan?ref=${rama}`)).json();
-    const fs=(Array.isArray(l)?l:[]).filter(x=>/^\d{4}-\d{2}-\d{2}\.json$/.test(x.name)).map(x=>x.name).sort().reverse().filter(n=>!C.as.inicio||n.slice(0,10)>=C.as.inicio).slice(0,30);
-    for(const n of fs){try{C.planes.push({fecha:n.slice(0,10),...await raw(`plagas/plan/${n}`)});}catch(e){}}}catch(e){}
-  C.planes.sort((a,b)=>a.fecha.localeCompare(b.fecha));
-  if(!Object.keys(C.as.titulares).length)for(const p of C.planes)for(const a of p.asignaciones||[])if(a.tipo==='titular'&&a.posicion)C.as.titulares[a.posicion]=a.usuario;
-}
-/* Avance de cada unidad: palmas registradas de su muestra (calculada con la cartografía) desde el inicio de la vuelta */
-/* Llave del avance (igual al pintar y al calcular: si no coinciden, se recalcularía sin fin) */
-const llaveAvPlg=()=>{const G=GER.plg,r=G.datos&&G.datos.regs||[];return r.length+'|'+GER.plgc.as.inicio+'|'+(r[0]&&r[0].id)+'|'+JSON.stringify(GER.plgc.as.manual||{}).length;};
-async function avancePlg(){
-  const C=GER.plgc,G=GER.plg,ini=C.as.inicio;const regs=(G.datos&&G.datos.regs||[]).filter(r=>ini&&String(r.fecha||r.creado).slice(0,10)>=ini);
-  const key=llaveAvPlg();if(C.avKey===key&&C.av)return;C.calc=true;
-  const hechas=new Set(regs.map(r=>String(r.palma_id)));const mLote=new Map();for(const r of regs)if(r.muestreo)mLote.set(r.lote,r.muestreo);
-  const av={};
-  for(const u of unidadesPlg().values()){let n=0,h=0;
-    for(const t of u.lotes){if(!ini){n+=1;continue;}const k=(MUESTREOS.find(x=>x.id===(mLote.get(t.lote)||C.c.reglas.muestreo_defecto))||MUESTREOS[0]).k;
-      const d=await chunkLote(t.lote);const m=muestraLote(d,k,id=>VAJ.has(id)).filter(x=>enRangos(x.palma_id,t.rangos));n+=m.length;h+=m.filter(x=>hechas.has(x.palma_id)).length;}
-    av[u.unidad]={n,h,p:n?h/n*100:0};}
-  C.av=av;C.avKey=key;C.calc=false;
-}
-function estadoUnidad(id){const C=GER.plgc,m=C.as.manual[id],a=(C.av&&C.av[id])||{p:0};
-  if(m&&m.estado==='terminado')return {e:'hecha',p:a.p,manual:true};if(a.p>=90&&!(m&&m.estado==='reabierto'))return {e:'hecha',p:a.p};return {e:a.p>0?'curso':'pendiente',p:a.p};}
-function sigUnidad(pos,ocup){const C=GER.plgc;for(const D of C.c.dias){const u=D.unidades.find(x=>x.posicion===pos);if(u&&!ocup.has(u.unidad)&&estadoUnidad(u.unidad).e!=='hecha')return u.unidad;}return null;}
-const nPos=()=>Math.max(...GER.plgc.c.dias.map(D=>D.unidades.length));
-function armarDiaPlg(fecha,forzar){const C=GER.plgc;const env=C.planes.find(p=>p.fecha===fecha);
-  if(env&&!forzar){C.dia={fecha,enviado:true,filas:(env.asignaciones||[]).map(a=>({usuario:a.usuario,unidad:a.unidad}))};C.guardado=true;return;}
-  const filas=[],ocup=new Set();for(let p=1;p<=6;p++){const u=sigUnidad(p,ocup);if(!u)continue;ocup.add(u);filas.push({usuario:C.as.titulares[p]||'',unidad:u});}
-  C.dia={fecha,enviado:false,filas};C.guardado=false;}
-const chipU=s=>s.e==='hecha'?`<span class="ger-chip ok">✔ ${s.manual?'terminada':num(s.p,0)+' %'}</span>`:s.e==='curso'?`<span class="ger-chip med">${num(s.p,0)} %</span>`:'<span class="ger-chip gris">pendiente</span>';
-/* Auxiliares con la labor de monitoreo de plagas (del paquete de acceso) */
-async function opsPlagas(){if(GER.plg.ops)return GER.plg.ops;const us=await cirUsuarios();
-  GER.plg.ops=us.filter(x=>!x.inactivo&&(x.labores||[]).includes('plagas')).map(x=>({u:x.u,nombre:x.nombre}));return GER.plg.ops;}
-function pintarProgPlagas(){
-  const C=GER.plgc,G=GER.plg;
-  if(C.c==null&&!C.cargando){C.cargando=true;cargarCicloPlg().catch(e=>{C.err=e.message;C.c=false;}).finally(()=>{C.cargando=false;pintarGer();});}
-  if(!G.ops&&!G.cargandoOps){G.cargandoOps=true;opsPlagas().catch(e=>{G.ops=[];toast(e.message,6000);}).finally(()=>{G.cargandoOps=false;pintarGer();});}
-  if(C.c==null)return '<p class="tenue">Consultando la programación de plagas…</p>';
-  if(C.c===false)return `<p class="tenue">${C.err?'❌ '+esc(C.err):'Aún no hay programación de plagas (plagas/programacion/ciclo.json).'}</p>`;
-  if(!G.datos)return '<p class="tenue">Leyendo los monitoreos registrados…</p>';
-  const key=llaveAvPlg();
-  if((C.avKey!==key||!C.av)&&!C.calc){avancePlg().catch(e=>{C.calc=false;C.av={};toast(e.message,6000);}).finally(()=>pintarGer());}
-  if(!C.av)return '<p class="tenue">Calculando el avance de las unidades…</p>';
-  const P=GER.plan;if(!P.fecha)P.fecha=(()=>{const h=new Date();const f=hoyISO();return h.getHours()<10&&esHabil(f)?f:habilMas(f);})();
-  if(!C.dia||C.dia.fecha!==P.fecha)armarDiaPlg(P.fecha);
-  const ops=(G.ops||[]),U=unidadesPlg(),todos=[...U.values()],est=new Map(todos.map(u=>[u.unidad,estadoUnidad(u.unidad)]));
-  const selOp=(attr,val,vacio)=>`<select ${attr} style="min-width:170px"><option value="">${vacio}</option>${ops.map(o=>`<option value="${esc(o.u)}" ${val===o.u?'selected':''}>${esc(o.nombre)}</option>`).join('')}</select>`;
-  const nH=todos.filter(u=>est.get(u.unidad).e==='hecha').length;
-  const tTit=tablaGer([{t:'Posición',f:x=>`<b>${x}</b>`},{t:'Titular',f:x=>selOp(`data-ptit="${x}"`,C.as.titulares[x]||'','— Sin titular —')},
-    {t:'Siguiente unidad',f:x=>{const s=sigUnidad(x,new Set());return s?`<b>${esc(s)}</b> ${chipU(est.get(s))}`:'<span class="ger-chip ok">vuelta completa</span>';}}],[1,2,3,4,5,6]);
-  const fl=C.dia.filas,usadas=new Map();fl.forEach(f=>{if(f.unidad)usadas.set(f.unidad,(usadas.get(f.unidad)||0)+1);});
-  const pend=todos.filter(u=>est.get(u.unidad).e!=='hecha');
-  const tDia=tablaGer([{t:'Auxiliar',f:x=>selOp(`data-pfu="${x.i}"`,x.usuario,'— Auxiliar —')},
-    {t:'Unidad',f:x=>`<select data-pfb="${x.i}" style="min-width:150px"><option value="">— Unidad —</option>${pend.concat(x.unidad&&!pend.some(u=>u.unidad===x.unidad)?[U.get(x.unidad)]:[]).filter(Boolean).map(u=>`<option value="${esc(u.unidad)}" ${u.unidad===x.unidad?'selected':''}>${esc(u.unidad)} · día ${u.dia}</option>`).join('')}</select>${usadas.get(x.unidad)>1?' <b style="color:#ff8a8a">repetida</b>':''}`},
-    {t:'Lotes',f:x=>{const u=U.get(x.unidad);return u?esc(u.lotes.map(l=>l.lote).join(', ')):'—';}},{t:'Palmas',n:1,f:x=>{const u=U.get(x.unidad);return u?num(u.palmas):'—';}},
-    {t:'Avance',f:x=>x.unidad?chipU(est.get(x.unidad)):''},{t:'',f:x=>`<button class="btn mini" data-pfq="${x.i}" title="Quitar">✕</button>`}],fl.map((f,i)=>({...f,i})));
-  const sinAux=[];{const oc=new Set(fl.map(f=>f.unidad));for(const D of C.c.dias){if(!D.unidades.some(u=>est.get(u.unidad).e!=='hecha'))continue;
-    for(const u of D.unidades)if(u.posicion>6&&!oc.has(u.unidad)&&est.get(u.unidad).e!=='hecha')sinAux.push(u.unidad);break;}}
-  const grid=`<div class="ger-tabla"><table class="ger-calor"><thead><tr><th>Día</th>${Array.from({length:nPos()},(_,i)=>`<th class="c">${i+1}</th>`).join('')}</tr></thead><tbody>${C.c.dias.map(D=>`<tr><td><b>D${D.dia}</b></td>${Array.from({length:nPos()},(_,i)=>{const u=D.unidades.find(x=>x.posicion===i+1);if(!u)return '<td class="c tenue">—</td>';
-    const s=est.get(u.unidad),bg=s.e==='hecha'?'rgba(34,211,154,.35)':s.e==='curso'?'rgba(255,197,61,.30)':'transparent';
-    return `<td class="c" data-pcel="${esc(u.unidad)}" style="cursor:pointer;background:${bg}" title="${esc(u.unidad)} · ${esc(u.lotes.map(l=>l.lote).join(', '))} · ${num(u.palmas)} palmas">${s.e==='hecha'?'✔':s.e==='curso'?num(s.p,0):'·'}</td>`;}).join('')}</tr>`).join('')}</tbody></table></div>`;
-  return `<div class="ger-sec"><h3>Programación del monitoreo · vuelta ${C.as.vuelta}</h3>
-    <p class="tenue">${C.c.resumen.dias} días · ${C.c.resumen.unidades} unidades de ~30 ha (bloque P y mitad) · ${num(C.c.resumen.palmas)} palmas. ${C.as.inicio?'Vuelta iniciada el '+esc(C.as.inicio)+'.':'La vuelta inicia con el primer plan que se envíe.'} Cada auxiliar sigue con su siguiente unidad; una unidad queda hecha con el 90 % de su muestra registrada.</p>
-    <div class="ger-kpis">${kpi(`${nH} / ${todos.length}`,'Unidades hechas',nH===todos.length?'ok':'')}${kpi(num(todos.filter(u=>est.get(u.unidad).e==='curso').length),'En curso')}${kpi(num(todos.length-nH),'Pendientes')}</div></div>
-    <div class="ger-sec"><h3>1. Auxiliar titular de cada posición</h3><p class="tenue">La posición 1 hace la primera unidad de cada día, la 2 la segunda… Los días con una séptima unidad se cubren con apoyo.</p>${tTit}
-      <div class="ger-par"><button class="btn mini prim" id="pTitG">Guardar titulares</button></div></div>
-    <div class="ger-sec"><h3>2. Plan del día</h3><div class="ger-par">Fecha <input type="date" id="pFecha" value="${esc(P.fecha)}">
-      <button class="btn mini" id="pAg">＋ Agregar unidad (apoyo)</button><button class="btn mini" id="pSug">↺ Volver a la sugerencia</button>
-      <button class="btn mini nar" id="pEnv">${C.guardado?'✅ Enviado · enviar de nuevo':'Guardar y enviar a los celulares'}</button></div>
-      ${C.dia.enviado?`<p class="tenue">Plan ya enviado para el ${esc(C.dia.fecha)}; puede modificarlo y enviarlo de nuevo.</p>`:''}${tDia}
-      ${sinAux.length?`<div class="ger-aviso">Unidades del día sin auxiliar: <b>${sinAux.map(esc).join(', ')}</b>. Agréguelas como apoyo (＋ Agregar unidad).</div>`:''}</div>
-    <div class="ger-sec"><h3>3. Avance del ciclo</h3><p class="tenue">✔ hecha · número = % de la muestra registrada · · pendiente. Clic en una unidad para marcarla terminada o reabrirla.</p>${grid}
-      <div class="ger-par"><button class="btn mini" id="pVuelta">Iniciar una nueva vuelta</button></div></div>`;
-}
-function enlazarProgPlagas(){
-  const C=GER.plgc,P=GER.plan;if(!C.c||!C.av||!C.dia)return;
-  const f=$('#pFecha');if(f)f.onchange=()=>{P.fecha=f.value;armarDiaPlg(P.fecha);pintarGer();};
-  $$('#gerPanel [data-ptit]').forEach(s=>s.onchange=()=>{C.as.titulares[s.dataset.ptit]=s.value;if(!C.dia.enviado)armarDiaPlg(P.fecha,true);pintarGer();});
-  const tg=$('#pTitG');if(tg)tg.onclick=async()=>{tg.disabled=true;try{await guardarAsigPlg('Plagas: auxiliares titulares de las posiciones');toast('✅ Titulares guardados.');}catch(e){toast(e.message,6000);}pintarGer();};
-  $$('#gerPanel [data-pfu]').forEach(s=>s.onchange=()=>{C.dia.filas[s.dataset.pfu].usuario=s.value;C.guardado=false;pintarGer();});
-  $$('#gerPanel [data-pfb]').forEach(s=>s.onchange=()=>{C.dia.filas[s.dataset.pfb].unidad=s.value;C.guardado=false;pintarGer();});
-  $$('#gerPanel [data-pfq]').forEach(b=>b.onclick=()=>{C.dia.filas.splice(Number(b.dataset.pfq),1);C.guardado=false;pintarGer();});
-  const ag=$('#pAg');if(ag)ag.onclick=()=>{const oc=new Set(C.dia.filas.map(x=>x.unidad));let s='';for(let p=1;p<=nPos()&&!s;p++)s=sigUnidad(p,oc)||'';C.dia.filas.push({usuario:'',unidad:s});C.guardado=false;pintarGer();};
-  const su=$('#pSug');if(su)su.onclick=()=>{armarDiaPlg(P.fecha,true);pintarGer();};
-  $$('#gerPanel [data-pcel]').forEach(td=>td.onclick=async()=>{const id=td.dataset.pcel,s=estadoUnidad(id);const t=s.e!=='hecha';
-    if(!confirm(t?`¿Marcar ${id} como terminada? (muestra registrada: ${num(s.p,0)} %)`:`¿Reabrir ${id}?`))return;
-    C.as.manual[id]={estado:t?'terminado':'reabierto',por:SES.u,fecha:new Date().toISOString()};
-    try{await guardarAsigPlg(`Plagas: ${id} ${t?'terminada':'reabierta'}`);if(!C.dia.enviado)armarDiaPlg(P.fecha,true);}catch(e){delete C.as.manual[id];toast(e.message,6000);}pintarGer();});
-  const vu=$('#pVuelta');if(vu)vu.onclick=async()=>{if(!confirm('¿Iniciar una nueva vuelta? Todas las unidades vuelven a quedar pendientes.'))return;
-    const prev=JSON.parse(JSON.stringify(C.as));C.as.vuelta=(C.as.vuelta||1)+1;C.as.inicio=null;C.as.manual={};
-    try{await guardarAsigPlg(`Plagas: inicia la vuelta ${C.as.vuelta}`);C.planes=[];C.av=null;C.avKey='';C.dia=null;}catch(e){C.as=prev;toast(e.message,6000);}pintarGer();};
-  const g=$('#pEnv');if(g)g.onclick=async()=>{const U=unidadesPlg(),fl=C.dia.filas;
-    if(!fl.length){toast('El plan no tiene unidades.',5000);return;}
-    const mal=fl.findIndex(x=>!x.usuario||!x.unidad);if(mal>=0){toast(`Complete el auxiliar y la unidad de la fila ${mal+1}.`,6000);return;}
-    const us=fl.map(x=>x.unidad);if(new Set(us).size!==us.length){toast('Hay una unidad asignada dos veces.',6000);return;}
-    g.disabled=true;g.textContent='Guardando…';const ruta=`plagas/plan/${P.fecha}.json`;let sha=null;try{sha=(await (await gh(`/contents/${ruta}?ref=${encodeURIComponent(SES.repo.rama)}`)).json()).sha;}catch(e){}
-    const nom=u=>((GER.plg.ops||[]).find(o=>o.u===u)||{}).nombre||u;
-    const plan={formato:'polinizacion-plan-plagas-1',fecha:P.fecha,ciclo_version:C.c.version,vuelta:C.as.vuelta,creado:new Date().toISOString(),creado_por:SES.u,
-      asignaciones:fl.map(x=>{const u=U.get(x.unidad);const tit=Object.entries(C.as.titulares).find(([k,v])=>v===x.usuario&&Number(k)===u.posicion);
-        return {usuario:x.usuario,nombre:nom(x.usuario),unidad:u.unidad,dia:u.dia,posicion:u.posicion,tipo:tit?'titular':'apoyo',palmas:u.palmas,ha:u.ha,muestreo:C.c.reglas.muestreo_defecto,lotes:u.lotes};})};
-    try{await ghPut(ruta,JSON.stringify(plan),`Plan de monitoreo de plagas ${P.fecha} · ${fl.length} unidades`,sha);
-      if(!C.as.inicio||P.fecha<C.as.inicio){C.as.inicio=P.fecha;await guardarAsigPlg(`Plagas: vuelta ${C.as.vuelta} inicia el ${P.fecha}`);C.avKey='';}
-      C.planes=C.planes.filter(p=>p.fecha!==P.fecha).concat([plan]).sort((a,b)=>a.fecha.localeCompare(b.fecha));C.dia.enviado=true;C.guardado=true;
-      toast(`✅ Plan del ${P.fecha} enviado: cada auxiliar verá su bloque al iniciar el monitoreo.`,7000);}catch(e){toast(e.message,6000);}pintarGer();};
-}
-
-/* =====================================================================
-   MODO PLAGAS EN EL MAPA (botón 🐛 PLAGAS de la cabecera), como el censo de enfermedades:
-   recorrido de cada jornada, palmas muestreadas (rojo = con daño, verde = sin daño), filtros, lista de jornadas,
-   tabla de palmas y fotos. La programación sigue en 🧭 COORDINACIÓN → Monitoreo de plagas.
-   ===================================================================== */
-const PLM={on:false,capa:L.layerGroup(),f:{plaga:'',op:'',lote:'',dano:false},sel:null};
-(function montarModoPlagas(){
-  const css=document.createElement('style');css.textContent=`
-  body.modo-plg #filtros,body.modo-plg nav.tabs,body.modo-plg #panel,body.modo-plg #leyenda{display:none!important}
-  #plgPanel input#plmLote{width:100%;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.06);color:var(--texto);border:1px solid var(--borde)}
-  .plg-ley{display:flex;gap:12px;font-size:12.5px;margin:4px 0 8px}.plg-ley i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:middle;border:1px solid #fff}
-  #plgPanel{flex:1;overflow:auto;padding:12px 14px 30px;display:none}
-  body.modo-plg #plgPanel{display:block}
-  .plg-j{border:1px solid var(--borde);border-radius:10px;padding:7px 9px;margin:5px 0;cursor:pointer;font-size:12.8px}
-  .plg-j.on{border-color:var(--acento);background:rgba(34,211,154,.08)}`;
-  document.head.appendChild(css);
-  const p=document.createElement('div');p.id='plgPanel';$('aside').appendChild(p);
-})();
-function alternarPlgMapa(on){
-  PLM.on=on==null?!PLM.on:on;
-  if(PLM.on){if(typeof ERR!=='undefined'&&ERR.on)alternarErr(false);if(typeof CIR!=='undefined'&&CIR.on)alternarCirugia(false);if(GER.on)alternarGerencia(false);}
-  document.body.classList.toggle('modo-plg',PLM.on);{const b=$('#btPlg');if(b)b.classList.toggle('prim',PLM.on);}
-  for(const c of [capaRec,capaDiag,capaPar])PLM.on?mapa.removeLayer(c):(c.addTo(mapa));
-  if(PLM.on){PLM.capa.addTo(mapa);if(!GER.plg.datos&&!GER.plg.cargando)cargarPlagasVisor().then(()=>{pintarPlgMapa(true);});pintarPlgMapa(true);}
-  else mapa.removeLayer(PLM.capa);
-}
-const esSi=v=>v===true||v==='true';
-function regsFiltrados(){const R=(GER.plg.datos&&GER.plg.datos.regs)||[],f=PLM.f;
-  return R.filter(r=>(!f.plaga||r.plagas.some(p=>p.plaga===f.plaga))&&(!f.op||r.evaluador===f.op)&&(!f.lote||String(r.lote).toUpperCase().includes(f.lote.toUpperCase()))&&(!f.dano||esSi(r.dano))&&(!PLM.sel||r._j===PLM.sel));}
-function popupPlg(r){return `<b>${esc(r.lote)} · L${esc(r.linea)} · P${esc(r.palma)}</b><br>Hoja ${esc(r.hoja)} · muestreo ${esc((MUESTREOS.find(y=>y.id===r.muestreo)||{}).t||r.muestreo||'')}${r.unidad?' · '+esc(r.unidad):''}
-  <br>${r.plagas.map(p=>`<b>${esc(p.plaga_nombre||p.plaga)}</b>: ${esc(estTxtV(p))}${esSi(p.dano)?' · <span style="color:#ff8a80">daño</span>':''}`).join('<br>')||'Sin plagas'}
-  <br><span class="tenue">${esc(r.transitabilidad||'')} · ${esc(r.evaluador||'')} · ${esc(String(r.fecha||r.creado||'').slice(0,16).replace('T',' '))}</span>
-  ${String(r.fotos||'').split('|').filter(Boolean).length?`<br><button class="btn mini" data-pfp="${esc(r.id)}" style="margin-top:6px">📷 Ver foto</button>`:''}`;}
-function pintarPlgMapa(encuadrar){
-  const P=$('#plgPanel');if(!P)return;const G=GER.plg;
-  const salir='<button class="btn mini" id="plmSalir" title="Volver al visor">✕ Salir</button>';
-  if(!G.datos){P.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h3>Monitoreo de plagas</h3>${salir}</div><div class="tenue">Leyendo las jornadas de monitoreo de plagas…</div>`;$('#plmSalir').onclick=()=>alternarPlgMapa(false);return;}
-  const R=regsFiltrados(),todos=G.datos.regs,jors=[...new Set(todos.map(r=>r._j))].sort((a,b)=>String(b.inicio||b.fecha).localeCompare(String(a.inicio||a.fecha)));
-  const ops=[...new Set(todos.map(r=>r.evaluador).filter(Boolean))].sort();const conD=R.filter(r=>esSi(r.dano)).length;
-  const porP=PLAGAS.map(p=>({p,n:R.filter(r=>r.plagas.some(x=>x.plaga===p.id)).length})).filter(x=>x.n);
-  // mapa: recorridos de las jornadas y palmas
-  PLM.capa.clearLayers();const jsVis=new Set(R.map(r=>r._j));
-  for(const j of jsVis){if(j.track&&j.track.length>1){const on=PLM.sel===j;L.polyline(j.track.map(([x,y])=>[y,x]),{renderer:rend,color:on?'#ffd166':'#4fb3ff',weight:on?4:2.5,opacity:.85,interactive:false}).addTo(PLM.capa);}}
-  for(const r of R){if(r.lat==null)continue;L.circleMarker([r.lat,r.lng],{renderer:rend,radius:6.5,color:'#fff',weight:1.3,fillColor:esSi(r.dano)?'#e53935':'#22d39a',fillOpacity:.95}).bindPopup(popupPlg(r),{maxWidth:320}).addTo(PLM.capa);}
-  if(encuadrar){const ll=R.filter(r=>r.lat!=null).map(r=>[r.lat,r.lng]);if(ll.length)mapa.fitBounds(L.latLngBounds(ll),{padding:[40,40],maxZoom:17});}
-  P.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h3 style="margin:0">🐛 Monitoreo de plagas</h3>${salir}</div>
-    <div class="cir-par" style="margin-top:8px">
-      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">Últimos <select id="plmDias">${[7,15,30,60,90].map(d=>`<option value="${d}" ${G.dias===d?'selected':''}>${d} días</option>`).join('')}</select><button class="btn mini" id="plmRec">↻</button></div>
-      <label class="campo" for="plmPlaga">Plaga</label><select id="plmPlaga"><option value="">Todas</option>${PLAGAS.map(p=>`<option value="${p.id}" ${PLM.f.plaga===p.id?'selected':''}>${esc(p.n)}</option>`).join('')}</select>
-      <label class="campo" for="plmOp">Auxiliar</label><select id="plmOp"><option value="">Todos</option>${ops.map(o=>`<option ${PLM.f.op===o?'selected':''}>${esc(o)}</option>`).join('')}</select>
-      <label class="campo" for="plmLote">Lote</label><input id="plmLote" value="${esc(PLM.f.lote)}" placeholder="IT05" autocapitalize="characters">
-      <label style="display:flex;gap:6px;align-items:center;margin-top:6px"><input type="checkbox" id="plmDano" ${PLM.f.dano?'checked':''}> Solo palmas con daño</label></div>
-    <div class="kpis"><div class="kpi"><b>${num(jsVis.size)}</b><span>Jornadas</span></div><div class="kpi"><b>${num(R.length)}</b><span>Palmas muestreadas</span></div><div class="kpi"><b class="${conD?'venc':''}">${num(conD)}</b><span>Con daño</span></div></div>
-    <div class="plg-ley"><span><i style="background:#e53935"></i>Con daño</span><span><i style="background:#22d39a"></i>Sin daño</span><span><i style="background:#4fb3ff;border-radius:2px;height:4px"></i>Recorrido</span></div>
-    ${porP.length?`<div class="tenue" style="font-size:12.5px;margin:4px 0 8px">${porP.map(x=>`${esc(x.p.n)}: <b>${num(x.n)}</b>`).join(' · ')}</div>`:''}
-    <h3>Jornadas</h3>${jors.length?jors.map((j,i)=>{const rs=todos.filter(r=>r._j===j);return `<div class="plg-j ${PLM.sel===j?'on':''}" data-pj="${i}"><b>${esc(j.fecha||String(j.inicio||'').slice(0,10))}</b> · ${esc(j.evaluador||'')}<br><span class="tenue">${esc([...new Set(rs.map(r=>r.lote))].join(', '))} · ${num(rs.length)} palmas · ${num(rs.filter(r=>esSi(r.dano)).length)} con daño${j.hora_inicio?' · '+esc(j.hora_inicio)+'–'+esc(j.hora_fin||''):''}</span></div>`;}).join(''):'<div class="tenue">Sin jornadas en el periodo.</div>'}
-    ${PLM.sel?'<button class="btn mini" id="plmTodas" style="margin:4px 0">Ver todas las jornadas</button>':''}
-    <h3>Palmas (${num(R.length)})</h3>${R.length?`<table class="t"><thead><tr><th>Palma</th><th>Plagas</th><th>Daño</th></tr></thead><tbody>${R.slice(0,400).map(r=>`<tr data-pll="${r.lat},${r.lng}"><td>${esc(r.lote)} · L${esc(r.linea)} · P${esc(r.palma)}<br><span class="tenue">hoja ${esc(r.hoja)} · ${esc(String(r.fecha||r.creado||'').slice(5,16).replace('T',' '))}</span></td><td>${r.plagas.map(p=>`${esc(p.plaga_nombre||p.plaga)}<br><span class="tenue">${esc(estTxtV(p))}</span>`).join('<br>')}</td><td>${esSi(r.dano)?'<span class="venc">Sí</span>':'No'}</td></tr>`).join('')}</tbody></table>`:'<div class="tenue">Ninguna palma coincide con los filtros.</div>'}`;
-  $('#plmSalir').onclick=()=>alternarPlgMapa(false);
-  $('#plmDias').onchange=e=>{G.dias=Number(e.target.value)||30;G.datos=null;PLM.sel=null;pintarPlgMapa();cargarPlagasVisor().then(()=>pintarPlgMapa(true));};
-  $('#plmRec').onclick=()=>{G.datos=null;PLM.sel=null;pintarPlgMapa();cargarPlagasVisor().then(()=>pintarPlgMapa(true));};
-  $('#plmPlaga').onchange=e=>{PLM.f.plaga=e.target.value;pintarPlgMapa(true);};
-  $('#plmOp').onchange=e=>{PLM.f.op=e.target.value;pintarPlgMapa(true);};
-  $('#plmLote').onchange=e=>{PLM.f.lote=e.target.value.trim();pintarPlgMapa(true);};
-  $('#plmDano').onchange=e=>{PLM.f.dano=e.target.checked;pintarPlgMapa(true);};
-  P.querySelectorAll('[data-pj]').forEach(d=>d.onclick=()=>{const j=jors[+d.dataset.pj];PLM.sel=PLM.sel===j?null:j;pintarPlgMapa(true);});
-  const t=$('#plmTodas');if(t)t.onclick=()=>{PLM.sel=null;pintarPlgMapa(true);};
-  P.querySelectorAll('tr[data-pll]').forEach(tr=>tr.onclick=()=>{const [a,b]=tr.dataset.pll.split(',').map(Number);if(isFinite(a)&&isFinite(b))mapa.setView([a,b],19);});
-}
-mapa.on('popupopen',e=>{const b=e.popup.getElement()&&e.popup.getElement().querySelector('[data-pfp]');if(!b)return;
-  b.onclick=()=>{const r=((GER.plg.datos&&GER.plg.datos.regs)||[]).find(x=>String(x.id)===b.dataset.pfp);if(r)verFotos({...r,_j:r._j});};});
-
-/* =====================================================================
-   ENFERMEDADES (visor web)
-   · Botón 🦠 ENFERMEDADES en la cabecera: vuelve al censo de enfermedades en el mapa (cierra los otros modos).
-   · Casos críticos que titilan en el mapa: PE partida (la palma murió) y PC cráter (próxima a morir; se erradica).
-   · DATOS → Palmas pendientes por marcar inexistentes: las PE partida pasan a existencia 0 con la aprobación del
-     analista de datos o del super administrador (cartografia/ajustes_existencia.json, el mismo archivo de la erradicación).
-   ===================================================================== */
-(function montarEnfermedades(){
-  const css=document.createElement('style');css.textContent=`
-  @keyframes critOnda{0%{transform:scale(.5);opacity:1}100%{transform:scale(2.4);opacity:0}}
-  @keyframes critParpadeo{0%,49%{opacity:1}50%,100%{opacity:.15}}
-  .alerta-critica{background:none;border:0}
-  .alerta-critica i{position:absolute;border-radius:50%;pointer-events:none}
-  .alerta-critica .a1{left:-16px;top:-16px;width:32px;height:32px;border:4px solid #ff1744;animation:critOnda .8s ease-out infinite}
-  .alerta-critica .a2{left:-9px;top:-9px;width:18px;height:18px;background:#ff1744;border:2px solid #fff;box-shadow:0 0 12px 4px rgba(255,23,68,.9);animation:critParpadeo .5s linear infinite}
-  .alerta-critica.crater .a1{border-color:#ff9100}.alerta-critica.crater .a2{background:#ff9100;box-shadow:0 0 12px 4px rgba(255,145,0,.9)}
-  .alerta-critica .et{position:absolute;left:14px;top:-26px;white-space:nowrap;font:800 11px/1 sans-serif;letter-spacing:.5px;color:#fff;background:#d50000;padding:3px 6px;border-radius:5px;border:1px solid #fff;box-shadow:0 0 8px rgba(255,23,68,.9);animation:critParpadeo 1s linear infinite;pointer-events:none}
-  .alerta-critica.crater .et{background:#e65100}
-  #critFranja{position:absolute;left:50%;transform:translateX(-50%);top:10px;z-index:900;display:none;align-items:center;gap:10px;background:#b71c1c;color:#fff;border:2px solid #ff5252;border-radius:12px;padding:8px 14px;font-weight:800;font-size:14px;box-shadow:0 0 0 0 rgba(255,23,68,.8);animation:critLatido 1.2s ease-out infinite;cursor:pointer;max-width:92%}
-  #critFranja.on{display:flex}
-  @keyframes critLatido{0%{box-shadow:0 0 0 0 rgba(255,23,68,.85)}100%{box-shadow:0 0 0 18px rgba(255,23,68,0)}}
-  .crit-badge{display:inline-block;min-width:18px;padding:0 5px;margin-left:5px;border-radius:999px;background:#ff1744;color:#fff;font-size:11px;line-height:18px;text-align:center;animation:critParpadeo .7s linear infinite}`;
-  document.head.appendChild(css);
-  const fr=document.createElement('div');fr.id='critFranja';fr.title='Clic: ver los casos en el mapa';(document.querySelector('.mapaCaja')||document.body).appendChild(fr);fr.onclick=()=>verCensoEnf();
-  const bt=document.createElement('button');bt.className='btn mini prim';bt.id='btEnf';bt.title='Censo de enfermedades en el mapa (las palmas con PE partida y PC cráter titilan)';
-  bt.innerHTML='🦠 ENFERMEDADES<span id="btEnfN"></span>';
-  const c=$('#btCir');if(c)c.before(bt);else $('#chDatos').before(bt);
-  bt.onclick=()=>verCensoEnf();
-  setInterval(estadoBtEnf,600);
-})();
-const otroModoOn=()=>(typeof GER!=='undefined'&&GER.on)||(typeof CIR!=='undefined'&&CIR.on)||(typeof ERR!=='undefined'&&ERR.on)||(typeof PLM!=='undefined'&&PLM.on)||(typeof HVP!=='undefined'&&HVP.on);
-function estadoBtEnf(){const b=$('#btEnf');if(b)b.classList.toggle('prim',!otroModoOn());const f=$('#critFranja');if(f)f.classList.toggle('on',!otroModoOn()&&!(typeof REP!=='undefined'&&REP.on)&&CRIT.lista.length>0);}
-function verCensoEnf(){
-  if(GER.on)alternarGerencia(false);if(typeof PLM!=='undefined'&&PLM.on)alternarPlgMapa(false);if(ERR.on)alternarErr(false);if(CIR.on)alternarCirugia(false);
-  estadoBtEnf();
-  if(!JOR.length){toast('Cargue un rango de fechas (a la izquierda) para ver el censo de enfermedades.',4500);return;}
-  const cr=CRIT.lista;
-  if(cr.length){try{mapa.fitBounds(L.latLngBounds(cr.map(x=>[x.d.lat,x.d.lng])),{padding:[60,60],maxZoom:17});}catch(e){}
-    const np=cr.filter(x=>x.t==='PE_PARTIDA').length,nc=cr.length-np;
-    toast(`⚠ Titilando: ${np?np+' PE partida (palma muerta)':''}${np&&nc?' · ':''}${nc?nc+' PC cráter (erradicar)':''}.`,6000);}
-}
-
-/* ---------- Casos críticos: último diagnóstico de la palma es PE partida o PC cráter (y no tiene existencia 0) ---------- */
-const CRIT={lista:[]};
-function calcularCriticos(){
-  const ult=new Map();for(const j of JORF)for(const d of j.diags){const k=String(d.palma_id??(d.lote+'|'+d.linea+'|'+d.palma));const u=ult.get(k);if(!u||String(d.creado)>String(u.creado))ult.set(k,d);}
-  const enDiagf=new Set(DIAGF.map(d=>d.id));
-  CRIT.lista=[...ult.entries()].map(([k,d])=>({k,d,t:criticoDe(d)})).filter(x=>x.t&&x.d.lat!=null&&!VAJ.has(x.k)&&enDiagf.has(x.d.id));
-  const np=CRIT.lista.filter(x=>x.t==='PE_PARTIDA').length,nc=CRIT.lista.length-np,f=$('#critFranja');
-  if(f)f.innerHTML=`<span style="font-size:20px">⚠</span><span>${np?`${np} palma${np>1?'s':''} con PE PARTIDA: ${np>1?'murieron':'murió'} (marcar inexistente${np>1?'s':''})`:''}${np&&nc?' · ':''}${nc?`${nc} palma${nc>1?'s':''} con PC CRÁTER: próxima${nc>1?'s':''} a morir (erradicar)`:''}</span>`;
-  estadoBtEnf();
-  const n=$('#btEnfN');if(n)n.innerHTML=CRIT.lista.length?`<span class="crit-badge" title="Palmas con PE partida o PC cráter">${CRIT.lista.length}</span>`:'';
-}
-function iconoCritico(t){return L.divIcon({className:'alerta-critica '+(t==='CRATER'?'crater':'partida'),html:`<i class="a1"></i><i class="a2"></i><b class="et">${t==='CRATER'?'⚠ CRÁTER · ERRADICAR':'✝ PE PARTIDA · MUERTA'}</b>`,iconSize:[0,0]});}
-function pintarCriticos(){
-  calcularCriticos();
-  for(const x of CRIT.lista){const d=x.d;
-    L.marker([d.lat,d.lng],{icon:iconoCritico(x.t),zIndexOffset:1000,keyboard:false,title:`${CRITICOS[x.t].t}: ${etiquetaDiag(d)}`})
-      .on('click',ev=>{L.DomEvent.stopPropagation(ev);popupDiag(d,ev.latlng);}).addTo(capaDiag);}
-}
-{const _pm=pintarMapa;pintarMapa=function(a){_pm(a);pintarCriticos();};}
-
-/* ---------- DATOS → Palmas pendientes por marcar inexistentes (PE partida) ---------- */
-TABS_GER.push(['inexist','PALMAS PENDIENTES POR MARCAR INEXISTENTES']);MODS_GER.datos.tabs.push('inexist');
-MODS_GER.datos.ayuda='Analistas de datos: sincronización y palmas pendientes por marcar inexistentes';
-GER.inx={sel:new Set()};
-function pendientesInexist(){
-  const ult=new Map();for(const j of JOR)for(const d of j.diags){const k=String(d.palma_id??(d.lote+'|'+d.linea+'|'+d.palma));const u=ult.get(k);if(!u||String(d.creado)>String(u.creado))ult.set(k,{...d,_j:j});}
-  const rech=(ERR.aj&&ERR.aj.rechazos)||[];
-  return [...ult.entries()].filter(([k,d])=>criticoDe(d)==='PE_PARTIDA'&&!VAJ.has(k)&&!rech.some(r=>r.diagnostico_id&&r.diagnostico_id===d.id))
-    .map(([k,d])=>({...d,_k:k})).sort((a,b)=>String(a.creado).localeCompare(String(b.creado)));
-}
-PINTAR_GER.inexist=function(){
-  if(!ERR.aj&&!GER.inx.cargando){GER.inx.cargando=true;cargarAjustesVisor().finally(()=>{GER.inx.cargando=false;pintarGer();});}
-  const aviso=`<p class="tenue">Palmas cuyo último diagnóstico es <b>PE PARTIDA</b> (la palma murió), en las jornadas cargadas (${esc(rangoTxt())}). Al aprobarlas quedan con <b>existencia 0</b>: salen de la cartografía activa, de la incidencia y de los conteos en la App, el visor y los reportes.
-    Solo el <b>analista de datos</b> o el <b>super administrador</b> aprueban. Las de <b>PC cráter</b> no van aquí: se erradican (🪓 ERRADICACIÓN) y su existencia 0 se aprueba allá.</p>
-    <div class="ger-par">Buscar en: <button class="btn mini" data-rango="30">30 días</button><button class="btn mini" data-rango="90">90 días</button><button class="btn mini" data-rango="180">180 días</button></div>`;
-  if(!JOR.length)return `<div class="ger-sec"><h3>Palmas pendientes por marcar inexistentes</h3>${aviso}</div>${sinDatos()}`;
-  if(!ERR.aj)return `<div class="ger-sec"><h3>Palmas pendientes por marcar inexistentes</h3><p class="tenue">Leyendo los ajustes de existencia…</p></div>`;
-  const P=pendientesInexist(),pa=puedeAprobarErr(),S=GER.inx.sel;for(const k of [...S])if(!P.some(d=>d._k===k))S.delete(k);
-  const hechas=ERR.aj.ajustes.filter(a=>a.tipo==='PE_PARTIDA').slice(-30).reverse();
-  const tP=P.length?tablaGer([...(pa?[{t:`<input type="checkbox" id="inxTodas" ${S.size===P.length?'checked':''} aria-label="Seleccionar todas">`,f:d=>`<input type="checkbox" data-inx="${esc(d._k)}" ${S.has(d._k)?'checked':''}>`}]:[]),
-      {t:'Palma',f:d=>`<b>${esc(etiquetaDiag(d))}</b>`},{t:'Programa',f:d=>esc(PROG.get(d.lote)||'—')},{t:'Diagnóstico',f:d=>`<span class="ger-chip mal">${esc(d.nivel2||'PE PARTIDA')}</span>`},
-      {t:'Fecha',f:d=>esc(String(d.creado||'').slice(0,10))},{t:'Días',n:1,f:d=>num(Math.max(0,Math.floor((Date.now()-Date.parse(d.creado))/864e5)))},{t:'Evaluador',f:d=>esc(d.evaluador||'')},
-      {t:'Fotos',n:1,f:d=>num(Number(d.n_fotos)||0)},
-      {t:'',f:d=>`<button class="btn mini" data-inxver="${esc(d._k)}">Ver en el mapa</button>${pa?` <button class="btn mini" data-inxrech="${esc(d._k)}">Rechazar</button>`:''}`}],P)
-    :'<div class="ger-aviso">✅ No hay palmas PE partida pendientes en las jornadas cargadas.</div>';
-  const tH=hechas.length?tablaGer([{t:'Palma',f:a=>`${esc(a.lote)} · L${esc(a.linea??'?')} · P${esc(a.palma??'?')}`},{t:'Diagnóstico',f:a=>esc(a.fecha_diagnostico||'')},{t:'Evaluador',f:a=>esc(a.evaluador||'')},
-      {t:'Aprobó',f:a=>esc(a.aprobado_nombre||a.aprobado_por||'')},{t:'Fecha de aprobación',f:a=>esc(String(a.aprobado||'').slice(0,16).replace('T',' '))}],hechas):'<p class="tenue">Aún no hay palmas PE partida aprobadas.</p>';
-  return `<div class="ger-sec"><h3>Palmas pendientes por marcar inexistentes</h3>${aviso}
-      <div class="ger-kpis">${kpi(num(P.length),'Pendientes de aprobar',P.length?'mal':'ok')}${kpi(num(ERR.aj.ajustes.filter(a=>a.tipo==='PE_PARTIDA').length),'PE partida aprobadas (total)')}</div>
-      ${pa&&P.length?`<div class="ger-par"><button class="btn mini nar" id="inxAprob" ${S.size?'':'disabled'}>✔ Aprobar existencia 0 (${S.size})</button></div>`:''}
-      ${!pa&&P.length?'<div class="ger-aviso">Solo el analista de datos o el super administrador pueden aprobar.</div>':''}${tP}</div>
-    <div class="ger-sec"><h3>Últimas aprobadas</h3>${tH}</div>`;
-};
-ENLACES_GER.inexist=()=>{enlazarRango();const P=ERR.aj?pendientesInexist():[],S=GER.inx.sel,por=k=>P.find(d=>d._k===k);
-  $$('#gerPanel [data-inx]').forEach(c=>c.onchange=()=>{c.checked?S.add(c.dataset.inx):S.delete(c.dataset.inx);pintarGer();});
-  const t=$('#inxTodas');if(t)t.onchange=()=>{if(t.checked)P.forEach(d=>S.add(d._k));else S.clear();pintarGer();};
-  $$('#gerPanel [data-inxver]').forEach(b=>b.onclick=()=>{const d=por(b.dataset.inxver);if(!d||d.lat==null)return;alternarGerencia(false);verCensoEnf();mapa.setView([d.lat,d.lng],19);setTimeout(()=>popupDiag(d,L.latLng(d.lat,d.lng)),300);});
-  $$('#gerPanel [data-inxrech]').forEach(b=>b.onclick=()=>rechazarInexist(por(b.dataset.inxrech)));
-  const a=$('#inxAprob');if(a)a.onclick=()=>aprobarInexist(P.filter(d=>S.has(d._k)));
-};
-async function aprobarInexist(lista){
-  if(!puedeAprobarErr()||!lista.length)return;
-  if(!confirm(`¿Aprobar existencia 0 para ${lista.length} palma(s) con PE partida?\n\nSalen de la cartografía activa, de la incidencia y de los conteos en la App, el visor y los reportes.`))return;
-  try{const ahora=new Date().toISOString();
-    await guardarAjustes(aj=>{for(const d of lista){if(aj.ajustes.some(x=>String(x.palma_id)===d._k&&Number(x.existe)===0))continue;
-      aj.ajustes.push({palma_id:d._k,lote:d.lote,linea:d.linea,palma:d.palma,existe:0,motivo:'PE partida',tipo:'PE_PARTIDA',diagnostico_id:d.id||'',fecha_diagnostico:String(d.creado||'').slice(0,10),
-        evaluador:d.evaluador||'',aprobado_por:SES.u,aprobado_nombre:SES.nombre,aprobado:ahora});}},`Existencia 0 aprobada: ${lista.length} palma(s) PE partida · ${SES.nombre}`);
-    GER.inx.sel.clear();toast(`✓ ${lista.length} palma(s) marcadas como inexistentes.`,4500);aplicarFiltros(false);}
-  catch(e){toast('No se pudo guardar: '+e.message,6000);}
-  pintarGer();
-}
-async function rechazarInexist(d){
-  if(!d||!puedeAprobarErr())return;const m=prompt('Motivo del rechazo (la palma sigue existiendo; si en un censo posterior vuelve a salir PE partida, aparecerá otra vez):','');if(m==null)return;
-  try{await guardarAjustes(aj=>{if(!aj.rechazos.some(r=>r.diagnostico_id===d.id))aj.rechazos.push({diagnostico_id:d.id||'',palma_id:d._k,lote:d.lote,linea:d.linea,palma:d.palma,tipo:'PE_PARTIDA',motivo:m.trim(),por:SES.u,por_nombre:SES.nombre,fecha:new Date().toISOString()});},
-      `PE partida rechazada: ${d.lote} L${d.linea} P${d.palma} · ${SES.nombre}`);GER.inx.sel.delete(d._k);toast('Rechazada: la palma sigue con existencia.',4000);}
-  catch(e){toast('No se pudo guardar: '+e.message,6000);}
-  pintarGer();
-}
-
-/* =====================================================================
    HOJA DE VIDA DE LA PALMA (visor web)
    · Botón 📋 HOJA DE VIDA en la cabecera: vista con la lista de palmas que tienen hoja de vida (por lote, con búsqueda
      y filtros), la hoja de vida de la palma elegida y el mapa sobre la ortofoto del dron.
@@ -4286,7 +3104,7 @@ async function rechazarInexist(d){
    ===================================================================== */
 const HVV={lotes:new Map(),ind:null};
 const HVP={on:false,lote:'',pid:null,filtro:'todas',q:'',mapa:null,capa:null,lista:[]};
-const HV_FILTROS=[['todas','Todas'],['crit','🚨 Críticas'],['rec','En recuperación'],['cir','Con cirugía'],['plg','Con plagas']];
+const HV_FILTROS=[['todas','Todas'],['crit','🚨 Críticas'],['rec','En recuperación']];
 (function(){
   const css=document.createElement('style');css.textContent=`
   #hvPanel{position:fixed;left:0;right:0;bottom:0;z-index:1500;display:grid;grid-template-columns:minmax(320px,400px) 1fr;background:var(--fondo,#06140f)}
@@ -4334,14 +3152,11 @@ async function hvLoteVisor(lote){
     catch(e){if(e.status===404)return {palmas:{}};HVV.lotes.delete(lote);throw e;}})();
   HVV.lotes.set(lote,pr);return pr;
 }
-/* Eventos de lo cargado en el visor (censo y, si están cargadas, cirugías y correcciones) en el formato de la hoja de vida. */
+/* Eventos de lo cargado en el visor en el formato de la hoja de vida. */
 function eventosCargadosHV(pid){const k=String(pid),ev=[];
   for(const j of JOR)for(const d of j.diags)if(String(d.palma_id)===k)ev.push({t:d.creado,l:'censo',x:[d.nivel1,d.nivel2,d.nivel3].filter(Boolean).join(' › ')||d.estado_nombre||d.estado,e:d.estado,n1:codN1(d),n2:d.nivel2||'',q:d.evaluador||j.evaluador,id:d.id,
     d:[d.sintomas?'Síntomas: '+String(d.sintomas).split('|').join(' / '):'',d.cirugia?'Cirugía: '+d.cirugia:'',d.produccion?'Producción: '+d.produccion:'',d.observaciones?'Observaciones: '+d.observaciones:''].filter(Boolean).join(' · '),
     f:Number(d.n_fotos)>0&&d.fotos&&j.ruta?'jornadas/'+j.ruta.replace(/\.geojson$/,'_fotos.zip')+'|'+String(d.fotos).split('|')[0]:''});
-  if(typeof CIR!=='undefined'&&CIR.cargado){
-    for(const d of CIR.correcciones)if(String(d.palma_id)===k)ev.push({t:d.creado,l:d.origen==='caso_nuevo'?'caso_nuevo':'correccion',r:d.autor_rol||'cirujano',x:[d.nivel1,d.nivel2,d.nivel3].filter(Boolean).join(' › '),e:d.estado,n1:codN1(d),n2:d.nivel2||'',q:d.evaluador||'',id:d.id});
-    for(const c of CIR.cirugias)if(String(c.palma_id)===k)ev.push({t:c.creado,l:'cirugia',x:[c.tipo_cirugia,c.producto].filter(Boolean).join(' · ')||'Cirugía realizada',q:[c.cirujano_nombre,c.auxiliar_nombre].filter(Boolean).join(' + ')||c.evaluador||'',id:c.id});}
   return ev;}
 function unirHV(h,cargados){const ev=[...((h&&h.ev)||[])];const ids=new Set(ev.map(e=>e.l+'|'+e.id));
   for(const e of cargados)if(!e.id||!ids.has(e.l+'|'+e.id)){ev.push(e);ids.add(e.l+'|'+e.id);}
@@ -4361,8 +3176,8 @@ async function palmasHV(lote){
   for(const x of out.values()){x.ev=unirHV(x.h,eventosCargadosHV(x.pid));x.r=resumenHV(x.ev);}
   return {lista:[...out.values()].filter(x=>x.ev.length).sort((a,b)=>ordenNat(a.linea,b.linea)||ordenNat(a.palma,b.palma)),err};
 }
-const colorHV=x=>{const u=x.r.ult;if(x.ev.some(e=>e.l==='existencia'&&/aprobada/i.test(e.x)))return '#9e9e9e';return u?colorD({estado:u.e,n1_codigo:u.n1}):(x.ev.some(e=>e.l==='plagas')?'#c77dff':'#2f93d5');};
-const filtroHV={todas:()=>true,crit:x=>x.r.al.length>0,rec:x=>/RECUPERACI/i.test(x.r.ult&&x.r.ult.n2||''),cir:x=>x.r.nCir>0,plg:x=>x.r.nPlg>0};
+const colorHV=x=>{const u=x.r.ult;if(x.ev.some(e=>e.l==='existencia'&&/aprobada/i.test(e.x)))return '#9e9e9e';return u?colorD({estado:u.e,n1_codigo:u.n1}):'#2f93d5';};
+const filtroHV={todas:()=>true,crit:x=>x.r.al.length>0,rec:x=>/RECUPERACI/i.test(x.r.ult&&x.r.ult.n2||'')};
 async function abrirHVP(lote,pid){
   HVP.on=true;$('#hvPanel').hidden=false;$('#btHV').classList.add('prim');ubicarHVP();
   if(!HVP.mapa){HVP.mapa=L.map('hvMapa',{zoomControl:true,attributionControl:true,maxZoom:22});capaOrto('teselas/orto/','3',ORTO_B,17).addTo(HVP.mapa);
@@ -4401,9 +3216,7 @@ async function mapaHVP(lista,vis,ajustar){
   const visS=new Set(vis.map(x=>x.pid));
   for(const x of lista){const ll=x.ll||pos.get(x.pid);if(!ll)continue;x.ll=ll;caja.extend(ll);const vi=visS.has(x.pid);
     L.circleMarker(ll,{renderer:HVP.rend,radius:vi?7:4,color:'#fff',weight:vi?1.5:.5,fillColor:colorHV(x),fillOpacity:vi?1:.35}).bindTooltip(`L${esc(x.linea)} · P${esc(x.palma)} · ${x.ev.length} reg.`,{direction:'top'})
-      .on('click',()=>verPalmaHVP(x.pid,false)).addTo(c);
-    if(vi&&x.r.al.length&&typeof iconoCritico==='function'){const t=/PE PARTIDA|existencia/i.test(x.r.al[0][0])?'PE_PARTIDA':/CR[AÁ]TER/i.test(x.r.al[0][0])?'CRATER':null;
-      if(t)L.marker(ll,{icon:iconoCritico(t),interactive:false,keyboard:false,zIndexOffset:1000}).addTo(c);}}
+      .on('click',()=>verPalmaHVP(x.pid,false)).addTo(c);}
   if(ajustar&&caja.isValid())m.fitBounds(caja,{padding:[30,30],maxZoom:19});
 }
 function verPalmaHVP(pid,centrar){

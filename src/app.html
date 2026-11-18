@@ -539,7 +539,7 @@ function ramaDe(c,n2,palmaId,regId){
   const fil=RAMAS.filter(x=>x.c===c&&(x.n2||null)===(n2||null));
   if(fil.length<=1)return {rama:fil[0]||null,motivo:''};
   const local=S.registros.some(r=>r.palma_id===palmaId&&r.id!==regId&&(r.n1_codigo===c||(r.problemas||[]).includes(c)));
-  // Hoja de vida: registros de todo el personal ya sincronizados (censo, correcciones y casos nuevos del cirujano o erradicador)
+  // Hoja de vida: registros de todo el personal ya sincronizados (censo, correcciones y casos nuevos)
   const hv=HV_FORM.pid===String(palmaId)&&HV_FORM.h?(HV_FORM.h.ev||[]).filter(e=>(e.l==='censo'||e.l==='correccion'||e.l==='caso_nuevo')&&e.id!==regId&&(e.n1===c||(!e.n1&&String(e.x||'').includes('('+c+')')))):[];
   const previo=local||hv.length>0;
   const rama=fil.find(x=>/SEGUIMIENTO/.test(x.n3||''))&&previo?fil.find(x=>/SEGUIMIENTO/.test(x.n3)):fil.find(x=>!/SEGUIMIENTO/.test(x.n3||''))||fil[0];
@@ -845,7 +845,7 @@ function estiloPalma(f){
   if(h)return {fillColor:colorReg(h),fillOpacity:1,color:'#ffffff',weight:2};
   if(VIS&&VIS.set.has(f.properties._id))return f.properties._existe===false?{fillColor:'#4dd0e1',fillOpacity:.25,color:'#4dd0e1',weight:1}:{fillColor:'#4dd0e1',fillOpacity:.95,color:'#0b3d44',weight:1};
   if(f.properties._existe===false)return {fillColor:'#ffffff',fillOpacity:.12,color:'#b0bec5',weight:1};
-  if(S.jornada&&esLaborRuta(S.jornada))return {fillColor:'#a5b8ae',fillOpacity:.45,color:'#3d5248',weight:1}; // cirugía y erradicación: palmas en gris suave; resaltan las de la ruta
+  if(S.jornada&&esLaborRuta(S.jornada))return {fillColor:'#a5b8ae',fillOpacity:.45,color:'#3d5248',weight:1}; // jornada de otra labor: palmas en gris suave
   return {fillColor:SIN_EVALUAR,fillOpacity:.95,color:'#3a2a00',weight:1};
 }
 function zMinPalmas(){return (S.palmas&&S.palmas.features.length>8000)?17:0;}
@@ -913,16 +913,10 @@ $('#btLeyenda').onclick=()=>{$('#leyenda').hidden=!$('#leyenda').hidden;};
 const cacheChunk=new Map();
 async function leerChunk(l){if(cacheChunk.has(l))return cacheChunk.get(l);const r=await dbGet('palmas_lote',l);const d=r?r.d:[];if(cacheChunk.size>40)cacheChunk.clear();cacheChunk.set(l,d);return d;}
 function enRango(linea,desde,hasta){const n=parseInt(linea,10);if(isNaN(n))return true;return (desde==null||desde===''||n>=desde)&&(hasta==null||hasta===''||n<=hasta);}
-/* Palmas con existencia 0 aprobada por el analista de datos o el super administrador (erradicadas): cartografia/ajustes_existencia.json.
-   Se aplican sobre la cartografía del paquete cifrado sin tener que regenerarlo. */
-let AJ_EXIST=new Set();
-async function cargarAjustesExistencia(){let a=null;
-  if(S.cfg.gh&&S.cfg.gh.token&&navigator.onLine)try{a=await (await ghRaw('cartografia/ajustes_existencia.json')).json();await dbPut('config',{clave:'ajustes_existencia',v:a});}catch(e){}
-  if(!a)try{const c=await dbGet('config','ajustes_existencia');if(c)a=c.v;}catch(e){}
-  AJ_EXIST=new Set(((a&&a.ajustes)||[]).filter(x=>Number(x.existe)===0).map(x=>String(x.palma_id)));}
-/* Labores con ruta programada (cirugía y erradicación): no usan el panel de censo. */
-const esLaborRuta=j=>!!j&&(j.labor==='cirugia'||j.labor==='erradicacion'||j.labor==='plagas');
-function featPalma(a,lote){return {type:'Feature',geometry:{type:'Point',coordinates:[a[4],a[5]]},properties:{_id:String(a[0]),_lote:lote,_linea:a[1]==null?'':String(a[1]),_num:a[2]==null?'':String(a[2]),_existe:a[3]!==0&&!AJ_EXIST.has(String(a[0]))}};}
+/* La App tiene una sola labor: la polinización. Una jornada de cualquier otra labor (datos antiguos) no usa el panel ni la barra de polinización. */
+const LABOR_APP='polinizacion';
+const esLaborRuta=j=>!!j&&j.labor!=null&&j.labor!==LABOR_APP;
+function featPalma(a,lote){return {type:'Feature',geometry:{type:'Point',coordinates:[a[4],a[5]]},properties:{_id:String(a[0]),_lote:lote,_linea:a[1]==null?'':String(a[1]),_num:a[2]==null?'':String(a[2]),_existe:a[3]!==0}};}
 async function procesarCartografia(lotesTxt,zipBuf,extra){
   avance('Procesando lotes…');
   const gj=JSON.parse(lotesTxt);
@@ -1228,7 +1222,7 @@ async function contarItem(it){const d=await leerChunk(it.lote);let n=0;for(const
 async function abrirPlanificador(modo){
   if(!S.lotes){toast('La cartografía aún no está cargada.');return;}
   await conTiempo(Promise.all([cargarModoProgApp(),cargarPlanCenso()]),5000);
-  const prog=progActiva('censo'),blq=prog?misLotesPlan().filter(x=>CARTO.lotes[x.lote]):[];
+  const prog=progActiva(LABOR_APP),blq=prog?misLotesPlan().filter(x=>CARTO.lotes[x.lote]):[];
   if(prog&&!blq.length){abrirHoja('Programación activa',`<div class="aviso" id="plSinBloque">🔒 <b>Coordinación activó la programación del censo.</b><br>No tiene bloque asignado hoy: comuníquese con Coordinación.</div>
     <button class="btn ancho" id="plSinOk" style="margin-top:10px">Entendido</button>`);$('#plSinOk').onclick=cerrarHoja;return;}
   S.planModo=modo;S.planProg=prog;if(modo==='agregar')S.plan=[];
@@ -1292,8 +1286,8 @@ async function confirmarPlan(){
 function idJornada(){const d=new Date();return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}-${uid().slice(0,6)}`;}
 async function iniciarJornada(sel,evaluador){
   {const m=motivoNoIniciar();if(m){avisarFueraPlantacion(m);return;}}
-  const j={id:idJornada(),inicio:new Date().toISOString(),fin:null,evaluador,usuario:SES?SES.u:'',dispositivo:S.cfg.dispositivo,seleccion:sel,estado:'activa',
-    km:0,sync:'pendiente',version_app:VERSION,carto_version:CARTO.version,modo_programacion:modoProgDe(MPROG_APP.c,'censo'),densidad:Number(S.cfg.densidad)||115,buffer:Number(S.cfg.bufferVisita)||5,bufferTerraza:Number(S.cfg.bufferTerraza)||8,metodoVisita:S.cfg.metodoVisita||'calle',paradaRadio:Number(S.cfg.paradaRadio)||20,paradaMin:Number(S.cfg.paradaMin)||5};
+  const j={id:idJornada(),labor:LABOR_APP,inicio:new Date().toISOString(),fin:null,evaluador,usuario:SES?SES.u:'',dispositivo:S.cfg.dispositivo,seleccion:sel,estado:'activa',
+    km:0,sync:'pendiente',version_app:VERSION,carto_version:CARTO.version,modo_programacion:modoProgDe(MPROG_APP.c,LABOR_APP),densidad:Number(S.cfg.densidad)||115,buffer:Number(S.cfg.bufferVisita)||5,bufferTerraza:Number(S.cfg.bufferTerraza)||8,metodoVisita:S.cfg.metodoVisita||'calle',paradaRadio:Number(S.cfg.paradaRadio)||20,paradaMin:Number(S.cfg.paradaMin)||5};
   await dbPut('jornadas',j);S.jornada=j;S.cfg.jornadaActiva=j.id;S.cfg.evaluador=evaluador;await guardarCfg();
   TRACK.ultimo=null;TRACK.n=0;TRACK.pts=[];prepararTrack([]);VIS=nuevoEstadoVisita(j.densidad,j.buffer,j.metodoVisita,j.bufferTerraza);PAR.lista=[];capaParadas.clearLayers();
   await cargarPalmasJornada();iniciarGPS();pantallaEncendida(true);actualizarJornadaUI();dibujarLotes();encuadrar(sel.map(s=>s.lote));
@@ -1327,7 +1321,6 @@ function actualizarJornadaUI(){
   $('#btJornada').classList.toggle('activa',a);
   $('#btJornadaIc').innerHTML=a?IC.ruta:IC.play;$('#btJornadaTxt').textContent=a?'Jornada':'Iniciar';
   if(a&&!esLaborRuta(S.jornada)){actualizarCenso();relojJornada();actualizarVisitaUI();actualizarParadas();try{actualizarSecUI();}catch(e){}}else $('#pj').classList.remove('parado');actualizarCab();
-  try{actualizarCirUI();}catch(e){}
 }
 function relojJornada(){if(!S.jornada)return;$('#pjIni').textContent=hhmm(S.jornada.inicio);$('#pjTiempo').textContent=$('#pjMiniT').textContent=fmtDur(Date.now()-Date.parse(S.jornada.inicio));$('#pjKm').textContent=(S.jornada.km||0).toFixed(2);}
 setInterval(relojJornada,1000);
@@ -2560,7 +2553,7 @@ async function pintarJornadas(){
     const dur=(j.fin?Date.parse(j.fin):Date.now())-Date.parse(j.inicio);
     const est=j.estado==='activa'?'<span class="sello pend" style="color:#bff5df;border-color:var(--acento)">● EN CURSO</span>':(j.sync==='sincronizado'?'<span class="sello ok">🔒 SINCRONIZADA</span>':'<span class="sello pend">⏳ PENDIENTE</span>');
     const res0=j.visita&&j.visita.ha_recorridas!=null?j.visita:(S.jornada&&S.jornada.id===j.id&&VIS?resumenVisita(VIS,regs):null);const res=res0?{...res0,ha_recorridas:Number(res0.ha_recorridas)||0,por_lote:res0.por_lote||[]}:null;const rp=j.resumen_paradas&&j.resumen_paradas.n_paradas!=null?j.resumen_paradas:null;
-    cards.push(`<div class="jor-card"><div class="cab"><b>${j.labor==='cirugia'?'Cirugía · ':j.labor==='erradicacion'?'Erradicación · ':j.labor==='plagas'?'Plagas · ':''}${esc(fmtFecha(j.inicio).slice(0,10))} · ${hhmm(j.inicio)} – ${j.fin?hhmm(j.fin):'en curso'}</b>${est}</div>
+    cards.push(`<div class="jor-card"><div class="cab"><b>${esc(fmtFecha(j.inicio).slice(0,10))} · ${hhmm(j.inicio)} – ${j.fin?hhmm(j.fin):'en curso'}</b>${est}</div>
       <div class="met"><span>Evaluador <b>${esc(j.evaluador)}</b></span><span>Duración <b>${fmtDur(dur).slice(0,5)}</b></span><span>Recorrido <b>${(j.km||0).toFixed(2)} km</b></span>
       ${res?`<span>Ha recorridas <b>${res.ha_recorridas.toFixed(2)}</b></span><span>Palmas visitadas <b>${num(res.palmas_visitadas)}</b></span>`:''}
       <span>Diagnósticos <b>${num(regs.length)}</b></span><span>Puntos GPS <b>${num(n)}</b></span>
@@ -2828,13 +2821,13 @@ async function sincronizar(manual){
       if(!j.paradas){j.paradas=detectarParadas(pts,j.paradaRadio,j.paradaMin,regs);j.resumen_paradas=resumenParadas(j.paradas,j);}
       if(!j.visita||!j.secuencias||!j.tiempos){const E=await calcularVisita(pts,j.densidad,j.buffer,j.metodoVisita||'buffer',true,true,j.seleccion,j.bufferTerraza);if(!j.visita||!j.tiempos)j.visita=paradasEnLotes(resumenVisita(E,regs,true),j.paradas);
         j.secuencias=secuenciasDe(pts,{inicio:Date.parse(j.inicio),fin:Date.parse(j.fin||new Date().toISOString()),paradas:j.paradas||[],regs,densidad:j.densidad,visitas:E.conf});j.tiempos=tiemposJornada(j.secuencias,j);}
-      const ahora=new Date().toISOString();const esC=j.labor==='cirugia',esE=j.labor==='erradicacion',esP=j.labor==='plagas',raiz=esC?'cirugia/jornadas':esE?'erradicacion/jornadas':esP?'plagas/jornadas':'jornadas';const base=`${raiz}/${fechaLocal(j.inicio)}/${j.id}`;
+      const ahora=new Date().toISOString();const base=`jornadas/${fechaLocal(j.inicio)}/${j.id}`;
       const archivos=[];let nombreZip=null;
       const ids=regs.flatMap(r=>r.fotos||[]);
       if(ids.length){const z=new JSZip();for(const fid of ids){const f=await dbGet('fotos',fid);if(f)z.file(fid+'.jpg',f.buf);}
         nombreZip=j.id+'_fotos.zip';archivos.push({path:`${raiz}/${fechaLocal(j.inicio)}/${nombreZip}`,b64:aB64(await z.generateAsync({type:'uint8array',compression:'STORE'}))});}
-      archivos.unshift({path:base+'.geojson',texto:JSON.stringify(esP?geoPlagas(j,regs,pts,ahora,nombreZip):esE?geoErradicacion(j,regs,pts,ahora,nombreZip):esC?geoCirugia(j,regs,pts,ahora,nombreZip):geoJornada(j,regs,pts,ahora,nombreZip))});
-      const sha=await ghCommit(archivos,esC?`Polinización · Cirugía · ${j.evaluador} · ${fechaLocal(j.inicio)} · ${regs.filter(r=>r.tipo==='cirugia').length} cirugía(s) · u:${j.usuario||''}`:`Polinización · ${j.evaluador} · jornada ${fechaLocal(j.inicio)} · ${regs.length} diagnóstico(s) · u:${j.usuario||''}`);
+      archivos.unshift({path:base+'.geojson',texto:JSON.stringify(geoJornada(j,regs,pts,ahora,nombreZip))});
+      const sha=await ghCommit(archivos,`Polinización · ${j.evaluador} · jornada ${fechaLocal(j.inicio)} · ${regs.length} diagnóstico(s) · u:${j.usuario||''}`);
       regs.forEach(r=>{r.sync='sincronizado';r.sync_fecha=ahora;r.sync_commit=sha;});if(regs.length)await dbPutVarios('registros',regs);
       pts.forEach(p=>p.s=1);if(pts.length)await dbPutVarios('track',pts);
       j.sync='sincronizado';j.sync_fecha=ahora;j.sync_commit=sha;await dbPut('jornadas',j);
@@ -2977,7 +2970,7 @@ async function descargarHistorial(d1,d2,conFotos,prog){
   return {nuevas,ya,diags,fotos};
 }
 async function importarJornadaGeo(g,zip){
-  const h=g.jornada||{},esC=h.labor==='cirugia'||h.labor==='erradicacion',id=h.id;
+  const h=g.jornada||{},id=h.id;
   const sp=s=>Array.isArray(s)?s:(s?String(s).split('|').filter(Boolean):[]);const sinJpg=f=>String(f).replace(/\.jpg$/i,'');
   const regs=[],pts=[],paradas=[];
   for(const ft of g.features||[]){const p=ft.properties||{},c=ft.geometry&&ft.geometry.coordinates;if(!c)continue;
@@ -2990,7 +2983,6 @@ async function importarJornadaGeo(g,zip){
         hongo:p.estado_hongo||'',cirugia:p.cirugia||'',produccion:p.produccion||'',raices:p.raices_buenas||'',transitabilidad:p.transitabilidad||'',problemas:sp(p.problemas),
         grado_pc:p.grado_pc||'',severidad:p.severidad||'',accion:p.accion||'',observaciones:p.observaciones||'',fotos:sp(p.fotos).map(sinJpg),lat:c[1],lng:c[0],
         gps_lat:p.gps_lat,gps_lng:p.gps_lng,gps_acc:p.gps_precision_m,dist_gps:p.dist_gps_palma_m};
-      if(esC)Object.assign(r,{tipo:'diagnostico',origen:p.origen,autor_rol:p.autor_rol,usuario:p.usuario,corrige_id:p.corrige_id,corrige_texto:p.corrige_texto,corrige_evaluador:p.corrige_evaluador,corrige_fecha:p.corrige_fecha});
       regs.push(r);}
     else if(p.id){const r={...p,numero:p.palma,fotos:sp(p.fotos).map(sinJpg),lat:c[1],lng:c[0]};delete r.palma;regs.push(r);}}
   regs.forEach(r=>{r.sync='sincronizado';r.sync_fecha=h.sincronizado||null;r.importado=true;});
@@ -2999,7 +2991,7 @@ async function importarJornadaGeo(g,zip){
     await dbPut('fotos',{id:fid,registro_id:r.id,buf:await zf.async('arraybuffer'),type:'image/jpeg'});nf++;}
   const j={...h,id,estado:'finalizada',sync:'sincronizado',sync_fecha:h.sincronizado||null,importada:true,km:Number(h.km)||0,
     seleccion:h.lotes_seleccionados||[],paradas,resumen_paradas:h.n_paradas!=null?{...h}:null,visita:h.ha_recorridas!=null?{...h}:null,secuencias:h.secuencias||[],tiempos:h.tiempos||{}};
-  if(esC){j.labor='cirugia';j.ordenes=j.ordenes||[];j.ruta=j.ruta||[];}else delete j.labor;
+  j.labor=LABOR_APP;
   if(regs.length)await dbPutVarios('registros',regs);if(pts.length)await dbPutVarios('track',pts);await dbPut('jornadas',j);
   return {regs:regs.length,fotos:nf};
 }
@@ -3240,7 +3232,7 @@ async function panelDia(){
   const stat=(v,t,c)=>`<div class="stat"><b style="${c?'color:'+c:''}">${esc(v??'—')}</b><span>${esc(t)}</span></div>`;
   abrirHoja('Panel del día',`
     <div class="stats">${stat(num(recibidas.length),'Jornadas recibidas hoy')}${stat(R['Ha recorridas']!=null?String(R['Ha recorridas']).replace('.',','):'—','Ha (último reporte)')}${stat(R['Diagnósticos']!=null?num(R['Diagnósticos']):'—','Diagnósticos')}
-      ${stat(R['Casos de PC (palmas)']!=null?num(R['Casos de PC (palmas)']):'—','Casos de PC',R['Casos de PC (palmas)']?'var(--rojo)':'')}${stat(R['PC vencidos sin cirugía']!=null?num(R['PC vencidos sin cirugía']):'—','PC vencidos',R['PC vencidos sin cirugía']?'var(--rojo)':'')}${stat(num(al.length),'Alertas',al.length?'var(--ambar)':'')}</div>
+      ${stat(R['Casos de PC (palmas)']!=null?num(R['Casos de PC (palmas)']):'—','Casos de PC',R['Casos de PC (palmas)']?'var(--rojo)':'')}${stat(num(al.length),'Alertas',al.length?'var(--ambar)':'')}</div>
     <p class="tenue">${fechaRes?`Reporte diario del <b>${esc(fechaRes)}</b>${esHoy?' (hoy, corte 3:00 p. m.)':' (el de hoy se genera a las 3:00 p. m.)'}.`:'Aún no hay reportes diarios.'} Las jornadas aparecen cuando el operario las finaliza y se sincronizan.</p>
     <h3>Alertas</h3>${al.length?al.map(a=>`<div class="aviso" style="${a.nivel==='alta'?'border-color:var(--rojo)':''}">${a.nivel==='alta'?'🔴':'🟠'} ${esc(a.texto)}</div>`).join(''):'<p class="tenue">✅ Sin alertas.</p>'}
     <h3>Operarios${fechaRes?' ('+esc(fechaRes)+')':''}</h3>${(res&&res.operarios||[]).length?`<div style="overflow-x:auto"><table class="tabla"><tr><th>Operario</th><th>Inicio</th><th>Fin</th><th>Ha</th><th>Diag.</th></tr>${
@@ -3440,7 +3432,7 @@ async function abrirSesion(u,dkRaw,guardar){
   if(meta.inactivo)throw new Error('Su usuario está suspendido. Comuníquese con el administrador.');
   const token=DEC.decode(await desObj(dk,ACCESO.token));
   const rolTxt={admin:'Administrador',superadmin:'Super administrador',analista:'Analista de datos',supervisor:'Supervisor',operario:'Operario'}[meta.rol||'operario']||'Operario';
-  SES={u,nombre:meta.nombre,rol:meta.rol||'operario',cargo:meta.cargo||rolTxt,identificacion:meta.identificacion||'',dk,labores:meta.labores||null,rol_cirugia:meta.rol_cirugia||null,rol_erradicacion:meta.rol_erradicacion||null};
+  SES={u,nombre:meta.nombre,rol:meta.rol||'operario',cargo:meta.cargo||rolTxt,identificacion:meta.identificacion||'',dk,labores:meta.labores||null};
   S.cfg.gh={...ACCESO.repo,token};S.cfg.evaluador=meta.nombre;
   if(guardar){const k=await llaveDispositivo();const iv=crypto.getRandomValues(new Uint8Array(12));
     const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},k,ENC.encode(JSON.stringify({u,dk:aB64(dkRaw),paquete:ACCESO.id})));
@@ -3498,7 +3490,7 @@ async function asegurarCartografia(){
 }
 
 /* ---------- Límite de la plantación (datos/plantacion.enc cifrado, o cartografia/plantacion.geojson del repositorio privado de datos) ----------
-   No se puede iniciar jornada (censo ni cirugía) si el GPS está por fuera del polígono de la plantación.
+   No se puede iniciar jornada si el GPS está por fuera del polígono de la plantación.
    Tolerancia en el borde: la precisión del GPS (entre 5 y 25 m). Sin polígono cargado no hay restricción. */
 let capaPlantacion=null;
 const PLANTACION_GH='cartografia/plantacion.geojson'; // copia en el repositorio privado de datos (PolinizacionData)
@@ -3549,9 +3541,6 @@ function avisarFueraPlantacion(m){
   if(capaPlantacion&&S.gps){try{mapa.fitBounds(capaPlantacion.getBounds().extend([S.gps.lat,S.gps.lng]),{padding:[30,30]});}catch(e){}}
 }
 /*NUCLEO_JS*/
-/*CIRUGIA_APP_JS*/
-/*ERRADICACION_APP_JS*/
-/*PLAGAS_APP_JS*/
 /*HOJA_VIDA_APP_JS*/
 /* =====================================================================
    ARRANQUE
@@ -3588,7 +3577,6 @@ async function despuesDeIngresar(){
   try{await cargarPlantacion();}catch(e){}
   try{await cargarAuditoria();}catch(e){}
   try{await cargarRamas();}catch(e){}
-  try{await cargarAjustesExistencia();}catch(e){}
   cargarHojaVida().catch(()=>{}); // hoja de vida de las palmas (en segundo plano)
   try{await cargarPlanCenso();}catch(e){}
   try{await cargarModoProgApp();}catch(e){}
@@ -3606,16 +3594,13 @@ async function despuesDeIngresar(){
         if(cerrar){const ahora=new Date().toISOString();j.fin=ahora;j.estado='finalizada';j.sync='pendiente';j.cierre={modo:'administrador',usuario:SES.u,fecha:ahora};
           await dbPut('jornadas',j);S.cfg.jornadaActiva=null;await guardarCfg();toast(`Jornada de ${j.evaluador} cerrada por el administrador.`,4000);mostrarSplash();}
         else{await dbDel('config','sesion');SES=null;S.cfg.gh={...S.cfg.gh,token:''};await mostrarLogin('Ingrese con el usuario '+j.usuario+' para continuar o finalizar su jornada.');return despuesDeIngresar();}
-      }else if(j.labor==='plagas'){await restaurarPlg(j);
-      }else if(j.labor==='erradicacion'){await restaurarErr(j);
-      }else if(j.labor==='cirugia'){await restaurarCirugia(j);
       }else{S.jornada=j;const pts=await puntosTrack(j.id);TRACK.ultimo=pts[pts.length-1]||null;TRACK.n=pts.length;prepararTrack(pts.map(p=>[p.lat,p.lng]));
         VIS=await calcularVisita(pts,j.densidad,j.buffer,j.metodoVisita||'buffer',true,false,j.seleccion,j.bufferTerraza);VIS.sel=null;TRACK.pts=pts;
         await cargarPalmasJornada();pantallaEncendida(true);toast('Jornada en curso recuperada. El recorrido continúa.',4000);}}
     else{S.cfg.jornadaActiva=null;await guardarCfg();}}
   actualizarJornadaUI();estadoSync();dibujarLotes();
   S.seguir=S.jornada?S.cfg.seguir!==false:!!S.cfg.seguir;pintarSeguir();if(S.seguir)S.pausaSeguir=Date.now()+8000;
-  if(S.jornada&&!esLaborRuta(S.jornada))encuadrar(S.jornada.seleccion.map(s=>s.lote));else if(S.jornada&&S.jornada.labor==='plagas')dibujarPlg(true);else if(S.jornada&&S.jornada.labor==='erradicacion')dibujarRutaErr(true);else if(S.jornada)dibujarRutaCir(true);else encuadrar();
+  if(S.jornada)encuadrar((S.jornada.seleccion||[]).map(s=>s.lote));else encuadrar();
   iniciarGPS();ocultarSplash();
   if(SES)toast(`Bienvenido, ${SES.nombre}.`);
   ofrecerInstalacion();

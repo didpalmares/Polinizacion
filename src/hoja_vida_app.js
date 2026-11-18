@@ -1,10 +1,9 @@
 /* =====================================================================
    HOJA DE VIDA DE LA PALMA (App)
    · La genera un flujo automático del repositorio de datos (palmas/hoja_vida/<LOTE>.json) con todo lo que le ha pasado
-     a cada palma: diagnósticos del censo de todos los operarios, cirugías y correcciones, erradicación, existencia 0 y
-     daños de plagas. Solo existe para las palmas diagnosticadas o con alguna novedad.
+     a cada palma: registros de todo el personal y existencia 0. Solo existe para las palmas diagnosticadas o con alguna novedad.
    · Se descarga por lote (solo los que cambiaron) y queda guardada para usarla sin internet.
-   · Se muestra al tocar la palma en cualquier labor; en las palmas de auditoría se oculta para no influir el diagnóstico.
+   · Se muestra al tocar la palma; en las palmas de auditoría se oculta para no influir el diagnóstico.
    ===================================================================== */
 const HV_RUTA='palmas/hoja_vida/';
 const HV={ind:null,mem:new Map(),bajando:null};
@@ -42,5 +41,5 @@ async function mostrarHojaVida(id){
   const ref=c.querySelector('h3');if(ref)ref.before(div.firstElementChild);else c.appendChild(div.firstElementChild);
 }
 const conHV=fn=>function(id){const x=fn.apply(this,arguments);mostrarHojaVida(id).catch(()=>{});return x;};
-abrirPalma=conHV(abrirPalma);abrirPalmaCir=conHV(abrirPalmaCir);abrirPalmaErr=conHV(abrirPalmaErr);abrirPalmaPlg=conHV(abrirPalmaPlg);
+abrirPalma=conHV(abrirPalma);
 window.addEventListener('online',()=>cargarHojaVida().catch(()=>{}));
