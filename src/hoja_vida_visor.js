@@ -8,7 +8,7 @@
    ===================================================================== */
 const HVV={lotes:new Map(),ind:null};
 const HVP={on:false,lote:'',pid:null,filtro:'todas',q:'',mapa:null,capa:null,lista:[]};
-const HV_FILTROS=[['todas','Todas'],['crit','🚨 Críticas'],['rec','En recuperación']];
+const HV_FILTROS=[['todas','Todas'],['nap','R / V (no se aplica)']];
 (function(){
   const css=document.createElement('style');css.textContent=`
   #hvPanel{position:fixed;left:0;right:0;bottom:0;z-index:1500;display:grid;grid-template-columns:minmax(320px,400px) 1fr;background:var(--fondo,#06140f)}
@@ -35,7 +35,7 @@ const HV_FILTROS=[['todas','Todas'],['crit','🚨 Críticas'],['rec','En recuper
     <div class="fil" id="hvFil">${HV_FILTROS.map(([k,t])=>`<button class="chipf" data-f="${k}">${t}</button>`).join('')}</div>
     <div class="tenue" id="hvInfo" style="font-size:12px"></div><div id="hvLista"></div><div id="hvCuerpo" hidden></div></div><div id="hvMapa"></div>`;
   document.body.appendChild(p);
-  const bt=document.createElement('button');bt.className='btn mini';bt.id='btHV';bt.title='Hoja de vida de las palmas diagnosticadas o con novedades, con el mapa';bt.innerHTML='📋 HOJA DE VIDA';
+  const bt=document.createElement('button');bt.className='btn mini';bt.id='btHV';bt.title='Hoja de vida de las palmas con registros de polinización o novedades, con el mapa';bt.innerHTML='📋 HOJA DE VIDA';
   const g=$('#btGer');if(g)g.before(bt);else $('#chDatos').before(bt);
   bt.onclick=()=>HVP.on?cerrarHVP():abrirHVP();
   $('#hvX').onclick=cerrarHVP;
@@ -58,8 +58,8 @@ async function hvLoteVisor(lote){
 }
 /* Eventos de lo cargado en el visor en el formato de la hoja de vida. */
 function eventosCargadosHV(pid){const k=String(pid),ev=[];
-  for(const j of JOR)for(const d of j.diags)if(String(d.palma_id)===k)ev.push({t:d.creado,l:'censo',x:[d.nivel1,d.nivel2,d.nivel3].filter(Boolean).join(' › ')||d.estado_nombre||d.estado,e:d.estado,n1:codN1(d),n2:d.nivel2||'',q:d.evaluador||j.evaluador,id:d.id,
-    d:[d.sintomas?'Síntomas: '+String(d.sintomas).split('|').join(' / '):'',d.cirugia?'Cirugía: '+d.cirugia:'',d.produccion?'Producción: '+d.produccion:'',d.observaciones?'Observaciones: '+d.observaciones:''].filter(Boolean).join(' · '),
+  for(const j of JOR)for(const d of j.diags)if(String(d.palma_id)===k)ev.push({t:d.creado,l:'censo',x:textoPol(d),e:d.estado,n1:codN1(d),n2:'',q:d.evaluador||j.evaluador,id:d.id,
+    d:[d.transitabilidad?'Transitabilidad: '+d.transitabilidad:'',fuentePol(d)?'Fuente: '+fuentePol(d):'',d.observaciones?'Observación: '+d.observaciones:''].filter(Boolean).join(' · '),
     f:Number(d.n_fotos)>0&&d.fotos&&j.ruta?'jornadas/'+j.ruta.replace(/\.geojson$/,'_fotos.zip')+'|'+String(d.fotos).split('|')[0]:''});
   return ev;}
 function unirHV(h,cargados){const ev=[...((h&&h.ev)||[])];const ids=new Set(ev.map(e=>e.l+'|'+e.id));
@@ -70,7 +70,7 @@ async function hojaVidaVisor(d){
   try{const L=await hvLoteVisor(d.lote);h=L.palmas&&L.palmas[pid]||null;}catch(e){err=e.message;}
   return {h:{...(h||{}),ev:unirHV(h,eventosCargadosHV(pid))},err};
 }
-/* Palmas con hoja de vida de un lote: archivo central + palmas con diagnósticos cargados en el visor. */
+/* Palmas con hoja de vida de un lote: archivo central + palmas con registros cargados en el visor. */
 async function palmasHV(lote){
   let F={palmas:{}},err='';try{F=await hvLoteVisor(lote);}catch(e){err=e.message;}
   const out=new Map();
@@ -81,7 +81,7 @@ async function palmasHV(lote){
   return {lista:[...out.values()].filter(x=>x.ev.length).sort((a,b)=>ordenNat(a.linea,b.linea)||ordenNat(a.palma,b.palma)),err};
 }
 const colorHV=x=>{const u=x.r.ult;if(x.ev.some(e=>e.l==='existencia'&&/aprobada/i.test(e.x)))return '#9e9e9e';return u?colorD({estado:u.e,n1_codigo:u.n1}):'#2f93d5';};
-const filtroHV={todas:()=>true,crit:x=>x.r.al.length>0,rec:x=>/RECUPERACI/i.test(x.r.ult&&x.r.ult.n2||'')};
+const filtroHV={todas:()=>true,nap:x=>!!x.r.ult&&(x.r.ult.n1==='R'||x.r.ult.n1==='V')};
 async function abrirHVP(lote,pid){
   HVP.on=true;$('#hvPanel').hidden=false;$('#btHV').classList.add('prim');ubicarHVP();
   if(!HVP.mapa){HVP.mapa=L.map('hvMapa',{zoomControl:true,attributionControl:true,maxZoom:22});capaOrto('teselas/orto/','3',ORTO_B,17).addTo(HVP.mapa);
@@ -127,7 +127,7 @@ function verPalmaHVP(pid,centrar){
   const x=HVP.lista.find(y=>y.pid===String(pid));HVP.pid=String(pid);
   $$('#hvLista .it').forEach(el=>el.classList.toggle('on',el.dataset.pid===HVP.pid));
   if(HVP.sel){HVP.capa.removeLayer(HVP.sel);HVP.sel=null;}
-  if(!x){$('#hvCuerpo').hidden=false;$('#hvLista').hidden=true;$('#hvCuerpo').innerHTML='<button class="btn mini" id="hvVolver">← Lista</button><p class="tenue">Esta palma no tiene hoja de vida: no tiene diagnósticos ni novedades registradas.</p>';$('#hvVolver').onclick=volverHVP;return;}
+  if(!x){$('#hvCuerpo').hidden=false;$('#hvLista').hidden=true;$('#hvCuerpo').innerHTML='<button class="btn mini" id="hvVolver">← Lista</button><p class="tenue">Esta palma no tiene hoja de vida: no tiene registros de polinización ni novedades.</p>';$('#hvVolver').onclick=volverHVP;return;}
   if(x.ll){HVP.sel=L.marker(x.ll,{icon:L.divIcon({className:'hv-sel',html:'<i></i>',iconSize:[0,0]}),interactive:false,zIndexOffset:2000}).addTo(HVP.capa);
     if(centrar)HVP.mapa.setView(x.ll,Math.max(HVP.mapa.getZoom(),19),{animate:true});}
   $('#hvLista').hidden=true;$('#hvCuerpo').hidden=false;

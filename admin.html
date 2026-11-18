@@ -419,7 +419,7 @@ function formUsuario(x){
   f.innerHTML=`<h2 style="font-size:17px">${nuevo&&!x?'Nuevo usuario':'Editar usuario · '+esc(d.u)}</h2>
     <div class="fila"><div><label>Usuario</label><input type="text" id="fU" value="${esc(d.u)}" ${nuevo?'':'disabled'} autocapitalize="none" placeholder="jperez"></div>
       <div style="flex:2"><label>Nombre completo</label><input type="text" id="fNombre" value="${esc(d.nombre)}"></div></div>
-    <div class="fila"><div><label>Cargo</label><input type="text" id="fCargo" value="${esc(d.cargo||'')}" placeholder="Auxiliar de censo"></div>
+    <div class="fila"><div><label>Cargo</label><input type="text" id="fCargo" value="${esc(d.cargo||'')}" placeholder="Auxiliar de polinización"></div>
       <div><label>Identificación</label><input type="text" id="fId" value="${esc(d.identificacion||'')}" placeholder="Cédula"></div>
       <div><label>Rol</label><select id="fRol">${Object.entries(ROL_TXT).filter(([k])=>!restringido()||!ROLES_PRIV.includes(k)).map(([k,t])=>`<option value="${k}" ${d.rol===k?'selected':''}>${t}${k==='supervisor'?' (visor web)':k==='analista'?' (permisos de administrador)':k==='superadmin'?' (control total)':''}</option>`).join('')}</select></div></div>
     <label>Labor</label><p class="tenue" style="margin:2px 0 8px">${lab.map(l=>LAB_TXT[l]).join(', ')} (única labor de la App)</p>

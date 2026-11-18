@@ -205,7 +205,7 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
   <div class="caja glass">
     <img src="__LOGO__" alt="Palmas de Tumaco">
     <div class="marca-app"><img src="__APPLOGO__" alt="Logo Polinización"><h1 class="tit" style="margin:0">Visor Web</h1></div>
-    <p class="sub tenue">Polinización · Recorridos y diagnósticos sincronizados</p>
+    <p class="sub tenue">Polinización · Recorridos y registros sincronizados</p>
     <form id="frmLogin" autocomplete="on">
       <div><label class="campo" for="lgU">Usuario</label><input id="lgU" autocomplete="username" autocapitalize="none" required></div>
       <div><label class="campo" for="lgC">Contraseña</label><input id="lgC" type="password" autocomplete="current-password" required></div>
@@ -244,18 +244,13 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
           <div><label class="campo">Programa</label><div class="ms" data-k="prog"><button type="button" class="ms-bt" aria-haspopup="listbox">Todos</button></div></div>
           <div><label class="campo">Operario</label><div class="ms" data-k="op"><button type="button" class="ms-bt" aria-haspopup="listbox">Todos</button></div></div>
           <div><label class="campo">Lote</label><div class="ms" data-k="lote"><button type="button" class="ms-bt" aria-haspopup="listbox">Todos</button></div></div>
-          <div><label class="campo">Estado</label><div class="ms" data-k="est"><button type="button" class="ms-bt" aria-haspopup="listbox">Todos</button></div></div>
-        </div>
-        <div class="fila3" style="margin-top:8px">
-          <div><label class="campo">Enfermedad principal</label><div class="ms" data-k="n1"><button type="button" class="ms-bt" aria-haspopup="listbox">Todos</button></div></div>
-          <div><label class="campo">Opción enfermedad (si aplica)</label><div class="ms" data-k="n2"><button type="button" class="ms-bt" aria-haspopup="listbox">Todos</button></div></div>
-          <div><label class="campo">Tipo seguimiento</label><div class="ms" data-k="n3"><button type="button" class="ms-bt" aria-haspopup="listbox">Todos</button></div></div>
+          <div><label class="campo">Código</label><div class="ms" data-k="cod"><button type="button" class="ms-bt" aria-haspopup="listbox">Todos</button></div></div>
         </div>
         <div id="prog"><b></b></div>
         <div id="progTxt" class="tenue"></div>
       </div>
       <nav class="tabs">
-        <button data-tab="resumen" class="on">RESUMEN</button><button data-tab="jornadas">JORNADAS</button><button data-tab="lotes">LOTES</button><button data-tab="secuencias">SECUENCIAS</button><button data-tab="operarios">OPERARIOS</button><button data-tab="diag">DIAGNÓSTICOS</button>
+        <button data-tab="resumen" class="on">RESUMEN</button><button data-tab="jornadas">JORNADAS</button><button data-tab="lotes">LOTES</button><button data-tab="secuencias">SECUENCIAS</button><button data-tab="operarios">OPERARIOS</button><button data-tab="diag">REGISTROS</button>
       </nav>
       <div id="panel"></div>
     </aside>
@@ -266,7 +261,7 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
         <label><input type="checkbox" id="cLotes" checked> Lotes</label>
         <label><input type="checkbox" id="cVias" checked> Vías y senderos</label>
         <label><input type="checkbox" id="cRec" checked> Recorridos</label>
-        <label><input type="checkbox" id="cDiag" checked> Diagnósticos</label>
+        <label><input type="checkbox" id="cDiag" checked> Registros de polinización</label>
         <label><input type="checkbox" id="cPar" checked> Paradas</label>
         <label><input type="checkbox" id="cPalmas"> Palmas (zoom 17+)</label>
         <label style="margin-top:2px"><select id="cBase" style="padding:3px 6px;font-size:12.5px"><option value="dron">Ortofoto dron</option><option value="no">Sin fondo</option></select></label>
@@ -308,11 +303,43 @@ const ESTADOS=[
 const estadoDe=id=>ESTADOS.find(e=>e.id===id);
 const COLOR_N1={PC:'#e53935',PE:'#8e24aa',DBP:'#fb8c00',AR:'#ad1457',CER:'#795548',DEF:'#c0ca33',ESP:'#00acc1',HP:'#3949ab',MJ:'#f48fb1',ML:'#212121',MS:'#1e88e5',PA:'#827717',PEST:'#26a69a',RAYO:'#ffffff',YAR:'#33691e',BORO:'#ffb300',EV:'#cfd8dc'};
 const COLOR_ALTA='#00e676';
-/* Caso de PC para la incidencia: último diagnóstico de la palma con Nivel 1 = PC, excluidos los casos en recuperación
-   (y los dados de alta, que ya no son casos). Incidencia PC = casos de PC ÷ palmas totales del lote (existencia 0 y 1). */
-const esCasoPC=(c,n2,estado)=>c==='PC'&&!/RECUPERACI|DE ALTA/i.test(n2||'')&&estado!=='tratamiento'&&estado!=='alta';
-const codN1=d=>d.n1_codigo||String(d.problemas||'').split('|').filter(Boolean)[0]||'';
-function colorD(d){if(!d)return '#999';if(d.estado==='alta')return COLOR_ALTA;return COLOR_N1[codN1(d)]||(estadoDe(d.estado)||{c:'#ccc'}).c;}
+/* ---------- Registro de polinización (los mismos códigos de la App) ----------
+   A, P y B se cuentan y se combinan (2A + 1P + 1B); R y V van solos: en esa palma no se puede aplicar. */
+const COD_POL=[{c:'A',n:'Inflorescencia en Antesis',col:'#00c853',k:'a'},{c:'P',n:'Inflorescencia en Post-Antesis',col:'#ffab00',k:'p'},{c:'B',n:'Balón (Post-Antesis pasada)',col:'#d84315',k:'b'},
+  {c:'R',n:'Palma Rancho / Tapada',col:'#8d6e63'},{c:'V',n:'Palma con Avispas',col:'#e53935'}];
+const COD_INF_V=COD_POL.slice(0,3);
+const codPolDe=c=>COD_POL.find(x=>x.c===c);
+const etqCod=c=>{const x=codPolDe(c);return x?x.c+': '+x.n:String(c||'');};
+const FUENTES={boton:'Botón',nfc:'Tarjeta NFC',voz:'Voz',formulario:'Formulario'};
+/* Deja a, p, b, cond e inflorescencias en el registro. Los sincronizados antes de que viajaran esos campos se leen del resumen («2A + 1P», «R: …»). */
+function normPol(d){
+  if(d.a==null&&d.p==null&&d.b==null&&!d.cond){const t=String(d.nivel1||'');const m=/^\s*([RV])\s*:/.exec(t);
+    if(m)d.cond=m[1];
+    else{for(const x of COD_INF_V){const r=new RegExp('(\\d+)\\s*'+x.c+'\\b').exec(t);d[x.k]=r?Number(r[1]):0;}
+      const c=d.n1_codigo||String(d.problemas||'').split('|')[0];if(!d.a&&!d.p&&!d.b&&(c==='R'||c==='V'))d.cond=c;}}
+  d.a=Math.max(0,Number(d.a)||0);d.p=Math.max(0,Number(d.p)||0);d.b=Math.max(0,Number(d.b)||0);d.cond=d.cond==='R'||d.cond==='V'?d.cond:'';
+  if(d.cond){d.a=0;d.p=0;d.b=0;}d.inflorescencias=d.a+d.p+d.b;return d;}
+const polN=d=>d.a==null&&!d.cond?normPol({...d}):d;
+/* Código dominante (el que da el color): R o V si no se aplica; si no, A si hay antesis, luego P y luego B. */
+const codPol=d=>{const q=polN(d);return q.cond||(q.a>0?'A':q.p>0?'P':q.b>0?'B':'');};
+const codigosPol=d=>{const q=polN(d);return q.cond?[q.cond]:COD_INF_V.filter(x=>q[x.k]>0).map(x=>x.c);};
+const textoPol=d=>{const q=polN(d);return q.cond?etqCod(q.cond):(COD_INF_V.filter(x=>q[x.k]>0).map(x=>q[x.k]+x.c).join(' + ')||'Sin inflorescencias');};
+const fuentePol=d=>{const fs=[...new Set((Array.isArray(d.pasadas)?d.pasadas:[]).map(x=>x.f).filter(Boolean))];return (fs.length?fs:[d.fuente]).filter(Boolean).map(x=>FUENTES[x]||x).join(', ');};
+const codN1=d=>codPol(d)||d.n1_codigo||'';
+function colorD(d){if(!d)return '#999';const x=codPolDe(codPol(d)||d.n1_codigo||'');return x?x.col:'#9e9e9e';}
+/* Último registro de cada palma (el que pinta el mapa). */
+const clavePalma=d=>String(d.palma_id??(d.lote+'|'+d.linea+'|'+d.palma));
+function ultimosPorPalma(ds){const m=new Map();for(const d of ds){const k=clavePalma(d),u=m.get(k);if(!u||String(d.creado)>String(u.creado))m.set(k,d);}return [...m.values()];}
+/* Totales de la polinización de un grupo de registros. */
+function totalesPol(ds){const t={reg:ds.length,palmas:new Set(),a:0,p:0,b:0,r:new Set(),v:new Set()};
+  for(const d of ds){const q=polN(d),k=clavePalma(d);t.palmas.add(k);t.a+=q.a;t.p+=q.p;t.b+=q.b;if(q.cond==='R')t.r.add(k);if(q.cond==='V')t.v.add(k);}
+  const inf=t.a+t.p+t.b;return {reg:t.reg,palmas:t.palmas.size,a:t.a,p:t.p,b:t.b,inf,balon:inf?t.b/inf*100:null,r:t.r.size,v:t.v.size};}
+/* Tramos de transitabilidad (entrada y salida de cada lote) de las jornadas. */
+function filasTransito(js,filtroLote){const out=[];
+  for(const j of js)for(const x of j.transito||[]){if(filtroLote&&!filtroLote(String(x.lote)))continue;const te=Date.parse(x.t_entrada),ts=Date.parse(x.t_salida);
+    out.push({j,fecha:j.fecha,lote:String(x.lote),usuario:j.usuario,evaluador:j.evaluador,entrada:x.entrada||'',t_entrada:x.t_entrada||'',salida:x.salida||'',t_salida:x.t_salida||'',
+      abierto:!x.salida,min:Number.isFinite(te)&&Number.isFinite(ts)&&ts>=te?(ts-te)/60000:null,cierre:x.cierre||''});}
+  return out.sort((a,b)=>String(a.t_entrada).localeCompare(String(b.t_entrada)));}
 const PROBLEMAS={PC:'Pudrición de cogollo (PC)',PE:'Pudrición de estípite (PE)',DBP:'Desprendimiento de bases peciolares (DBP)',AR:'Anillo rojo (AR)',CER:'Cercospora',DEF:'Deficiencias',
   ESP:'Espontánea',HP:'Hoja pequeña',MJ:'Mal de juventud (MJ)',ML:'Marchitez letal (ML)',MS:'Marchitez sorpresiva (MS)',PA:'Palma amarilla',PEST:'Pestalotia',RAYO:'Rayo',YAR:'Yarumo',
   RP:'Rhynchophorus palmarum (picudo)',SA:'Strategus aloeus',LG:'Leptopharsa / Pestalotiopsis',OC:'Opsiphanes cassina',SV:'Sagalassa valida',DF:'Otros defoliadores',RT:'Daño por roedores',DN:'Deficiencia nutricional',OT:'Otro',BORO:'Deficiencia de boro',EV:'Espacio vacío'};
@@ -423,7 +450,7 @@ const icoPalma=(c,vacio)=>`<svg class="ico-palma" width="16" height="16" viewBox
 const SVG_FLECHA=(c,t)=>`<svg width="${t}" height="${t}" viewBox="-45 -45 90 90" aria-hidden="true"><path d="M0 0 L-15 -38 A41 41 0 0 1 15 -38 Z" fill="${c}" fill-opacity=".3"/><path d="M0 -15 L10.5 11 L0 5.5 L-10.5 11 Z" fill="${c}" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/></svg>`;
 function iconoFlecha(c){return L.divIcon({className:'flecha-ic',iconSize:[90,90],iconAnchor:[45,45],html:`<div class="flecha-op">${SVG_FLECHA(c,90)}</div>`});}
 function dist(a,b,c,d){const R=6371000,r=Math.PI/180;const dl=(c-a)*r,dg=(d-b)*r;const x=Math.sin(dl/2)**2+Math.cos(a*r)*Math.cos(c*r)*Math.sin(dg/2)**2;return 2*R*Math.asin(Math.sqrt(x));}
-/* Parada: etiqueta con símbolo de pausa y minutos (naranja sin actividad, azul con diagnóstico, gris sin señal GPS). */
+/* Parada: etiqueta con símbolo de pausa y minutos (naranja sin actividad, azul con registro, gris sin señal GPS). */
 function paneParadas(){if(!mapa.getPane('paradas')){const pn=mapa.createPane('paradas');pn.style.zIndex=660;}return 'paradas';} // encima de las etiquetas de palmas
 function iconoParada(min,col){const txt=col==='#ff9f1c'?'#1a1200':'#fff';
   return L.divIcon({className:'parada-ic',iconSize:[0,0],html:`<div class="parada-pill" style="background:${col};color:${txt}"><i></i><i></i><b>${Math.round(Number(min)||0)} min</b></div>`});}
@@ -478,9 +505,9 @@ vis('#cLotes',capaLotes);vis('#cRec',capaRec);vis('#cDiag',capaDiag);vis('#cPar'
 $('#cVias').onchange=()=>mostrarVias($('#cVias').checked);
 mapa.on('zoomend moveend',()=>{mapa.getContainer().classList.toggle('sin-etq',mapa.getZoom()<14);dibujarPalmas();});
 function pintarLeyenda(){
-  $('#leyenda').innerHTML='<b class="tit" style="font-size:13px">Enfermedad principal</b>'+Object.entries(COLOR_N1).map(([k,c])=>`<div><span class="punto" style="background:${c}"></span>${esc(PROBLEMAS[k]||k)}</div>`).join('')+
-  `<div><span class="punto" style="background:${COLOR_ALTA}"></span>De alta</div><div><span class="punto" style="background:#4dd0e1"></span>Palma visitada (reproducción)</div><div><span style="display:inline-block;vertical-align:-5px;margin-right:4px">${SVG_FLECHA('#2f93d5',22)}</span>Operario y rumbo (reproducción)</div>`+
-  '<div style="margin-top:4px">'+pillParada('#ff9f1c','min')+'Parada sin actividad</div><div>'+pillParada('#2f93d5','min')+'Parada con diagnóstico</div><div class="tenue">Recorridos: un color por operario.</div>'+leyendaVias();
+  $('#leyenda').innerHTML='<b class="tit" style="font-size:13px">Registro de polinización (último de cada palma)</b>'+COD_POL.map(x=>`<div data-cod="${x.c}"><span class="punto" style="background:${x.col}"></span><b>${x.c}:</b> ${esc(x.n)}</div>`).join('')+
+  `<div><span class="punto" style="background:#4dd0e1"></span>Palma visitada (reproducción)</div><div><span style="display:inline-block;vertical-align:-5px;margin-right:4px">${SVG_FLECHA('#2f93d5',22)}</span>Operario y rumbo (reproducción)</div>`+
+  '<div style="margin-top:4px">'+pillParada('#ff9f1c','min')+'Parada sin actividad</div><div>'+pillParada('#2f93d5','min')+'Parada con registro</div><div class="tenue">Recorridos: un color por operario.</div>'+leyendaVias();
 }
 
 /* ---------- Cartografía (cifrada) ---------- */
@@ -515,7 +542,7 @@ async function chunkLote(l){if(CHUNK.has(l))return CHUNK.get(l);const f=PALMASZI
 let palmasT=0;
 function dibujarPalmas(){clearTimeout(palmasT);palmasT=setTimeout(async()=>{
   capaPalmas.clearLayers();if(!$('#cPalmas').checked||mapa.getZoom()<17||!LOTES)return;
-  const b=mapa.getBounds();const diag=new Map();for(const d of DIAGF)diag.set(String(d.palma_id),d);
+  const b=mapa.getBounds();const diag=new Map();for(const d of ultimosPorPalma(DIAGF))diag.set(String(d.palma_id),d);
   for(const f of LOTES.features){const lb=f._b||(f._b=L.geoJSON(f).getBounds());if(!lb.intersects(b))continue;
     for(const a of await chunkLote(f.properties._lote)){if(!b.contains([a[5],a[4]]))continue;const d=diag.get(String(a[0]));
       L.circleMarker([a[5],a[4]],{renderer:rend,radius:mapa.getZoom()>=19?6:4,weight:1,color:'#3a2a00',fillColor:d?colorD(d):(a[3]===0?'#ffffff':'#ffc53d'),fillOpacity:a[3]===0?.2:.85,interactive:false}).addTo(capaPalmas);}}
@@ -562,7 +589,7 @@ async function cargar(){
     JOR=nuevas.sort((a,b)=>String(b.inicio).localeCompare(String(a.inicio)));
     progreso(.98,'Calculando secuencias por lote…');for(const j of JOR){try{await completarTiempos(j);}catch(e){console.warn('tiempos',j.id,e);}}
     const ops=[...new Map(JOR.map(j=>[j.usuario||j.evaluador,j.evaluador])).entries()].sort((a,b)=>ordenNat(a[1],b[1]));
-    msOpciones('op',ops.map(([u,n])=>({v:u,t:n||u})));opcionesEnf();
+    msOpciones('op',ops.map(([u,n])=>({v:u,t:n||u})));
     progreso(1,`${num(JOR.length)} jornada(s) del ${d1} al ${d2} · ${num(dias.length)} día(s) con datos.`);
     $('#chDatosTxt').textContent=`${num(JOR.length)} jornadas`;
     aplicarFiltros(true);
@@ -588,7 +615,7 @@ async function jornadaCarpeta(f){
 function normalizar(g,f,zipSha){
   const h=g.jornada||{};const diags=[],paradas=[];let track=null;
   for(const ft of g.features||[]){const p=ft.properties||{};
-    if(p.tipo==='diagnostico'&&ft.geometry)diags.push({...p,lng:ft.geometry.coordinates[0],lat:ft.geometry.coordinates[1]});
+    if(p.tipo==='diagnostico'&&ft.geometry)diags.push(normPol({...p,lng:ft.geometry.coordinates[0],lat:ft.geometry.coordinates[1]}));
     else if(p.tipo==='recorrido'&&ft.geometry){const c=ft.geometry.type==='LineString'?ft.geometry.coordinates:[ft.geometry.coordinates];track={c,t:(p.tiempos||[]).map(x=>Date.parse(x)),acc:p.precision_m||[]};}
     else if(p.tipo==='parada'&&ft.geometry)paradas.push({...p,lng:ft.geometry.coordinates[0],lat:ft.geometry.coordinates[1]});}
   const lotes=new Set([...(h.por_lote||[]).map(x=>x.lote),...(h.lotes_seleccionados||[]).map(x=>x.lote),...diags.map(d=>d.lote)].filter(Boolean));
@@ -596,7 +623,7 @@ function normalizar(g,f,zipSha){
     inicio:h.inicio,fin:h.fin,hora_inicio:h.hora_inicio||hhmm(h.inicio),hora_fin:h.hora_fin||hhmm(h.fin),duracion_min:h.duracion_min,km:Number(h.km)||0,
     ha:Number(h.ha_recorridas)||0,palmas:Number(h.palmas_visitadas)||0,metodo:h.metodo||'buffer',comp:h.comparativo_buffer||null,
     n_paradas:Number(h.n_paradas)||paradas.length,min_paradas:Number(h.minutos_paradas)||0,min_mov:h.minutos_movimiento,por_lote:h.por_lote||[],
-    densidad:h.densidad_palmas_ha||115,app:h.app||'',sincronizado:h.sincronizado,lotes,diags,paradas,track,header:h,secuencias:h.secuencias&&h.secuencias.length?h.secuencias:null,tiempos:h.tiempos||null,
+    densidad:h.densidad_palmas_ha||115,app:h.app||'',sincronizado:h.sincronizado,labor:h.labor||'',transito:Array.isArray(h.transito)?h.transito:[],lotes,diags,paradas,track,header:h,secuencias:h.secuencias&&h.secuencias.length?h.secuencias:null,tiempos:h.tiempos||null,
     vel:h.velocidad_kmh!=null?Number(h.velocidad_kmh):(()=>{const m=Number(h.minutos_movimiento)||0,k=Number(h.km)||0;return m>=1&&k>0?+(k/(m/60)).toFixed(2):null;})()};
 }
 /* ---------- Secuencias por lote ----------
@@ -660,17 +687,18 @@ function filasSecuencias(){const hay=FIL.lote.size>0;const out=[];
   return out;}
 function aplicarFiltros(ajustar){
   JORF=JOR.filter(j=>(!FIL.op.size||FIL.op.has(j.usuario))&&(!FIL.lote.size||[...j.lotes].some(l=>FIL.lote.has(l)))&&(!FIL.prog.size||[...j.lotes].some(enProg)));
-  DIAGF=[];for(const j of JORF)for(const d of j.diags)if(loteSel(d.lote)&&enProg(d.lote)&&(!FIL.est.size||FIL.est.has(d.estado))&&diagEnf(d))DIAGF.push({...d,_j:j});
+  DIAGF=[];for(const j of JORF)for(const d of j.diags)if(loteSel(d.lote)&&enProg(d.lote)&&codOk(d))DIAGF.push({...d,_j:j});
   if(SEL&&!JORF.includes(SEL))cerrarDetalle();
   pintarMapa(ajustar);pintarPanel();dibujarPalmas();
 }
 /* ---------- Filtros de selección múltiple: nada marcado = Todos; «solo este» = una opción; casillas = varias ---------- */
-const FIL={prog:new Set(),op:new Set(),lote:new Set(),est:new Set(),n1:new Set(),n2:new Set(),n3:new Set()};
+const FIL={prog:new Set(),op:new Set(),lote:new Set(),cod:new Set()};
 const MSOP={},MSCB={};let MSK=null;
 const loteSel=l=>!FIL.lote.size||FIL.lote.has(l);
 const enProg=l=>!FIL.prog.size||FIL.prog.has(PROG.get(l));
-const diagEnf=d=>(!FIL.n1.size||FIL.n1.has(codN1(d)))&&(!FIL.n2.size||FIL.n2.has(d.nivel2||''))&&(!FIL.n3.size||FIL.n3.has(d.nivel3||''));
-function msTexto(k){const s=FIL[k];if(!s.size)return 'Todos';const o=MSOP[k]||[];if(s.size<=2)return [...s].map(v=>k==='n1'?v:(o.find(x=>x.v===v)||{t:v}).t).join(', ');return s.size+' seleccionados';}
+/* Código: el registro tiene alguno de los códigos elegidos (un 2A + 1P aparece con A y con P). */
+const codOk=d=>!FIL.cod.size||codigosPol(d).some(c=>FIL.cod.has(c));
+function msTexto(k){const s=FIL[k];if(!s.size)return 'Todos';const o=MSOP[k]||[];if(s.size<=2)return [...s].map(v=>k==='cod'?v:(o.find(x=>x.v===v)||{t:v}).t).join(', ');return s.size+' seleccionados';}
 function msPintar(k){document.querySelectorAll(`.ms[data-k="${k}"]`).forEach(c=>{const b=c.querySelector('.ms-bt');b.textContent=msTexto(k);b.title=msTexto(k);c.classList.toggle('activo',FIL[k].size>0);});}   /* el filtro aparece en el visor y en Gerencia */
 function msOpciones(k,ops){MSOP[k]=ops;for(const v of [...FIL[k]])if(!ops.some(o=>o.v===v))FIL[k].delete(v);msPintar(k);if(MSK===k)msLista();}
 function msCerrar(){const p=$('#msPop');if(p)p.remove();MSK=null;}
@@ -693,15 +721,10 @@ function msAbrir(k,el){if(MSK===k){msCerrar();return;}msCerrar();MSK=k;const r=e
 document.addEventListener('click',e=>{const b=e.target.closest('.ms-bt');if(b){msAbrir(b.parentNode.dataset.k,b);return;}if(MSK&&document.contains(e.target)&&!e.target.closest('#msPop'))msCerrar();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&MSK)msCerrar();});
 function msSolo(k,v){FIL[k]=v==null||v===''?new Set():new Set([v]);msPintar(k);}
-/* Opciones dependientes: lotes según el programa; enfermedad N2 según N1 y N3 según N2 (de los diagnósticos cargados). */
+/* Opciones dependientes: lotes según el programa. Código: A, P, B, R y V con su nombre completo. */
 function opcionesLote(){msOpciones('lote',LOTES?LOTES.features.map(f=>f.properties._lote).filter(l=>l&&enProg(l)).sort(ordenNat).map(l=>({v:l,t:l})):[]);}
-function opcionesEnf(){const ds=JOR.flatMap(j=>j.diags);const c1=new Set(ds.map(codN1).filter(Boolean));
-  msOpciones('n1',[...new Set([...Object.keys(PROBLEMAS),...c1])].filter(c=>c1.has(c)||PROBLEMAS[c]).sort((a,b)=>(c1.has(b)-c1.has(a))||ordenNat(a,b)).map(c=>({v:c,t:(PROBLEMAS[c]||c)+(c1.has(c)?'':' · sin registros')})));
-  const d2=ds.filter(d=>!FIL.n1.size||FIL.n1.has(codN1(d)));msOpciones('n2',[...new Set(d2.map(d=>d.nivel2).filter(Boolean))].sort(ordenNat).map(v=>({v,t:v})));
-  const d3=d2.filter(d=>!FIL.n2.size||FIL.n2.has(d.nivel2||''));msOpciones('n3',[...new Set(d3.map(d=>d.nivel3).filter(Boolean))].sort(ordenNat).map(v=>({v,t:v})));}
+function opcionesCod(){msOpciones('cod',COD_POL.map(x=>({v:x.c,t:etqCod(x.c)})));}
 MSCB.prog=()=>{opcionesLote();aplicarFiltros(true);};
-MSCB.n1=()=>{opcionesEnf();aplicarFiltros(true);};
-MSCB.n2=()=>{opcionesEnf();aplicarFiltros(true);};
 
 
 /* ---------- Cortes del GPS en el recorrido ----------
@@ -728,6 +751,10 @@ function bloqueCortes(j){
     <div style="font-size:12.5px;margin-top:4px">${hs.map(h=>`${esc(h.a)}–${esc(h.b)} · ${h.min} min${h.causa?' · '+esc(h.causa):''}`).join('<br>')}</div>
     <div class="tenue" style="font-size:11.5px;margin-top:4px">En el mapa se ven punteados en gris: no es camino recorrido y no cuenta palmas visitadas.</div>${equipo}</div>`;
 }
+/* Transitabilidad de entrada y salida de cada lote de la jornada (lote abierto = sin salida). */
+function bloqueTransito(j){const t=filasTransito([j]);if(!t.length)return '';
+  return `<h3 style="margin-top:6px">Transitabilidad por lote</h3><div style="overflow-x:auto"><table class="t"><thead><tr><th>Lote</th><th>Entrada</th><th>Salida</th><th class="n">Duración</th></tr></thead><tbody>${
+    t.map(x=>`<tr><td><b>${esc(x.lote)}</b></td><td>${esc(x.entrada||'—')} <span class="tenue">${esc(hhmm(x.t_entrada))}</span></td><td>${x.abierto?'<b style="color:var(--ambar)">⚠ Sin salida (lote abierto)</b>':esc(x.salida)+' <span class="tenue">'+esc(hhmm(x.t_salida))+'</span>'}</td><td class="n">${x.min==null?'—':minHM(x.min)}</td></tr>`).join('')}</tbody></table></div>`;}
 function pintarHuecos(huecos,capa,j){
   for(const h of huecos)L.polyline(h.ll,{renderer:rend,color:'#9e9e9e',weight:3,opacity:.95,dashArray:'2 7'}).addTo(capa)
     .bindTooltip(`⚠ Sin GPS ${h.min} min · ${esc(h.a)}–${esc(h.b)}${h.causa?'<br>'+esc(h.causa):''}${j?'<br>'+esc(j.evaluador):''}`,{sticky:true});
@@ -743,26 +770,27 @@ function pintarMapa(ajustar){
       if(!hayL)caja.extend(pl.getBounds());}
     for(const p of j.paradas){if(hayL&&!FIL.lote.has(p.lote))continue;
       L.marker([p.lat,p.lng],{icon:iconoParada(p.duracion_min,/diagn/i.test(p.clase||p.tipo||'')?'#2f93d5':/señal/i.test(p.clase||p.tipo||'')?'#9e9e9e':'#ff9f1c'),keyboard:false,zIndexOffset:500,pane:paneParadas()})
-        .bindPopup(`<b class="h">⏸ Parada ${esc(p.n||'')}</b><br>${esc(j.evaluador)} · ${esc(j.fecha)}<br>${esc(p.hora_inicio)}–${esc(p.hora_fin)} · <b>${esc(p.duracion_min)} min</b><br>Lote: ${esc(p.lote||'—')}${p.clase?'<br>'+esc(p.clase):''}`).addTo(capaPar);}
+        .bindPopup(`<b class="h">⏸ Parada ${esc(p.n||'')}</b><br>${esc(j.evaluador)} · ${esc(j.fecha)}<br>${esc(p.hora_inicio)}–${esc(p.hora_fin)} · <b>${esc(p.duracion_min)} min</b><br>Lote: ${esc(p.lote||'—')}${p.clase?'<br>'+esc(String(p.clase).replace('con diagnóstico','con registro de polinización')):''}`).addTo(capaPar);}
   }
-  for(const d of DIAGF){
-    const m=L.circleMarker([d.lat,d.lng],{renderer:rend,radius:6,color:'#fff',weight:1.5,fillColor:colorD(d),fillOpacity:1}).addTo(capaDiag);
+  for(const d of ultimosPorPalma(DIAGF)){
+    const m=L.circleMarker([d.lat,d.lng],{renderer:rend,radius:6,color:'#fff',weight:1.5,fillColor:colorD(d),fillOpacity:1,codigo:codPol(d),palma_id:d.palma_id}).addTo(capaDiag);
     m.on('click',ev=>{L.DomEvent.stopPropagation(ev);popupDiag(d,ev.latlng);});caja.extend([d.lat,d.lng]);}
   if(hayL&&LOTES)for(const f of LOTES.features)if(FIL.lote.has(f.properties._lote))caja.extend(L.geoJSON(f).getBounds());
   if(ajustar&&caja.isValid()){mapa.stop();mapa.fitBounds(caja,{padding:[30,30],maxZoom:18,animate:false});}
 }
 function etiquetaDiag(d){return [d.lote,d.linea!=null&&d.linea!==''?'L'+d.linea:null,d.palma!=null&&d.palma!==''?'P'+d.palma:null].filter(Boolean).join(' · ');}
-function htmlDiag(d){const e=estadoDe(d.estado)||{c:'#ccc',n:d.estado_nombre||d.estado||'—'};
-  const probs=String(d.problemas||'').split('|').filter(Boolean).map(p=>PROBLEMAS[p]||p);
-  return `<b class="h">${esc(etiquetaDiag(d))}</b><br><span class="punto" style="background:${colorD(d)}"></span><b>${esc(e.n)}</b>
-    <div style="margin-top:6px;display:grid;gap:2px">
-    ${d.nivel1?`<div><b>Enfermedad principal:</b> ${esc(d.nivel1)}</div>${d.nivel2?`<div><b>Opción de la enfermedad:</b> ${esc(d.nivel2)}</div>`:''}${d.nivel3?`<div><b>Tipo de seguimiento:</b> ${esc(d.nivel3)}</div>`:''}`:(probs.length?`<div><b>Problemas:</b> ${esc(probs.join(', '))}</div>`:'')}
-    ${d.estado_hongo?`<div><b>Hongo:</b> ${esc(d.estado_hongo)}</div>`:''}${d.cirugia?`<div><b>Cirugía:</b> ${esc(d.cirugia)}</div>`:''}${d.produccion?`<div><b>Producción:</b> ${esc(d.produccion)}</div>`:''}
-    ${d.raices_buenas?`<div><b>Raíces buenas:</b> ${esc(d.raices_buenas)}</div>`:''}${d.transitabilidad?`<div><b>Transitabilidad:</b> ${esc(d.transitabilidad)}</div>`:''}
-    ${d.grado_pc?`<div><b>Grado PC:</b> ${esc(d.grado_pc)}</div>`:''}${d.severidad?`<div><b>Severidad:</b> ${esc(d.severidad)}</div>`:''}
-    ${d.sintomas?`<div><b>Síntomas:</b> ${esc(String(d.sintomas).split('|').join(' / '))}</div>`:''}${d.accion?`<div><b>Acción:</b> ${esc(d.accion)}</div>`:''}
-    ${d.observaciones?`<div><b>Observaciones:</b> ${esc(d.observaciones)}</div>`:''}
-    <div class="tenue">${esc(d.evaluador||'')} · ${esc(d._j?d._j.fecha:'')} ${esc(hhmm(d.creado))}${d.dist_gps_palma_m!=null?` · GPS a ${num(d.dist_gps_palma_m,1)} m`:''}</div></div>`;}
+/* Ficha del registro de polinización: resumen, cada conteo con su nombre, operario, fecha y hora, transitabilidad, fuente y observación. */
+function htmlDiag(d){const q=polN(d);
+  const filas=q.cond?`<div><span class="punto" style="background:${codPolDe(q.cond).col}"></span><b>${esc(etqCod(q.cond))}</b> · no se puede aplicar</div>`
+    :COD_INF_V.map(x=>`<div><span class="punto" style="background:${x.col}"></span><b>${x.c}:</b> ${esc(x.n)}: <b>${num(q[x.k])}</b></div>`).join('');
+  return `<b class="h">${esc(etiquetaDiag(d))}</b><br><span class="punto" style="background:${colorD(q)}"></span><b class="pol-res">${esc(textoPol(q))}</b>
+    <div style="margin-top:6px;display:grid;gap:2px">${filas}
+    <div><b>Operario:</b> ${esc(d.evaluador||(d._j&&d._j.evaluador)||'—')}</div>
+    <div><b>Fecha y hora:</b> ${esc(d._j&&d._j.fecha?d._j.fecha:String(d.creado||'').slice(0,10))} ${esc(hhmm(d.creado))}</div>
+    <div><b>Transitabilidad:</b> ${esc(d.transitabilidad||'—')}</div>
+    <div><b>Fuente:</b> ${esc(fuentePol(d)||'—')}</div>
+    ${d.observaciones?`<div><b>Observación:</b> ${esc(d.observaciones)}</div>`:''}
+    ${d.dist_gps_palma_m!=null?`<div class="tenue">GPS a ${num(d.dist_gps_palma_m,1)} m de la palma</div>`:''}</div>`;}
 /* Primera foto del diagnóstico (del _fotos.zip de la jornada o de la carpeta del formato anterior), con caché. */
 const FOTO1=new Map();
 async function fotoPrincipal(d){const k=d._j&&d._j.id+'|'+d.id;if(FOTO1.has(k))return FOTO1.get(k);
@@ -789,13 +817,13 @@ function popupDiag(d,ll){
   if(!n)return Promise.resolve(pp);
   fotoPrincipal.error=null;
   return fotoPrincipal(d).then(u=>{if(!mapa.hasLayer(pp))return pp;
-    pp.setContent(html(u?`<img src="${u}" alt="Foto del diagnóstico">`:`<span class="tenue">Foto no disponible${fotoPrincipal.error?' ('+esc(fotoPrincipal.error)+'). Toque «Ver foto(s)» para reintentar':''}</span>`));setTimeout(enlazar,0);
+    pp.setContent(html(u?`<img src="${u}" alt="Foto del registro">`:`<span class="tenue">Foto no disponible${fotoPrincipal.error?' ('+esc(fotoPrincipal.error)+'). Toque «Ver foto(s)» para reintentar':''}</span>`));setTimeout(enlazar,0);
     if(u){const im=pp.getElement()&&pp.getElement().querySelector('.ppFoto img');if(im&&!im.complete)return new Promise(r=>{im.onload=im.onerror=()=>r(pp);});}
     return pp;});
 }
 function popupLote(l,ll){
   const fil=resumenLotes().find(x=>x.lote===l);
-  L.popup().setLatLng(ll).setContent(`<b class="h">Lote ${esc(l)}</b><br>`+(fil?`${num(fil.jornadas)} jornada(s) · ${num(fil.palmas)} palmas visitadas · <b>${num(fil.ha,2)} ha</b><br>${num(fil.diag)} diagnósticos · ${num(fil.enfermas)} enfermas`:'<span class="tenue">Sin recorridos en el periodo cargado.</span>')+
+  L.popup().setLatLng(ll).setContent(`<b class="h">Lote ${esc(l)}</b><br>`+(fil?`${num(fil.jornadas)} jornada(s) · ${num(fil.palmas)} palmas visitadas · <b>${num(fil.ha,2)} ha</b><br>${num(fil.diag)} registros · A ${num(fil.a)} · P ${num(fil.p)} · B ${num(fil.b)}${fil.r||fil.v?` · R ${num(fil.r)} · V ${num(fil.v)}`:''}`:'<span class="tenue">Sin recorridos en el periodo cargado.</span>')+
     `<div style="margin-top:8px"><button class="btn mini" id="ppFil">Filtrar por este lote</button></div>`).openOn(mapa);
   setTimeout(()=>{const b=$('#ppFil');if(b)b.onclick=()=>{msSolo('lote',l);mapa.closePopup();aplicarFiltros(true);};},0);
 }
@@ -834,17 +862,18 @@ function abrirDetalle(j){
     return `<tr><td><b>${esc(x.lote)}</b>${x.tipo_lote&&x.tipo_lote!=='lineal'?` <span class="tenue">· ${esc(x.tipo_lote)}</span>`:''}</td><td class="n">${num(x.palmas_visitadas)}</td><td class="n">${tot?num(Number(x.palmas_visitadas)/tot*100,1)+' %':'—'}</td><td class="n">${num(x.ha,2)}</td><td class="n">${num(x.diagnosticos)}</td><td class="n">${t?minHM(t.par):num(x.paradas||0)}</td><td class="n">${t?minHM(t.desp):'—'}</td><td class="n">${t?minHM(t.tot):'—'}</td><td class="n"><b>${t?minHM(t.efe):'—'}</b></td></tr>`;}).join('')+filaD('Desplazamiento final',dF);
   $('#detalle').innerHTML=`<div class="cab"><b>${esc(j.evaluador)}</b><button class="x" id="dX" title="Cerrar">✕</button></div>
     <div class="tenue">${esc(j.fecha)} · ${esc(j.hora_inicio)} – ${esc(j.hora_fin)} · ${esc(minAh(j.duracion_min))}</div>
-    <div class="grid2"><div><b>Km:</b> ${num(j.km,2)}</div><div><b>Ha:</b> ${num(j.ha,2)}</div><div><b>Palmas visitadas:</b> ${num(j.palmas)}</div><div><b>Diagnósticos:</b> ${num(j.diags.length)}</div>
+    <div class="grid2"><div><b>Km:</b> ${num(j.km,2)}</div><div><b>Ha:</b> ${num(j.ha,2)}</div><div><b>Palmas visitadas:</b> ${num(j.palmas)}</div><div><b>Registros:</b> ${num(j.diags.length)}</div>
       <div><b>Paradas:</b> ${num(j.n_paradas)} (${esc(minAh(j.min_paradas))})</div><div><b>En movimiento:</b> ${esc(minAh(j.min_mov))}</div>
       <div><b>Vel. caminata:</b> ${j.vel==null?'—':num(j.vel,1)+' km/h'}</div>${j.tiempos?`<div><b>Labor:</b> ${esc(j.tiempos.hora_inicio_labor||'—')} – ${esc(j.tiempos.hora_fin_labor||'—')}</div>
       <div><b>Despl. inicial:</b> ${minHM(j.tiempos.min_desplazamiento_inicial)}</div><div><b>Despl. entre lotes:</b> ${minHM(j.tiempos.min_desplazamiento_entre_lotes)}</div>
       <div><b>Despl. final:</b> ${minHM(j.tiempos.min_desplazamiento_final)}</div><div><b>Efectivo en lotes:</b> ${minHM(j.tiempos.min_efectivo_labor)}</div>`:''}
       <div><b>Método:</b> ${j.metodo==='calle_entre_lineas'?'Por calle':'Buffer'}</div><div>${j.comp?`<b>Buffer ${esc(j.comp.buffer_m)} m:</b> ${num(j.comp.palmas_visitadas)} palmas`:''}</div></div>
     ${bloqueCortes(j)}
+    ${bloqueTransito(j)}
     ${conT?`<div class="play"><div class="play-res"><span>Inicio <b>${esc(j.hora_inicio||hhmm(j.inicio))}</b></span><span>Fin <b>${esc(j.hora_fin||hhmm(j.fin))}</b></span><span>Ha <b>${num(j.ha,2)}</b></span><span>T. efectivo <b>${efecJ(j,sq)}</b></span></div>
       <div class="fila"><button class="btn mini prim" id="pBt">▶</button><input type="range" id="pRg" min="0" max="1000" value="0"><span class="reloj" id="pRel">${esc(hhmm(tr.t[0]))}</span></div>
       <div class="fila"><span class="tenue" style="font-size:12px">Velocidad</span><select id="pVel" style="padding:3px 6px;font-size:12.5px"><option value="30">×30</option><option value="60" selected>×60</option><option value="180">×180</option><option value="600">×600</option></select>
-      <label style="display:flex;gap:5px;align-items:center;font-size:12.5px"><input type="checkbox" id="pSeg" checked> Seguir al operario</label><label style="display:flex;gap:5px;align-items:center;font-size:12.5px"><input type="checkbox" id="pDiagAuto" checked> Mostrar diagnósticos</label>
+      <label style="display:flex;gap:5px;align-items:center;font-size:12.5px"><input type="checkbox" id="pSeg" checked> Seguir al operario</label><label style="display:flex;gap:5px;align-items:center;font-size:12.5px"><input type="checkbox" id="pDiagAuto" checked> Mostrar registros</label>
       <span class="tenue" style="font-size:12px;margin-left:auto">${num(tr.c.length)} puntos</span></div>
       <div class="fila" style="font-size:13px"><span class="punto" style="background:#4dd0e1"></span>Palmas visitadas: <b id="pVis" style="font-family:var(--t);font-size:18px">0</b><span class="tenue" id="pVisTot" style="margin-left:4px"></span></div></div>`:'<div class="tenue" style="margin:6px 0">Recorrido sin tiempos: no se puede reproducir.</div>'}
     <h3 style="margin-top:6px">Secuencias por lote</h3>
@@ -853,7 +882,7 @@ function abrirDetalle(j){
     <div class="tenue" style="font-size:11.5px">Despl. = desplazamiento entre lotes: va en la misma fila del lote al que llega, separado de la labor (Inicio = fin del lote anterior; Inicio labor = primera palma) y cuenta como efectivo. Total = Despl. + Labor. El desplazamiento inicial y el final no son tiempo efectivo de un lote. Vel. = km/h de caminata sin paradas.</div>
     ${secuenciasDe(j).some(s=>s.reconstruida)?'<div class="tenue" style="font-size:11.5px">Jornada anterior a la versión con secuencias: se reconstruyeron con el recorrido; las palmas se asignan a la secuencia en que el operario pasó junto a ellas.</div>':''}
     <h3 style="margin-top:6px">Por lote</h3>
-    <div style="overflow-x:auto"><table class="t"><thead><tr><th>Lote</th><th class="n">Palmas</th><th class="n">Avance</th><th class="n">Ha</th><th class="n">Diag.</th><th class="n">Paradas</th><th class="n">Despl. entre lotes</th><th class="n">T. total</th><th class="n">T. efectivo</th></tr></thead><tbody>${filas||'<tr><td colspan="9" class="tenue">Sin datos por lote.</td></tr>'}</tbody></table></div>
+    <div style="overflow-x:auto"><table class="t"><thead><tr><th>Lote</th><th class="n">Palmas</th><th class="n">Avance</th><th class="n">Ha</th><th class="n">Reg.</th><th class="n">Paradas</th><th class="n">Despl. entre lotes</th><th class="n">T. total</th><th class="n">T. efectivo</th></tr></thead><tbody>${filas||'<tr><td colspan="9" class="tenue">Sin datos por lote.</td></tr>'}</tbody></table></div>
     <div class="tenue" style="font-size:11.5px">Avance = palmas visitadas ÷ palmas totales del lote. Despl. entre lotes = tiempo desde el lote anterior; suma al T. efectivo del lote. Paradas y tiempos en horas:minutos.</div>
     <div class="tenue" style="font-size:12px;margin-top:8px">${esc(j.app)} · Dispositivo ${esc(j.dispositivo||'—')} · Sincronizada ${esc(j.sincronizado?new Date(j.sincronizado).toLocaleString('es-CO'):'—')}</div>
     <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><button class="btn mini" id="dGeo">⬇ GeoJSON de la jornada</button></div>`;
@@ -917,10 +946,10 @@ function pintarBarraRep(){
     <div class="r2">${uno?'<button class="btn mini" id="repAnt" title="Jornada anterior">⏮</button>':''}<button class="btn mini prim" id="repBt" style="min-width:44px">▶</button>${uno?'<button class="btn mini" id="repSig" title="Jornada siguiente">⏭</button>':''}
       <input type="range" id="repRg" min="0" max="1000" value="0" aria-label="Avance de la reproducción"><span class="reloj" id="repReloj">--:--:--</span></div>
     <div class="r3"><label>Velocidad <select id="repVel" style="padding:2px 6px;font-size:12.5px">${[60,180,300,600,1200,3600].map(v=>`<option value="${v}" ${v===REP.vel?'selected':''}>×${v}</option>`).join('')}</select></label>
-      ${uno?'<label><input type="checkbox" id="repSeg" checked> Seguir al operario</label><label><input type="checkbox" id="repDiag" checked> Mostrar diagnósticos</label>':''}
-      ${uno?'':'<span>Activos <b id="repAct">0</b></span><span>Diagnósticos <b id="repND">0</b></span><span>Km <b id="repKm">0.00</b></span><span class="tenue">Las horas son del día; cada color es un operario.</span>'}</div>
+      ${uno?'<label><input type="checkbox" id="repSeg" checked> Seguir al operario</label><label><input type="checkbox" id="repDiag" checked> Mostrar registros</label>':''}
+      ${uno?'':'<span>Activos <b id="repAct">0</b></span><span>Registros <b id="repND">0</b></span><span>Km <b id="repKm">0.00</b></span><span class="tenue">Las horas son del día; cada color es un operario.</span>'}</div>
     ${uno?`<div class="acu" id="repAcu"><div>Inicio<b>${esc(j.hora_inicio||'--')}</b></div><div>Fin<b>${esc(j.hora_fin||'--')}</b></div><div>Transcurrido<b id="rqTr">00:00:00</b></div><div>Km recorridos<b id="repKm">0.00</b></div>
-      <div>Velocidad prom.<b id="rqVel">0.0 km/h</b></div><div>Hectáreas<b id="rqHa">0.00</b></div><div>Palmas visitadas<b id="rqPal">0</b></div><div>Diagnósticos<b id="repND">0</b></div></div>`:''}
+      <div>Velocidad prom.<b id="rqVel">0.0 km/h</b></div><div>Hectáreas<b id="rqHa">0.00</b></div><div>Palmas visitadas<b id="rqPal">0</b></div><div>Registros<b id="repND">0</b></div></div>`:''}
     ${uno?'':`<div class="ops" id="repOps">${REP.js.map((x,k)=>`<span data-k="${k}"><i class="punto" style="background:${x.col}"></i>${esc(nombreCorto(x.j.evaluador))} · ${esc(x.j.hora_inicio)}</span>`).join('')}</div>`}`;
   $('#repX').onclick=()=>detenerRep();
   $('#repBt').onclick=()=>REP.run?pausarRep():iniciarRep();
@@ -1027,16 +1056,15 @@ function pararPlay(){PLAY.on=false;cancelAnimationFrame(PLAY.raf);const b=$('#pB
 
 /* ---------- Agregados ---------- */
 function resumenLotes(){
-  const m=new Map();const fila=l=>{if(!m.has(l))m.set(l,{lote:l,tipo:'',jornadas:0,operarios:new Set(),palmas:0,ha:0,diag:0,enfermas:0,paradas:0,min_par:0,ids:new Set(),sinIds:0});return m.get(l);};
+  const m=new Map();const fila=l=>{if(!m.has(l))m.set(l,{lote:l,tipo:'',jornadas:0,operarios:new Set(),palmas:0,ha:0,diag:0,_ds:[],paradas:0,min_par:0,ids:new Set(),sinIds:0});return m.get(l);};
   for(const j of JORF)for(const x of j.por_lote){if(!loteSel(x.lote)||!enProg(x.lote))continue;const f=fila(x.lote);f.jornadas++;f.operarios.add(j.usuario);f.palmas+=Number(x.palmas_visitadas)||0;f.ha+=Number(x.ha)||0;
     const ids=x.ids_palmas_visitadas||[];if(ids.length)ids.forEach(id=>f.ids.add(String(id)));else f.sinIds+=Number(x.palmas_visitadas)||0;
     f.paradas+=Number(x.paradas)||0;f.min_par+=Number(x.minutos_paradas)||0;if(x.tipo_lote)f.tipo=x.tipo_lote;}
-  for(const d of DIAGF){const f=fila(d.lote||'—');f.diag++;if(d.estado==='enferma')f.enfermas++;}
-  // casos de PC: último diagnóstico de cada palma (todas las jornadas filtradas, sin el filtro de estado)
-  const ult=new Map();for(const j of JORF)for(const d of j.diags){if(!loteSel(d.lote)||!enProg(d.lote))continue;const k=d.palma_id??(d.lote+'|'+d.linea+'|'+d.palma);const u=ult.get(k);if(!u||String(d.creado)>String(u.creado))ult.set(k,d);}
-  for(const d of ult.values())if(esCasoPC(codN1(d),d.nivel2,d.estado))fila(d.lote||'—').pc=(fila(d.lote||'—').pc||0)+1;
+  for(const d of DIAGF){const f=fila(d.lote||'—');f.diag++;f._ds.push(d);}
   // Avance = palmas distintas visitadas (sin repetir entre jornadas) ÷ palmas totales del lote
-  return [...m.values()].map(f=>{const tl=totalLote(f.lote),vis=Math.min(tl||Infinity,f.ids.size+f.sinIds);return {...f,ids:undefined,operarios:f.operarios.size,ha:+f.ha.toFixed(2),distintas:vis,total_lote:tl,avance:tl?+(vis/tl*100).toFixed(1):null,pc:f.pc||0,incid_pc:tl?+((f.pc||0)/tl*100).toFixed(2):null};});
+  return [...m.values()].map(f=>{const tl=totalLote(f.lote),vis=Math.min(tl||Infinity,f.ids.size+f.sinIds);const t=totalesPol(f._ds);
+    return {...f,ids:undefined,_ds:undefined,operarios:f.operarios.size,ha:+f.ha.toFixed(2),distintas:vis,total_lote:tl,avance:tl?+(vis/tl*100).toFixed(1):null,
+      registradas:t.palmas,a:t.a,p:t.p,b:t.b,inf:t.inf,balon:t.balon==null?null:+t.balon.toFixed(1),r:t.r,v:t.v};});
 }
 function resumenOperarios(){
   const m=new Map();
@@ -1060,64 +1088,58 @@ function tabla(id,cols,filas,onFila){
     if(onFila)t.querySelectorAll('tbody tr[data-i]').forEach(tr=>tr.onclick=()=>onFila(v[Number(tr.dataset.i)]));},0);
   return {html,v};
 }
-function barraEstados(){
-  const c=new Map();for(const d of DIAGF)c.set(d.estado,(c.get(d.estado)||0)+1);const tot=DIAGF.length||1;
-  return ESTADOS.filter(e=>c.get(e.id)).map(e=>`<div class="barra"><span><span class="punto" style="background:${e.c}"></span>${esc(e.n)}</span><span class="b"><i style="width:${100*c.get(e.id)/tot}%;background:${e.c}"></i></span><span class="n">${num(c.get(e.id))}</span></div>`).join('')||'<div class="tenue">Sin diagnósticos.</div>';
-}
-function barraProblemas(){
-  const c=new Map();for(const d of DIAGF)for(const p of String(d.problemas||'').split('|').filter(Boolean))c.set(p,(c.get(p)||0)+1);
-  const v=[...c.entries()].sort((a,b)=>b[1]-a[1]).slice(0,8);const mx=v.length?v[0][1]:1;
-  return v.map(([p,n])=>`<div class="barra"><span title="${esc(PROBLEMAS[p]||p)}"><span class="punto" style="background:${COLOR_N1[p]||'#ee7633'}"></span>${esc(PROBLEMAS[p]?(PROBLEMAS[p].length>16?p:PROBLEMAS[p]):p)}</span><span class="b"><i style="width:${100*n/mx}%;background:${COLOR_N1[p]||'var(--naranja)'}"></i></span><span class="n">${num(n)}</span></div>`).join('')||'<div class="tenue">Sin problemas registrados.</div>';
-}
+/* Barras de la polinización: inflorescencias A, P y B (suma de los registros) y palmas R y V. */
+function barraCodigos(){const t=totalesPol(DIAGF);const v=[['A',t.a],['P',t.p],['B',t.b],['R',t.r],['V',t.v]];const mx=Math.max(1,...v.map(x=>x[1]));
+  return v.map(([c,n])=>{const x=codPolDe(c);return `<div class="barra" data-bar="${c}"><span title="${esc(etqCod(c))}"><span class="punto" style="background:${x.col}"></span><b>${c}</b> ${esc(x.n.length>18?x.n.slice(0,17)+'…':x.n)}</span><span class="b"><i style="width:${100*n/mx}%;background:${x.col}"></i></span><span class="n">${num(n)}</span></div>`;}).join('');}
 function pintarPanel(){
   const P=$('#panel');
   if(!JOR.length){P.innerHTML=`<div class="vacio">Elija el rango de fechas y pulse <b>CARGAR</b> para ver los recorridos sincronizados.</div>`;return;}
   if(TAB==='resumen'){
     const km=JORF.reduce((a,j)=>a+j.km,0),ha=JORF.reduce((a,j)=>a+j.ha,0),pal=JORF.reduce((a,j)=>a+j.palmas,0),mp=JORF.reduce((a,j)=>a+j.min_paradas,0);
     const ops=new Set(JORF.map(j=>j.usuario)).size,lotes=new Set(JORF.flatMap(j=>j.por_lote.map(x=>x.lote))).size;
-    const enf=DIAGF.filter(d=>d.estado==='enferma').length,fotos=DIAGF.reduce((a,d)=>a+(Number(d.n_fotos)||0),0);
+    const T=totalesPol(DIAGF),fotos=DIAGF.reduce((a,d)=>a+(Number(d.n_fotos)||0),0);
     const comp=JORF.filter(j=>j.comp);const pc=comp.reduce((a,j)=>a+j.palmas,0),pb=comp.reduce((a,j)=>a+(Number(j.comp.palmas_visitadas)||0),0);
     P.innerHTML=`<div class="kpis">
       <div class="kpi"><b>${num(JORF.length)}</b><span>Jornadas</span></div><div class="kpi"><b>${num(ops)}</b><span>Operarios</span></div><div class="kpi"><b>${num(lotes)}</b><span>Lotes</span></div>
       <div class="kpi"><b>${num(ha,2)}</b><span>Ha recorridas</span></div><div class="kpi"><b>${num(pal)}</b><span>Palmas visitadas</span></div><div class="kpi"><b>${num(km,1)}</b><span>Km</span></div>
-      <div class="kpi"><b>${num(DIAGF.length)}</b><span>Diagnósticos</span></div><div class="kpi"><b style="color:var(--rojo)">${num(enf)}</b><span>Enfermas</span></div><div class="kpi"><b>${num(fotos)}</b><span>Fotos</span></div></div>
-      ${(()=>{const rl=resumenLotes().filter(x=>x.total_lote);const cp=rl.reduce((a,x)=>a+x.pc,0),tp=rl.reduce((a,x)=>a+x.total_lote,0);
-        return `<div class="kpis" style="grid-template-columns:1fr 1fr"><div class="kpi"><b style="color:var(--rojo)">${tp?num(cp/tp*100,2)+' %':'—'}</b><span>Incidencia PC (${num(cp)} casos ÷ ${num(tp)} palmas de ${num(rl.length)} lote(s))</span></div><div class="kpi"><b>${num(cp)}</b><span>Casos de PC activos</span></div></div>`;})()}
+      <div class="kpi"><b>${num(T.palmas)}</b><span>Palmas registradas</span></div><div class="kpi"><b>${num(T.inf)}</b><span>Inflorescencias</span></div><div class="kpi"><b>${num(fotos)}</b><span>Fotos</span></div></div>
+      <div class="kpis" id="kpisPol">${COD_INF_V.map(x=>`<div class="kpi" title="${esc(etqCod(x.c))}"><b style="color:${x.col}">${num(T[x.k])}</b><span>${x.c}: ${esc(x.n)}</span></div>`).join('')}
+        <div class="kpi"><b>${T.balon==null?'—':num(T.balon,1)+' %'}</b><span>% Balón (B ÷ A+P+B)</span></div><div class="kpi"><b style="color:#a1887f">${num(T.r)}</b><span>Palmas R: Palma Rancho / Tapada</span></div><div class="kpi"><b style="color:#ff6f60">${num(T.v)}</b><span>Palmas V: Palma con Avispas</span></div></div>
       <div class="kpis" style="grid-template-columns:1fr 1fr"><div class="kpi"><b>${esc(minAh(mp))}</b><span>Tiempo en paradas</span></div><div class="kpi"><b>${ops?num(ha/Math.max(1,new Set(JORF.map(j=>j.usuario+'|'+j.fecha)).size),2):'0'}</b><span>Ha por operario-día</span></div></div>
-      <h3>Diagnósticos por estado</h3>${barraEstados()}
-      <h3>Enfermedades más frecuentes (enfermedad principal)</h3>${barraProblemas()}
+      <h3>Polinización por código</h3>${barraCodigos()}
+      <div class="tenue" style="font-size:12px">A, P y B: inflorescencias sumadas de los registros; R y V: palmas donde no se puede aplicar.</div>
       ${comp.length?`<h3>Método por calle frente a buffer</h3><div class="tenue" style="font-size:13px">En ${num(comp.length)} jornada(s) con comparativo: por calle <b style="color:var(--texto)">${num(pc)}</b> palmas; buffer <b style="color:var(--texto)">${num(pb)}</b> palmas (${pb?(pc>=pb?'+':'')+num(100*(pc-pb)/pb,1)+' %':'—'}).</div>`:''}
-      <div style="margin-top:14px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn mini" id="xGeo">⬇ GeoJSON filtrado</button><button class="btn mini" id="xJor">⬇ CSV jornadas</button><button class="btn mini" id="xDiag">⬇ CSV diagnósticos</button></div>`;
+      <div style="margin-top:14px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn mini" id="xGeo">⬇ GeoJSON filtrado</button><button class="btn mini" id="xJor">⬇ CSV jornadas</button><button class="btn mini" id="xDiag">⬇ CSV registros</button></div>`;
     $('#xGeo').onclick=()=>descargar(`polinizacion_${$('#fDesde').value}_${$('#fHasta').value}.geojson`,JSON.stringify(geoDeJornadas(JORF)),'application/geo+json');
     $('#xJor').onclick=()=>csvJornadas();$('#xDiag').onclick=()=>csvDiag();
   }else if(TAB==='jornadas'){
     const filas=JORF.map(j=>({_j:j,_sel:j===SEL,fecha:j.fecha,evaluador:j.evaluador,ini:j.hora_inicio,fin:j.hora_fin,dur:Number(j.duracion_min)||0,km:j.km,ha:j.ha,palmas:j.palmas,diag:j.diags.length,par:j.n_paradas,vel:j.vel,lotes:[...j.lotes].sort(ordenNat).join(', ')}));
-    const t=tabla('tJor',[{k:'fecha',t:'Fecha',asc:false},{k:'evaluador',t:'Operario'},{k:'ini',t:'Inicio'},{k:'fin',t:'Fin'},{k:'dur',t:'Duración',n:1,f:x=>esc(minAh(x.dur))},{k:'km',t:'Km',n:1,f:x=>num(x.km,2)},{k:'vel',t:'Vel. km/h',n:1,f:x=>x.vel==null?'—':num(x.vel,1)},{k:'ha',t:'Ha',n:1,f:x=>num(x.ha,2)},{k:'palmas',t:'Palmas',n:1,f:x=>num(x.palmas)},{k:'diag',t:'Diag.',n:1},{k:'par',t:'Paradas',n:1},{k:'lotes',t:'Lotes'}],filas,f=>abrirDetalle(f._j));
+    const t=tabla('tJor',[{k:'fecha',t:'Fecha',asc:false},{k:'evaluador',t:'Operario'},{k:'ini',t:'Inicio'},{k:'fin',t:'Fin'},{k:'dur',t:'Duración',n:1,f:x=>esc(minAh(x.dur))},{k:'km',t:'Km',n:1,f:x=>num(x.km,2)},{k:'vel',t:'Vel. km/h',n:1,f:x=>x.vel==null?'—':num(x.vel,1)},{k:'ha',t:'Ha',n:1,f:x=>num(x.ha,2)},{k:'palmas',t:'Palmas',n:1,f:x=>num(x.palmas)},{k:'diag',t:'Registros',n:1},{k:'par',t:'Paradas',n:1},{k:'lotes',t:'Lotes'}],filas,f=>abrirDetalle(f._j));
     P.innerHTML=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><button class="btn mini prim btRep" id="btRepT">▶ Reproducir todas a la vez</button><button class="btn mini btRep" id="btRepU">▶ Reproducir una a una</button></div><div class="tenue" style="margin-bottom:6px;font-size:12.5px">Toque una jornada para verla en el mapa y reproducir solo ese recorrido.</div>`+t.html+`<div style="margin-top:10px"><button class="btn mini" id="xJor">⬇ CSV jornadas</button></div>`;$('#xJor').onclick=()=>csvJornadas();$('#btRepT').onclick=()=>abrirRep('todos');$('#btRepU').onclick=()=>abrirRep('uno');
   }else if(TAB==='lotes'){
-    const t=tabla('tLot',[{k:'lote',t:'Lote'},{k:'pc',t:'Casos PC',n:1},{k:'incid_pc',t:'Incid. PC',n:1,f:x=>x.incid_pc==null?'—':'<b>'+num(x.incid_pc,2)+' %</b>'},{k:'tipo',t:'Tipo'},{k:'jornadas',t:'Jornadas',n:1},{k:'operarios',t:'Operarios',n:1},{k:'palmas',t:'Palmas visitadas',n:1,f:x=>num(x.palmas)},{k:'distintas',t:'Palmas distintas',n:1,f:x=>num(x.distintas)},{k:'total_lote',t:'Total lote',n:1,f:x=>x.total_lote?num(x.total_lote):'—'},{k:'avance',t:'Avance',n:1,f:x=>x.avance==null?'—':'<b>'+num(x.avance,1)+' %</b>'},{k:'ha',t:'Ha',n:1,f:x=>num(x.ha,2)},{k:'diag',t:'Diag.',n:1},{k:'enfermas',t:'Enfermas',n:1},{k:'min_par',t:'Min. paradas',n:1}],
+    const t=tabla('tLot',[{k:'lote',t:'Lote'},{k:'registradas',t:'Palmas registradas',n:1},{k:'a',t:'A',n:1},{k:'p',t:'P',n:1},{k:'b',t:'B',n:1},{k:'balon',t:'% balón',n:1,f:x=>x.balon==null?'—':'<b>'+num(x.balon,1)+' %</b>'},{k:'r',t:'R',n:1},{k:'v',t:'V',n:1},{k:'tipo',t:'Tipo'},{k:'jornadas',t:'Jornadas',n:1},{k:'operarios',t:'Operarios',n:1},{k:'palmas',t:'Palmas visitadas',n:1,f:x=>num(x.palmas)},{k:'distintas',t:'Palmas distintas',n:1,f:x=>num(x.distintas)},{k:'total_lote',t:'Total lote',n:1,f:x=>x.total_lote?num(x.total_lote):'—'},{k:'avance',t:'Avance',n:1,f:x=>x.avance==null?'—':'<b>'+num(x.avance,1)+' %</b>'},{k:'ha',t:'Ha',n:1,f:x=>num(x.ha,2)},{k:'diag',t:'Registros',n:1},{k:'min_par',t:'Min. paradas',n:1}],
       resumenLotes(),f=>{msSolo('lote',f.lote);aplicarFiltros(true);});
-    P.innerHTML=`<div class="tenue" style="margin-bottom:6px;font-size:12.5px">Toque un lote para filtrar por él. <b>Avance</b> = palmas distintas visitadas (sin repetir entre jornadas) ÷ palmas totales del lote. <b>Incid. PC</b> = casos de PC (último diagnóstico de cada palma, sin casos en recuperación ni dados de alta) ÷ palmas totales del lote (existencia 0 y 1).</div>`+t.html+`<div style="margin-top:10px"><button class="btn mini" id="xLot">⬇ CSV lotes</button></div>`;
-    $('#xLot').onclick=()=>csv(`lotes_${$('#fDesde').value}_${$('#fHasta').value}.csv`,['lote','tipo','jornadas','operarios','palmas','distintas','total_lote','avance','ha','diag','enfermas','pc','incid_pc','paradas','min_par'],resumenLotes());
+    P.innerHTML=`<div class="tenue" style="margin-bottom:6px;font-size:12.5px">Toque un lote para filtrar por él. <b>Avance</b> = palmas distintas visitadas (sin repetir entre jornadas) ÷ palmas totales del lote. <b>A, P, B</b> = inflorescencias sumadas de los registros; <b>% balón</b> = B ÷ (A + P + B); <b>R, V</b> = palmas donde no se puede aplicar.</div>`+t.html+`<div style="margin-top:10px"><button class="btn mini" id="xLot">⬇ CSV lotes</button></div>`;
+    $('#xLot').onclick=()=>csv(`lotes_${$('#fDesde').value}_${$('#fHasta').value}.csv`,['lote','tipo','jornadas','operarios','palmas','distintas','total_lote','avance','ha','diag','registradas','a','p','b','inf','balon','r','v','paradas','min_par'],resumenLotes());
   }else if(TAB==='secuencias'){
     const filas=filasSecuencias();
     const t=tabla('tSec',[{k:'orden',t:'Fecha',asc:false,f:x=>esc(x.fecha)},{k:'evaluador',t:'Operario'},{k:'sec',t:'Sec.',n:1,f:x=>x.sec||'—'},{k:'lote',t:'Lote',f:x=>x.tipo!=='lote'?'<span class="tenue">'+esc(x.lote)+'</span>':'<b>'+esc(x.lote)+'</b>'},{k:'ini',t:'Inicio'},{k:'ini_lab',t:'Inicio labor',f:x=>x.tipo==='lote'?esc(x.ini_lab):'—'},{k:'fin',t:'Fin'},
-      {k:'desp',t:'Despl. entre lotes',n:1,f:x=>x.tipo==='lote'?minHM(x.desp):'—'},{k:'lab',t:'T. labor',n:1,f:x=>x.tipo==='lote'?minHM(x.lab):'—'},{k:'tot',t:'T. total',n:1,f:x=>minHM(x.tot)},{k:'par',t:'Paradas',n:1,f:x=>minHM(x.par)},{k:'efe',t:'T. efectivo',n:1,f:x=>x.tipo==='lote'||x.tipo==='desplazamiento'?'<b>'+minHM(x.efe)+'</b>':'—'},{k:'vel',t:'Vel. km/h',n:1,f:x=>x.vel==null?'—':num(x.vel,1)},{k:'palmas',t:'Palmas',n:1,f:x=>x.palmas==null?'—':num(x.palmas)},{k:'ha',t:'Ha',n:1,f:x=>x.ha==null?'—':num(x.ha,2)},{k:'diag',t:'Diag.',n:1}],filas,f=>abrirDetalle(f._j));
+      {k:'desp',t:'Despl. entre lotes',n:1,f:x=>x.tipo==='lote'?minHM(x.desp):'—'},{k:'lab',t:'T. labor',n:1,f:x=>x.tipo==='lote'?minHM(x.lab):'—'},{k:'tot',t:'T. total',n:1,f:x=>minHM(x.tot)},{k:'par',t:'Paradas',n:1,f:x=>minHM(x.par)},{k:'efe',t:'T. efectivo',n:1,f:x=>x.tipo==='lote'||x.tipo==='desplazamiento'?'<b>'+minHM(x.efe)+'</b>':'—'},{k:'vel',t:'Vel. km/h',n:1,f:x=>x.vel==null?'—':num(x.vel,1)},{k:'palmas',t:'Palmas',n:1,f:x=>x.palmas==null?'—':num(x.palmas)},{k:'ha',t:'Ha',n:1,f:x=>x.ha==null?'—':num(x.ha,2)},{k:'diag',t:'Reg.',n:1}],filas,f=>abrirDetalle(f._j));
     const s=k=>filas.reduce((a,x)=>a+(Number(x[k])||0),0);
     P.innerHTML=`<div class="kpis" style="grid-template-columns:repeat(3,1fr)"><div class="kpi"><b>${minHM(s('tot'))}</b><span>Tiempo total</span></div><div class="kpi"><b>${minHM(s('par'))}</b><span>Paradas</span></div><div class="kpi"><b style="color:var(--acento)">${minHM(s('efe'))}</b><span>Tiempo efectivo</span></div></div>
       <div class="tenue" style="margin-bottom:6px;font-size:12.5px">Cada bloque de trabajo en un lote abre una secuencia (1 RI01, 2 RI02, 3 RI01…). <b>Desplazamiento inicial</b>: del inicio de la jornada a la primera calle trabajada. <b>Desplazamiento entre lotes</b>: se suma a la secuencia del lote al que llega y cuenta como efectivo. <b>Desplazamiento final</b>: de la última palma al fin de la jornada. T. efectivo = T. total − paradas. Tiempos en horas:minutos. Toque una fila para ver la jornada.</div>`+t.html+
       `<div style="margin-top:10px"><button class="btn mini" id="xSec">⬇ CSV secuencias</button></div>`;
     $('#xSec').onclick=()=>csv(`secuencias_${$('#fDesde').value}_${$('#fHasta').value}.csv`,['fecha','usuario','evaluador','sec','tipo','lote','ini','ini_lab','fin','desp','lab','tot','par','efe','km','vel','palmas','ha','diag'],filas.map(x=>({...x,sec:x.sec||'',vel:x.vel==null?'':x.vel})));
   }else if(TAB==='operarios'){
-    const t=tabla('tOp',[{k:'evaluador',t:'Operario'},{k:'jornadas',t:'Jorn.',n:1},{k:'secs',t:'Sec.',n:1},{k:'min',t:'T. total',n:1,f:x=>minHM(x.min)},{k:'min_par',t:'Paradas',n:1,f:x=>minHM(x.min_par)},{k:'min_efe',t:'T. efectivo',n:1,f:x=>'<b>'+minHM(x.min_efe)+'</b>'},{k:'d_ini',t:'Despl. inicial',n:1,f:x=>minHM(x.d_ini)},{k:'d_ent',t:'Despl. entre lotes',n:1,f:x=>minHM(x.d_ent)},{k:'d_fin',t:'Despl. final',n:1,f:x=>minHM(x.d_fin)},{k:'km',t:'Km',n:1,f:x=>num(x.km,2)},{k:'vel',t:'Vel. km/h',n:1,f:x=>x.vel==null?'—':num(x.vel,1)},{k:'ha',t:'Ha',n:1,f:x=>num(x.ha,2)},{k:'ha_dia',t:'Ha/día',n:1,f:x=>num(x.ha_dia,2)},{k:'palmas',t:'Palmas',n:1,f:x=>num(x.palmas)},{k:'diag',t:'Diag.',n:1},{k:'lotes',t:'Lotes',n:1}],
+    const t=tabla('tOp',[{k:'evaluador',t:'Operario'},{k:'jornadas',t:'Jorn.',n:1},{k:'secs',t:'Sec.',n:1},{k:'min',t:'T. total',n:1,f:x=>minHM(x.min)},{k:'min_par',t:'Paradas',n:1,f:x=>minHM(x.min_par)},{k:'min_efe',t:'T. efectivo',n:1,f:x=>'<b>'+minHM(x.min_efe)+'</b>'},{k:'d_ini',t:'Despl. inicial',n:1,f:x=>minHM(x.d_ini)},{k:'d_ent',t:'Despl. entre lotes',n:1,f:x=>minHM(x.d_ent)},{k:'d_fin',t:'Despl. final',n:1,f:x=>minHM(x.d_fin)},{k:'km',t:'Km',n:1,f:x=>num(x.km,2)},{k:'vel',t:'Vel. km/h',n:1,f:x=>x.vel==null?'—':num(x.vel,1)},{k:'ha',t:'Ha',n:1,f:x=>num(x.ha,2)},{k:'ha_dia',t:'Ha/día',n:1,f:x=>num(x.ha_dia,2)},{k:'palmas',t:'Palmas',n:1,f:x=>num(x.palmas)},{k:'diag',t:'Registros',n:1},{k:'lotes',t:'Lotes',n:1}],
       resumenOperarios(),f=>{msSolo('op',f.usuario);aplicarFiltros(true);});
     P.innerHTML=`<div class="tenue" style="margin-bottom:6px;font-size:12.5px">Toque un operario para filtrar sus recorridos.</div>`+t.html+`<div style="margin-top:10px"><button class="btn mini" id="xOp">⬇ CSV operarios</button></div>`;
     $('#xOp').onclick=()=>csv(`operarios_${$('#fDesde').value}_${$('#fHasta').value}.csv`,['usuario','evaluador','jornadas','dias','secs','min','min_par','min_efe','d_ini','d_ent','d_fin','km','vel','ha','ha_dia','palmas','diag','lotes'],resumenOperarios().map(x=>({...x,vel:x.vel==null?'':x.vel})));
   }else{
-    const filas=DIAGF.map(d=>({_d:d,fecha:d._j.fecha,hora:hhmm(d.creado),palma:etiquetaDiag(d),lote:d.lote,estado:(estadoDe(d.estado)||{n:d.estado_nombre||d.estado}).n,_c:colorD(d),problemas:d.nivel1?[d.n1_codigo||d.nivel1,d.nivel2,d.nivel3].filter(Boolean).join(' › '):String(d.problemas||'').split('|').filter(Boolean).join(', '),evaluador:d.evaluador,fotos:Number(d.n_fotos)||0}));
-    const t=tabla('tDiag',[{k:'fecha',t:'Fecha',asc:false},{k:'hora',t:'Hora'},{k:'palma',t:'Palma'},{k:'estado',t:'Estado',f:x=>`<span class="punto" style="background:${x._c}"></span>${esc(x.estado)}`},{k:'problemas',t:'Diagnóstico'},{k:'evaluador',t:'Operario'},{k:'fotos',t:'Fotos',n:1}],
+    const filas=DIAGF.map(d=>({_d:d,fecha:d._j.fecha,hora:hhmm(d.creado),palma:etiquetaDiag(d),lote:d.lote,cod:codPol(d),_c:colorD(d),registro:textoPol(d),transitabilidad:d.transitabilidad||'',fuente:fuentePol(d),evaluador:d.evaluador,fotos:Number(d.n_fotos)||0}));
+    const t=tabla('tDiag',[{k:'fecha',t:'Fecha',asc:false},{k:'hora',t:'Hora'},{k:'palma',t:'Palma'},{k:'cod',t:'Código',f:x=>`<span class="punto" style="background:${x._c}"></span>${esc(x.cod||'—')}`},{k:'registro',t:'Registro'},{k:'transitabilidad',t:'Transitabilidad'},{k:'fuente',t:'Fuente'},{k:'evaluador',t:'Operario'},{k:'fotos',t:'Fotos',n:1}],
       filas,f=>{mapa.setView([f._d.lat,f._d.lng],Math.max(mapa.getZoom(),19));popupDiag(f._d);});
-    P.innerHTML=`<div class="tenue" style="margin-bottom:6px;font-size:12.5px">${num(DIAGF.length)} diagnóstico(s). Toque uno para ubicarlo y ver sus fotos.</div>`+t.html+`<div style="margin-top:10px"><button class="btn mini" id="xDiag">⬇ CSV diagnósticos</button></div>`;$('#xDiag').onclick=()=>csvDiag();
+    P.innerHTML=`<div class="tenue" style="margin-bottom:6px;font-size:12.5px">${num(DIAGF.length)} registro(s) de polinización. Toque uno para ubicarlo y ver su ficha.</div>`+t.html+`<div style="margin-top:10px"><button class="btn mini" id="xDiag">⬇ CSV registros</button></div>`;$('#xDiag').onclick=()=>csvDiag();
   }
 }
 function marcarFila(){if(TAB==='jornadas')pintarPanel();}
@@ -1126,13 +1148,15 @@ function marcarFila(){if(TAB==='jornadas')pintarPanel();}
 function descargar(nombre,contenido,tipo){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([contenido],{type:tipo}));a.download=nombre;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
 function csv(nombre,cols,filas){const q=v=>{if(v==null)return '';const s=typeof v==='number'?String(v).replace('.',','):String(v);return /[;"\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
   descargar(nombre,'﻿'+cols.join(';')+'\r\n'+filas.map(f=>cols.map(c=>q(f[c])).join(';')).join('\r\n'),'text/csv;charset=utf-8');}
-function csvJornadas(){csv(`jornadas_${$('#fDesde').value}_${$('#fHasta').value}.csv`,['id','fecha','usuario','evaluador','hora_inicio','hora_fin','duracion_min','km','ha','palmas','diagnosticos','n_paradas','min_paradas','velocidad_kmh','inicio_labor','fin_labor','min_despl_inicial','min_despl_entre_lotes','min_despl_final','metodo','palmas_buffer','lotes'],
-  JORF.map(j=>({id:j.id,fecha:j.fecha,usuario:j.usuario,evaluador:j.evaluador,hora_inicio:j.hora_inicio,hora_fin:j.hora_fin,duracion_min:j.duracion_min,km:j.km,ha:j.ha,palmas:j.palmas,diagnosticos:j.diags.length,n_paradas:j.n_paradas,min_paradas:j.min_paradas,velocidad_kmh:j.vel==null?'':j.vel,inicio_labor:(j.tiempos||{}).hora_inicio_labor||'',fin_labor:(j.tiempos||{}).hora_fin_labor||'',min_despl_inicial:(j.tiempos||{}).min_desplazamiento_inicial??'',min_despl_entre_lotes:(j.tiempos||{}).min_desplazamiento_entre_lotes??'',min_despl_final:(j.tiempos||{}).min_desplazamiento_final??'',metodo:j.metodo,palmas_buffer:j.comp?j.comp.palmas_visitadas:'',lotes:[...j.lotes].sort(ordenNat).join(',')})));}
-function csvDiag(){const cols=['id','jornada_id','fecha','creado','evaluador','lote','linea','palma','palma_id','estado','estado_nombre','rama','n1_codigo','nivel1','nivel2','nivel3','sintomas','estado_hongo','cirugia','produccion','raices_buenas','transitabilidad','observaciones','problemas','grado_pc','severidad','accion','n_fotos','fotos','lat','lng','dist_gps_palma_m'];
-  csv(`diagnosticos_${$('#fDesde').value}_${$('#fHasta').value}.csv`,cols,DIAGF.map(d=>({...d,fecha:d._j.fecha})));}
+function csvJornadas(){csv(`jornadas_${$('#fDesde').value}_${$('#fHasta').value}.csv`,['id','fecha','usuario','evaluador','hora_inicio','hora_fin','duracion_min','km','ha','palmas','registros','inflorescencias','n_paradas','min_paradas','velocidad_kmh','inicio_labor','fin_labor','min_despl_inicial','min_despl_entre_lotes','min_despl_final','metodo','palmas_buffer','lotes'],
+  JORF.map(j=>({id:j.id,fecha:j.fecha,usuario:j.usuario,evaluador:j.evaluador,hora_inicio:j.hora_inicio,hora_fin:j.hora_fin,duracion_min:j.duracion_min,km:j.km,ha:j.ha,palmas:j.palmas,registros:j.diags.length,inflorescencias:j.diags.reduce((a,d)=>a+(polN(d).inflorescencias||0),0),n_paradas:j.n_paradas,min_paradas:j.min_paradas,velocidad_kmh:j.vel==null?'':j.vel,inicio_labor:(j.tiempos||{}).hora_inicio_labor||'',fin_labor:(j.tiempos||{}).hora_fin_labor||'',min_despl_inicial:(j.tiempos||{}).min_desplazamiento_inicial??'',min_despl_entre_lotes:(j.tiempos||{}).min_desplazamiento_entre_lotes??'',min_despl_final:(j.tiempos||{}).min_desplazamiento_final??'',metodo:j.metodo,palmas_buffer:j.comp?j.comp.palmas_visitadas:'',lotes:[...j.lotes].sort(ordenNat).join(',')})));}
+/* Registros de polinización: conteos A, P y B, condición R / V, transitabilidad y fuente. */
+const COLS_REG=['id','jornada_id','fecha','creado','hora','evaluador','lote','linea','palma','palma_id','codigo','resumen','a','p','b','cond','inflorescencias','transitabilidad','fuente','n_pasadas','observaciones','n_fotos','fotos','lat','lng','dist_gps_palma_m'];
+const filaReg=d=>{const q=polN(d);return {...d,a:q.a,p:q.p,b:q.b,cond:q.cond,inflorescencias:q.inflorescencias,codigo:codPol(q),resumen:textoPol(q),fuente:fuentePol(d),n_pasadas:Array.isArray(d.pasadas)?d.pasadas.length:(d.n_pasadas??''),fecha:d._j?d._j.fecha:'',hora:hhmm(d.creado),jornada_id:d.jornada_id||(d._j&&d._j.id)||''};};
+function csvDiag(){csv(`polinizacion_registros_${$('#fDesde').value}_${$('#fHasta').value}.csv`,COLS_REG,DIAGF.map(filaReg));}
 function geoDeJornadas(js){const feats=[];
   for(const j of js){
-    if(j.track&&j.track.c.length)feats.push({type:'Feature',properties:{tipo:'recorrido',jornada_id:j.id,fecha:j.fecha,usuario:j.usuario,evaluador:j.evaluador,hora_inicio:j.hora_inicio,hora_fin:j.hora_fin,km:j.km,ha:j.ha,palmas_visitadas:j.palmas,diagnosticos:j.diags.length,n_paradas:j.n_paradas},
+    if(j.track&&j.track.c.length)feats.push({type:'Feature',properties:{tipo:'recorrido',jornada_id:j.id,fecha:j.fecha,usuario:j.usuario,evaluador:j.evaluador,hora_inicio:j.hora_inicio,hora_fin:j.hora_fin,km:j.km,ha:j.ha,palmas_visitadas:j.palmas,registros:j.diags.length,n_paradas:j.n_paradas,transito:j.transito||[]},
       geometry:j.track.c.length>1?{type:'LineString',coordinates:j.track.c}:{type:'Point',coordinates:j.track.c[0]}});
     for(const d of j.diags){const {_j,lat,lng,...p}=d;feats.push({type:'Feature',properties:{...p,fecha:j.fecha},geometry:{type:'Point',coordinates:[lng,lat]}});}
     for(const p of j.paradas){const {lat,lng,...q}=p;feats.push({type:'Feature',properties:{...q,jornada_id:j.id,evaluador:j.evaluador,fecha:j.fecha},geometry:{type:'Point',coordinates:[lng,lat]}});}}
@@ -1181,7 +1205,7 @@ async function ghPut(path,texto,mensaje,sha){
 /*HOJA_VIDA_VISOR_JS*/
 (async()=>{
   ponerBase();pintarLeyenda();
-  msOpciones('est',ESTADOS.map(e=>({v:e.id,t:e.n})));
+  opcionesCod();
   try{const r=await fetch('datos/acceso.json',{cache:'no-store'});if(r.ok){const j=await r.json();if(j.formato==='polinizacion-acceso-1')ACCESO=j;}}catch(e){}
   if(!ACCESO){$('#lgMsg').style.color='var(--rojo)';$('#lgMsg').textContent='No se pudo leer el paquete de acceso. Verifique la conexión a internet.';return;}
   if(await restaurarSesion())await entrar();else setTimeout(()=>$('#lgU').focus(),200);

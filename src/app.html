@@ -1810,7 +1810,7 @@ function abrirPalma(id,dm){
       <div class="coord">${lat.toFixed(7)}, ${lng.toFixed(7)}</div>
       ${p._existe===false?'<div style="color:var(--ambar)"><b>Sitio sin palma según la cartografía</b></div>':''}
     </div>
-    ${AUD.ids.has(String(id))?`<div class="aviso">🔎 Palma de la auditoría ${esc(AUD.m.id)}: diagnostíquela sin consultar registros anteriores.</div>`:''}
+    ${AUD.ids.has(String(id))?`<div class="aviso">🔎 Palma de la auditoría ${esc(AUD.m.id)}: regístrela sin consultar registros anteriores.</div>`:''}
     ${S.jornada?(hoy?(hoy.sync==='sincronizado'?`<button class="btn ancho" id="btDiag">${IC.candado} Ver diagnóstico de hoy</button>`
         :(dGps!=null&&dGps<=regla.R?`<button class="btn ancho prim" id="btDiag">✎ Editar diagnóstico de hoy</button>`
         :`<button class="btn ancho" id="btDiag">Ver diagnóstico de hoy · para editar acérquese a ${regla.R} m</button>`))
@@ -2568,25 +2568,21 @@ async function pintarJornadas(){
   $$('#bdCuerpo [data-kml]').forEach(b=>b.onclick=()=>descargarRecorridos([b.dataset.kml],'kml'));
   $$('#bdCuerpo [data-ver]').forEach(b=>b.onclick=()=>{BD.f={q:'',jornada:b.dataset.ver,lote:'',estado:'',sync:''};BD.tab='diag';pintarBD();});
 }
+/* Resumen por lote del último registro de polinización de cada palma en este dispositivo: A, P, B, % balón, R y V. */
 function calcularResumen(){
-  const R=new Map();const fila=l=>{if(!R.has(l))R.set(l,{lote:l,total:0,total_lote:0,evaluadas:0,pc:0,est:{},prob:{}});return R.get(l);};
-  for(const u of S.ultimo.values()){const x=fila(u.lote||'—');x.evaluadas++;if(esCasoPC(u.n1_codigo||(u.problemas||[])[0],u.n2,u.estado))x.pc++;x.est[u.estado]=(x.est[u.estado]||0)+1;(u.problemas||[]).forEach(q=>x.prob[q]=(x.prob[q]||0)+1);}
+  const R=new Map();const fila=l=>{if(!R.has(l))R.set(l,{lote:l,total:0,total_lote:0,evaluadas:0,a:0,p:0,b:0,r:0,v:0});return R.get(l);};
+  for(const u of S.ultimo.values()){const x=fila(u.lote||'—');x.evaluadas++;x.a+=Number(u.a)||0;x.p+=Number(u.p)||0;x.b+=Number(u.b)||0;if(u.cond==='R')x.r++;if(u.cond==='V')x.v++;}
   for(const x of R.values()){const m=CARTO.lotes[x.lote];x.total=m?m.n-(m.vacios||0):0;x.total_lote=m?Number(m.n)||0:0;}
   return Array.from(R.values()).sort((a,b)=>ordenNat(a.lote,b.lote));
 }
-/* Caso de PC para la incidencia: último diagnóstico de la palma con Nivel 1 = PC, excluidos los casos en recuperación
-   (y los dados de alta, que ya no son casos). Incidencia PC = casos de PC ÷ palmas totales del lote (existencia 0 y 1). */
-const esCasoPC=(c,n2,estado)=>c==='PC'&&!/RECUPERACI|DE ALTA/i.test(n2||'')&&estado!=='tratamiento'&&estado!=='alta';
-const incid=x=>x.evaluadas?((x.est.enferma||0)+(x.est.tratamiento||0))/x.evaluadas*100:0;
 function pintarResumen(){
-  const R=calcularResumen();const tot={lote:'TOTAL',total:0,total_lote:0,evaluadas:0,pc:0,est:{},prob:{}};
-  R.forEach(x=>{tot.total+=x.total;tot.total_lote+=x.total_lote;tot.pc+=x.pc;tot.evaluadas+=x.evaluadas;for(const k in x.est)tot.est[k]=(tot.est[k]||0)+x.est[k];for(const k in x.prob)tot.prob[k]=(tot.prob[k]||0)+x.prob[k];});
-  const fh=x=>`<tr><td><b>${esc(x.lote)}</b></td><td>${num(x.pc)}</td><td><b>${x.total_lote?(x.pc/x.total_lote*100).toFixed(2):'0.00'}%</b></td><td>${num(x.total)}</td><td>${num(x.evaluadas)}</td><td>${x.total?(x.evaluadas/x.total*100).toFixed(1):'0.0'}%</td><td>${x.est.sana||0}</td><td>${(x.est.enferma||0)+(x.est.tratamiento||0)}</td><td>${(x.est.muerta||0)+(x.est.erradicada||0)}</td><td><b>${incid(x).toFixed(1)}%</b></td></tr>`;
-  const probs=PROBLEMAS.filter(p=>tot.prob[p.id]).map(p=>`<tr><td>${esc(p.n)}</td><td>${tot.prob[p.id]}</td><td>${tot.evaluadas?(tot.prob[p.id]/tot.evaluadas*100).toFixed(1):'0.0'}%</td></tr>`).join('');
-  $('#bdCuerpo').innerHTML=`<p class="tenue">Último diagnóstico de cada palma registrado en este dispositivo. Incidencia = (enfermas + en recuperación/seguimiento) / evaluadas. <b>Incidencia PC</b> = casos de PC (sin los casos en recuperación ni los dados de alta) ÷ palmas totales del lote (existencia 0 y 1).</p>
-    <div class="tabla-cont" style="max-height:none"><table class="res"><thead><tr><th>Lote</th><th>Casos PC</th><th>Incid. PC</th><th>Palmas</th><th>Evaluadas</th><th>% evaluadas</th><th>Sanas</th><th>Enf./Seg.</th><th>Erradic.</th><th>Incid.</th></tr></thead>
-    <tbody>${R.map(fh).join('')}${R.length?fh(tot):'<tr><td colspan="10" class="tenue">Sin datos.</td></tr>'}</tbody></table></div>
-    <h3>Problemas detectados</h3>${probs?`<table class="res"><thead><tr><th>Problema</th><th>Palmas</th><th>% evaluadas</th></tr></thead><tbody>${probs}</tbody></table>`:'<p class="tenue">Aún no se han registrado problemas.</p>'}`;
+  const R=calcularResumen();const tot={lote:'TOTAL',total:0,total_lote:0,evaluadas:0,a:0,p:0,b:0,r:0,v:0};
+  R.forEach(x=>{for(const k of ['total','total_lote','evaluadas','a','p','b','r','v'])tot[k]+=x[k];});
+  const balon=x=>{const t=x.a+x.p+x.b;return t?(x.b/t*100).toFixed(1)+'%':'—';};
+  const fh=x=>`<tr><td><b>${esc(x.lote)}</b></td><td>${num(x.total)}</td><td>${num(x.evaluadas)}</td><td>${x.total?(x.evaluadas/x.total*100).toFixed(1):'0.0'}%</td><td>${num(x.a)}</td><td>${num(x.p)}</td><td>${num(x.b)}</td><td><b>${balon(x)}</b></td><td>${num(x.r)}</td><td>${num(x.v)}</td></tr>`;
+  $('#bdCuerpo').innerHTML=`<p class="tenue">Último registro de polinización de cada palma en este dispositivo. <b>A</b>: ${esc(nombreCod('A'))} · <b>P</b>: ${esc(nombreCod('P'))} · <b>B</b>: ${esc(nombreCod('B'))} · <b>R</b>: ${esc(nombreCod('R'))} · <b>V</b>: ${esc(nombreCod('V'))}. % balón = B ÷ (A + P + B).</p>
+    <div class="tabla-cont" style="max-height:none"><table class="res"><thead><tr><th>Lote</th><th>Palmas</th><th>Registradas</th><th>% registradas</th><th>A</th><th>P</th><th>B</th><th>% balón</th><th>R</th><th>V</th></tr></thead>
+    <tbody>${R.map(fh).join('')}${R.length?fh(tot):'<tr><td colspan="10" class="tenue">Sin datos.</td></tr>'}</tbody></table></div>`;
 }
 function resumenLote(l){
   const m=CARTO.lotes[l];const p=(S.lotes.features.find(f=>f.properties._lote===l)||{}).properties||{};
@@ -2750,7 +2746,8 @@ function planos(r){
     sintomas:(r.sintomas||[]).join('|'),estado_hongo:r.hongo||'',cirugia:r.cirugia||'',produccion:r.produccion||'',raices_buenas:r.raices||'',transitabilidad:r.transitabilidad||'',
     problemas:(r.problemas||[]).join('|'),grado_pc:r.grado_pc||'',severidad:r.severidad||'',accion:r.accion||'',observaciones:r.observaciones,n_fotos:(r.fotos||[]).length,
     fotos:(r.fotos||[]).map(f=>f+'.jpg').join('|'),lat:r.lat,lng:r.lng,gps_lat:r.gps_lat,gps_lng:r.gps_lng,gps_precision_m:r.gps_acc,
-    dist_gps_palma_m:r.dist_gps,dispositivo:S.cfg.dispositivo,sincronizado:r.sync_fecha||null,...(r.auditoria?{auditoria:r.auditoria}:{}),...(r.ia?{ia_sugerido:[r.ia.sugerido,r.ia.opcion].filter(Boolean).join(' › '),ia_confianza:r.ia.confianza,ia_aplicada:r.ia.aplicada,ia_acerto:r.ia.acerto}:{})};
+    dist_gps_palma_m:r.dist_gps,labor:r.labor||'',a:r.a??null,p:r.p??null,b:r.b??null,cond:r.cond||'',inflorescencias:r.inflorescencias??null,fuente:r.fuente||'',n_pasadas:(r.pasadas||[]).length,
+    dispositivo:S.cfg.dispositivo,sincronizado:r.sync_fecha||null,...(r.auditoria?{auditoria:r.auditoria}:{}),...(r.ia?{ia_sugerido:[r.ia.sugerido,r.ia.opcion].filter(Boolean).join(' › '),ia_confianza:r.ia.confianza,ia_aplicada:r.ia.aplicada,ia_acerto:r.ia.acerto}:{})};
   PROBLEMAS.forEach(p=>o['p_'+p.id]=(r.problemas||[]).includes(p.id)?1:0);
   return o;
 }
@@ -2786,7 +2783,7 @@ async function descargarRecorridos(ids,fmt){
   descargar(new Blob([kml],{type:'application/vnd.google-earth.kml+xml'}),`recorridos_${n}.kml`);}
 function geoJornada(j,regs,pts,ahora,archivoFotos){
   const sel=regs.map(r=>({...r,sync:'sincronizado',sync_fecha:ahora}));
-  const feats=sel.filter(r=>r.lat!=null).map(r=>{const f=featReg(r);f.properties={tipo:'diagnostico',...f.properties};return f;});
+  const feats=sel.filter(r=>r.lat!=null).map(r=>{const f=featReg(r);f.properties={tipo:'diagnostico',...f.properties,...(r.pasadas&&r.pasadas.length?{pasadas:r.pasadas}:{})};return f;});
   if(pts.length)feats.push({type:'Feature',properties:{tipo:'recorrido',jornada_id:j.id,evaluador:j.evaluador,inicio:j.inicio,fin:j.fin,km:+(j.km||0).toFixed(3),
     n_puntos:pts.length,tiempos:pts.map(p=>new Date(p.t).toISOString()),precision_m:pts.map(p=>p.acc)},
     geometry:pts.length>1?{type:'LineString',coordinates:pts.map(p=>[p.lng,p.lat])}:{type:'Point',coordinates:[pts[0].lng,pts[0].lat]}});
@@ -2794,7 +2791,7 @@ function geoJornada(j,regs,pts,ahora,archivoFotos){
     properties:{tipo:'parada',n:p.n,inicio:new Date(p.inicio).toISOString(),fin:new Date(p.fin).toISOString(),hora_inicio:hhmm(p.inicio),hora_fin:hhmm(p.fin),
       duracion_min:p.duracion_min,lote:p.lote,clase:p.tipo,diagnosticos:p.diagnosticos,sin_senal_min:p.sin_senal_min,puntos:p.puntos}});
   return {type:'FeatureCollection',name:'jornada_'+j.id,
-    jornada:{id:j.id,evaluador:j.evaluador,usuario:j.usuario||'',dispositivo:j.dispositivo||S.cfg.dispositivo,fecha:fechaLocal(j.inicio),
+    jornada:{id:j.id,labor:j.labor||LABOR_APP,evaluador:j.evaluador,usuario:j.usuario||'',dispositivo:j.dispositivo||S.cfg.dispositivo,fecha:fechaLocal(j.inicio),transito:Array.isArray(j.transito)?j.transito:[],
       hora_inicio:hhmm(j.inicio),hora_fin:hhmm(j.fin),duracion_min:j.fin?Math.round((Date.parse(j.fin)-Date.parse(j.inicio))/60000):null,inicio:j.inicio,fin:j.fin,
       km:+(j.km||0).toFixed(3),...(j.visita||{}),...(j.resumen_paradas||{}),secuencias:j.secuencias||[],tiempos:j.tiempos||null,velocidad_kmh:j.tiempos?j.tiempos.velocidad_kmh:null,lotes_seleccionados:j.seleccion,diagnosticos:regs.length,puntos_recorrido:pts.length,fotos:regs.reduce((a,r)=>a+(r.fotos||[]).length,0),
       archivo_fotos:archivoFotos||null,cartografia:j.carto_version||'',equipo:j.equipo||null,cortes_gps:j.cortes_gps||[],eventos_gps:j.eventos_gps||[],app:'Polinización '+VERSION,sincronizado:ahora},
@@ -2827,7 +2824,7 @@ async function sincronizar(manual){
       if(ids.length){const z=new JSZip();for(const fid of ids){const f=await dbGet('fotos',fid);if(f)z.file(fid+'.jpg',f.buf);}
         nombreZip=j.id+'_fotos.zip';archivos.push({path:`${raiz}/${fechaLocal(j.inicio)}/${nombreZip}`,b64:aB64(await z.generateAsync({type:'uint8array',compression:'STORE'}))});}
       archivos.unshift({path:base+'.geojson',texto:JSON.stringify(geoJornada(j,regs,pts,ahora,nombreZip))});
-      const sha=await ghCommit(archivos,`Polinización · ${j.evaluador} · jornada ${fechaLocal(j.inicio)} · ${regs.length} diagnóstico(s) · u:${j.usuario||''}`);
+      const sha=await ghCommit(archivos,`Polinización · ${j.evaluador} · jornada ${fechaLocal(j.inicio)} · ${regs.length} registro(s) · u:${j.usuario||''}`);
       regs.forEach(r=>{r.sync='sincronizado';r.sync_fecha=ahora;r.sync_commit=sha;});if(regs.length)await dbPutVarios('registros',regs);
       pts.forEach(p=>p.s=1);if(pts.length)await dbPutVarios('track',pts);
       j.sync='sincronizado';j.sync_fecha=ahora;j.sync_commit=sha;await dbPut('jornadas',j);
@@ -2983,6 +2980,7 @@ async function importarJornadaGeo(g,zip){
         hongo:p.estado_hongo||'',cirugia:p.cirugia||'',produccion:p.produccion||'',raices:p.raices_buenas||'',transitabilidad:p.transitabilidad||'',problemas:sp(p.problemas),
         grado_pc:p.grado_pc||'',severidad:p.severidad||'',accion:p.accion||'',observaciones:p.observaciones||'',fotos:sp(p.fotos).map(sinJpg),lat:c[1],lng:c[0],
         gps_lat:p.gps_lat,gps_lng:p.gps_lng,gps_acc:p.gps_precision_m,dist_gps:p.dist_gps_palma_m};
+      if(p.a!=null||p.cond||p.labor==='polinizacion'){Object.assign(r,{labor:'polinizacion',a:Number(p.a)||0,p:Number(p.p)||0,b:Number(p.b)||0,cond:p.cond||'',fuente:p.fuente||'',pasadas:Array.isArray(p.pasadas)?p.pasadas:[]});completarPol(r);}
       regs.push(r);}
     else if(p.id){const r={...p,numero:p.palma,fotos:sp(p.fotos).map(sinJpg),lat:c[1],lng:c[0]};delete r.palma;regs.push(r);}}
   regs.forEach(r=>{r.sync='sincronizado';r.sync_fecha=h.sincronizado||null;r.importado=true;});
@@ -3212,7 +3210,7 @@ async function panelAuditoria(){
     return `<button class="btn ancho" data-aud="${esc(x.palma_id)}" style="justify-content:space-between;margin-top:4px"><span>${h?'✅':'🔎'} L${esc(x.linea??'?')} · P${esc(x.palma??'?')}</span><span class="tenue">${d==null?'':d<1000?Math.round(d)+' m':(d/1000).toFixed(1)+' km'}</span></button>`;};
   abrirHoja('Auditoría',`
     <div class="stats"><div class="stat"><b>${num(M.palmas.length)}</b><span>Palmas</span></div><div class="stat"><b>${num(hechas)}</b><span>Registradas por usted</span></div><div class="stat"><b>${num(lotes.size)}</b><span>Lotes</span></div></div>
-    <div class="aviso">🔎 Muestra <b>${esc(M.id)}</b>. Diagnostique cada palma <b>como si fuera la primera vez</b>: la app no muestra el diagnóstico del censador. Lo que registre aquí queda marcado como auditoría.</div>
+    <div class="aviso">🔎 Muestra <b>${esc(M.id)}</b>. Registre cada palma <b>como si fuera la primera vez</b>: la app no muestra el registro del operario. Lo que registre aquí queda marcado como auditoría.</div>
     <button class="btn prim ancho" id="audMapa">${AUD.capa?'Ocultar':'Ver'} las palmas en el mapa</button>
     ${[...lotes.entries()].sort((a,b)=>String(a[0]).localeCompare(String(b[0]),'es',{numeric:true})).map(([l,xs])=>`<h3>Lote ${esc(l)} <span class="tenue">(${xs.filter(x=>auditadaPorMi(x.palma_id)).length}/${xs.length})</span></h3>${xs.map(fila).join('')}`).join('')}
     <button class="btn ancho" id="audRecargar" style="margin-top:12px">↻ Buscar una muestra más reciente</button>`);

@@ -182,7 +182,7 @@ const MODO_PROG_RUTA='config/modo_programacion.json',LABORES_MODO_PROG={poliniza
 const modoProgDe=(c,labor)=>c&&c[labor]&&c[labor].modo==='programado'?'programado':'libre';
 
 /* ---------- Hoja de vida de la palma (App y visor): resumen, alertas y línea de tiempo ---------- */
-const HV_LAB={censo:['Censo','#e53935'],correccion:['Corrección','#ff9f1c'],caso_nuevo:['Caso nuevo','#ff7043'],existencia:['Existencia','#9e9e9e']};
+const HV_LAB={censo:['Polinización','#00c853'],correccion:['Corrección','#ff9f1c'],caso_nuevo:['Caso nuevo','#ff7043'],existencia:['Existencia','#9e9e9e']};
 (function(){const css=document.createElement('style');css.textContent=`
   .hv{margin:10px 0;border:1px solid var(--borde,#2a3b36);border-radius:12px;padding:8px 10px;background:rgba(47,147,213,.06)}
   .hv>summary{cursor:pointer;font-weight:800;font-size:15px;list-style:none;display:flex;align-items:center;gap:6px}
@@ -207,8 +207,8 @@ function htmlHojaVida(h,abierta,conFoto){
   const ev=h.ev||[];const r=resumenHV(ev);
   return `<details class="hv"${abierta?' open':''}><summary>📋 Hoja de vida <span class="tenue" style="font-weight:600">· ${ev.length} registro${ev.length===1?'':'s'}</span></summary>
     ${r.al.map(([t,c])=>`<div class="al ${c}">${esc(t)}</div>`).join('')}
-    <div class="est"><div><b>Último diagnóstico:</b><br>${r.ult?esc(r.ult.x):'—'}</div><div><b>Hace:</b><br>${r.dias==null?'—':r.dias===0?'hoy':r.dias+' día'+(r.dias===1?'':'s')}${r.ult?`<br><span class="tenue">${esc(r.ult.q||'')}</span>`:''}</div>
-      <div><b>Diagnósticos:</b> ${r.nDiag}</div></div>
+    <div class="est"><div><b>Último registro:</b><br>${r.ult?esc(r.ult.x):'—'}</div><div><b>Hace:</b><br>${r.dias==null?'—':r.dias===0?'hoy':r.dias+' día'+(r.dias===1?'':'s')}${r.ult?`<br><span class="tenue">${esc(r.ult.q||'')}</span>`:''}</div>
+      <div><b>Registros:</b> ${r.nDiag}</div></div>
     ${[...ev].reverse().map(e=>{const [et,col]=HV_LAB[e.l]||[e.l,'#999'];
       return `<div class="ev" style="border-left-color:${col}"><b>${esc(et)}${e.r&&e.l!=='censo'?' ('+esc(e.r)+')':''}</b> · <span class="tenue">${esc(fechaHV(e.t))}</span><br>${esc(e.x||'')}${e.d?`<br><span class="tenue">${esc(e.d)}</span>`:''}<br><span class="tenue">${esc(e.q||'')}${e.f?(conFoto?` <button class="btn mini nar" data-hvf="${esc(e.f)}">📷 Ver foto</button>`:' · 📷'):''}</span></div>`;}).join('')}
     <div class="tenue" style="font-size:11.5px">Incluye los registros de todo el personal ya sincronizados. Se actualiza con internet.</div></details>`;
