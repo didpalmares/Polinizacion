@@ -2808,7 +2808,7 @@ async function sincronizar(manual){
       const archivos=[];let nombreZip=null;
       const ids=regs.flatMap(r=>r.fotos||[]);
       if(ids.length){const z=new JSZip();for(const fid of ids){const f=await dbGet('fotos',fid);if(f)z.file(fid+'.jpg',f.buf);}
-        nombreZip=j.id+'_fotos.zip';archivos.push({path:`${raiz}/${fechaLocal(j.inicio)}/${nombreZip}`,b64:aB64(await z.generateAsync({type:'uint8array',compression:'STORE'}))});}
+        nombreZip=j.id+'_fotos.zip';archivos.push({path:`jornadas/${fechaLocal(j.inicio)}/${nombreZip}`,b64:aB64(await z.generateAsync({type:'uint8array',compression:'STORE'}))});}
       archivos.unshift({path:base+'.geojson',texto:JSON.stringify(geoJornada(j,regs,pts,ahora,nombreZip))});
       const sha=await ghCommit(archivos,`Polinización · ${j.evaluador} · jornada ${fechaLocal(j.inicio)} · ${regs.length} registro(s) · u:${j.usuario||''}`);
       regs.forEach(r=>{r.sync='sincronizado';r.sync_fecha=ahora;r.sync_commit=sha;});if(regs.length)await dbPutVarios('registros',regs);
