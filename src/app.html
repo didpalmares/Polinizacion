@@ -47,6 +47,9 @@ body.con-polbar #flot{bottom:calc(var(--dock) + var(--inf) + 250px)}body.con-pol
 #btBloq{font-size:20px}
 #bannerApk{border-color:rgba(255,197,61,.7)}#bannerAct:not([hidden])~#bannerApk,#bannerApk:has(~#bannerAct:not([hidden])){top:calc(var(--sup) + var(--hud) + 78px)}
 #bannerHora{border-color:#ff4d4d;background:rgba(80,10,10,.92)}#bannerHora .txt b{color:#ff8a80}
+body.modo-jornada #btUbic,body.modo-jornada #btCercana,body.modo-jornada #btBD,body.modo-jornada #btMenu,body.modo-jornada #btLeyenda,body.modo-jornada #leyenda,body.modo-jornada #btVoz,body.modo-jornada #btSeguir{display:none!important}
+body.modo-jornada #dock{grid-template-columns:1fr!important}
+#btModoJ{font-size:20px;border-color:rgba(255,197,61,.7)}
 </style>
 <style>/*FUENTES*/</style>
 <style>
@@ -427,6 +430,7 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
 <div id="flot">
   <button id="btVoz" class="glass" aria-label="Guía por voz" data-ic="vozOff"></button>
   <button id="btDxVoz" class="glass" aria-label="Registro por voz" title="Registro por voz" hidden><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+  <button id="btModoJ" class="glass" aria-label="Volver a modo jornada" title="Volver a modo jornada" hidden>📌</button>
   <button id="btBloq" class="glass" aria-label="Bloquear pantalla" title="Bloquear pantalla (o mantenga VOLUMEN ARRIBA 2 s)" hidden>🔒</button>
   <button id="btSeguir" class="glass" aria-label="Pantalla fija"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="13.5" cy="3.6" r="2.3" fill="currentColor"/><path d="M12.6 7.2 9.4 9.3 8 13.2M12.6 7.2l-1.4 6 3.3 3.1 1.1 5.2M11.2 13.2l-2.6 3.2-3 4.6M12.6 7.2l2.3 3.3 3.2 1.1" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><small>FIJA</small></button>
 </div>
@@ -2016,6 +2020,7 @@ async function guardarPol(r,op={}){
 function pintarPolBar(rUlt){
   const bar=$('#polBar');if(!bar)return;
   const on=!!S.jornada&&!(typeof esLaborRuta==='function'&&esLaborRuta(S.jornada));bar.hidden=!on;document.body.classList.toggle('con-polbar',on);
+  if(!S.jornada)MODO.libre=false;aplicarModoJornada();
   if(!on){sincronizarBloqueo();return;}
   const ab=tramoAbierto();
   const {f}=S.gps?palmaCercanaPol():{f:null};
@@ -2071,6 +2076,57 @@ function iniciarBloqueo(){
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&BLOQ.on){try{NAT&&NAT.bt&&NAT.bt.brillo({nivel:0.01});}catch(e){}}});
 }
 
+/* ---------- Modo jornada (diseño aprobado) ----------
+   Con la jornada iniciada: solo los botones de la labor (barra A/P/B/R/V, NFC, voz, bloqueo y JORNADA para finalizar);
+   la app queda fijada (función «Fijar aplicación» de Android: no se puede abrir otra app) y a pantalla completa.
+   El supervisor la libera manteniendo el logo 3 s y entrando con su usuario (supervisor, analista o administrador);
+   la jornada sigue activa. Al finalizar la jornada todo vuelve a la normalidad. */
+const MODO={libre:false,aplicado:null};
+const NAT_B=()=>{try{return window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.Botones||null;}catch(e){return null;}};
+function modoJornadaActivo(){return !!S.jornada&&!(typeof esLaborRuta==='function'&&esLaborRuta(S.jornada))&&!MODO.libre;}
+async function aplicarModoJornada(forzar){
+  const on=modoJornadaActivo();document.body.classList.toggle('modo-jornada',on);
+  const bm=$('#btModoJ');if(bm)bm.hidden=!(S.jornada&&MODO.libre);
+  if(!forzar&&MODO.aplicado===on)return;MODO.aplicado=on;
+  const B=NAT_B();if(!B)return;
+  try{if(typeof B.pantallaCompleta==='function')await B.pantallaCompleta({on});}catch(e){}
+  try{if(typeof B.fijar==='function')await B.fijar({on});}catch(e){}
+}
+async function verificarSupervisor(usuario,clave){
+  const u=String(usuario||'').trim().toLowerCase();const e=ACCESO&&ACCESO.usuarios.find(x=>x.u===u);
+  if(!e)throw new Error('Usuario o contraseña incorrectos.');
+  const kek=await kekDe(clave,deB64(e.salt),ACCESO.kdf.iter);
+  let dkRaw;try{dkRaw=await aesDes(kek,deB64(e.iv),deB64(e.ct));}catch(_){throw new Error('Usuario o contraseña incorrectos.');}
+  const dk=await crypto.subtle.importKey('raw',dkRaw,{name:'AES-GCM'},false,['decrypt']);
+  const meta=JSON.parse(DEC.decode(await desObj(dk,e.meta)));
+  if(meta.inactivo)throw new Error('Ese usuario está suspendido.');
+  if(!['supervisor','analista','admin','superadmin'].includes(meta.rol||'operario'))throw new Error('Solo un supervisor, analista o administrador puede desbloquear.');
+  return {u,nombre:meta.nombre,rol:meta.rol};}
+function accesoSupervisor(){
+  if(!S.jornada||MODO.libre)return;
+  abrirHoja('Acceso de supervisor',`<p class="tenue">La jornada de ${esc(S.jornada.evaluador||'')} sigue activa. Ingrese con su usuario de supervisor para ver las demás opciones.</p>
+    <form id="frmSup" autocomplete="off"><label class="campo">Usuario</label><input type="text" id="supU" autocapitalize="off" autocomplete="off">
+    <label class="campo">Contraseña</label><input type="password" id="supC" autocomplete="off">
+    <div id="supMsg" class="aviso" hidden></div>
+    <div class="fila" style="margin-top:14px"><button type="submit" class="btn prim grande" id="supOk">DESBLOQUEAR</button><button type="button" class="btn" id="supNo">Cancelar</button></div></form>`);
+  $('#supNo').onclick=cerrarHoja;
+  $('#frmSup').onsubmit=async ev=>{ev.preventDefault();const b=$('#supOk'),m=$('#supMsg');b.disabled=true;b.textContent='VERIFICANDO…';m.hidden=true;
+    try{const s=await verificarSupervisor($('#supU').value,$('#supC').value);MODO.libre=true;MODO.por=s.u;
+      (S.jornada.desbloqueos||(S.jornada.desbloqueos=[])).push({usuario:s.u,nombre:s.nombre,fecha:new Date(ahoraReal()).toISOString()});
+      try{await dbPut('jornadas',S.jornada);}catch(_){}
+      cerrarHoja();await aplicarModoJornada(true);toast(`🔓 Desbloqueado por ${s.nombre}. Toque 📌 para volver a modo jornada.`,6000);}
+    catch(e){m.textContent=e.message;m.hidden=false;b.disabled=false;b.textContent='DESBLOQUEAR';}};
+  setTimeout(()=>{const i=$('#supU');if(i)i.focus();},300);}
+async function volverModoJornada(){MODO.libre=false;await aplicarModoJornada(true);toast('📌 Modo jornada activo.',3000);}
+function iniciarModoJornada(){
+  const logo=document.querySelector('#hud .insignia');let tm=null;
+  if(logo){const fin=()=>{clearTimeout(tm);tm=null;};
+    logo.addEventListener('pointerdown',()=>{if(!S.jornada||MODO.libre)return;fin();tm=setTimeout(()=>{tm=null;try{navigator.vibrate&&navigator.vibrate(80);}catch(e){}accesoSupervisor();},3000);});
+    ['pointerup','pointerleave','pointercancel'].forEach(e=>logo.addEventListener(e,fin));
+    logo.addEventListener('contextmenu',e=>e.preventDefault());}
+  $('#btModoJ').onclick=volverModoJornada;
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&modoJornadaActivo())aplicarModoJornada(true);});
+}
 /* ---------- Formulario de la palma (edición manual: conteos, R/V, observación y fotos opcionales) ---------- */
 let F=null;
 async function abrirFormulario(base){
@@ -2524,7 +2580,7 @@ async function asegurarNfc(motivo){
   pintarNfc();}
 setInterval(()=>{if(S.jornada&&document.visibilityState==='visible')asegurarNfc('revisar');},20000);
 {let jAnt=null;const _pp=pintarPolBar;pintarPolBar=function(){_pp.apply(this,arguments);const j=S.jornada&&S.jornada.id;if(j&&j!==jAnt)asegurarNfc('jornada');jAnt=j||null;};}
-iniciarPolBar();iniciarBloqueo();iniciarNfc(false);{const _aju=actualizarJornadaUI;actualizarJornadaUI=function(){_aju.apply(this,arguments);pintarPolBar();};}
+iniciarPolBar();iniciarBloqueo();iniciarModoJornada();iniciarNfc(false);{const _aju=actualizarJornadaUI;actualizarJornadaUI=function(){_aju.apply(this,arguments);pintarPolBar();};}
 if(motorVoz()||EN_APK)$('#btDxVoz').hidden=false;
 $('#guia').onclick=e=>{
   if(e.target.closest('#guiaRepetir')){e.stopPropagation();const id=$('#guia').dataset.id;const f=id&&S.idx.get(id);hablar(f?frasePalma(f):(VOZ.ultimaFrase||'Sin palma cercana.'));return;}
@@ -2861,7 +2917,7 @@ function geoJornada(j,regs,pts,ahora,archivoFotos){
     jornada:{id:j.id,labor:j.labor||LABOR_APP,evaluador:j.evaluador,usuario:j.usuario||'',dispositivo:j.dispositivo||S.cfg.dispositivo,fecha:fechaLocal(j.inicio),transito:Array.isArray(j.transito)?j.transito:[],
       hora_inicio:hhmm(j.inicio),hora_fin:hhmm(j.fin),duracion_min:j.fin?Math.round((Date.parse(j.fin)-Date.parse(j.inicio))/60000):null,inicio:j.inicio,fin:j.fin,
       km:+(j.km||0).toFixed(3),...(j.visita||{}),...(j.resumen_paradas||{}),secuencias:j.secuencias||[],tiempos:j.tiempos||null,velocidad_kmh:j.tiempos?j.tiempos.velocidad_kmh:null,lotes_seleccionados:j.seleccion,diagnosticos:regs.length,puntos_recorrido:pts.length,fotos:regs.reduce((a,r)=>a+(r.fotos||[]).length,0),
-      archivo_fotos:archivoFotos||null,desfase_hora_s:j.desfase_hora_s??null,nfc:j.nfc||null,hora_validacion_inicio:j.hora||null,hora_validacion_fin:j.hora_fin||null,cartografia:j.carto_version||'',equipo:j.equipo||null,cortes_gps:j.cortes_gps||[],eventos_gps:j.eventos_gps||[],app:'Polinización '+VERSION,sincronizado:ahora},
+      archivo_fotos:archivoFotos||null,desfase_hora_s:j.desfase_hora_s??null,nfc:j.nfc||null,desbloqueos_supervisor:j.desbloqueos||[],hora_validacion_inicio:j.hora||null,hora_validacion_fin:j.hora_fin||null,cartografia:j.carto_version||'',equipo:j.equipo||null,cortes_gps:j.cortes_gps||[],eventos_gps:j.eventos_gps||[],app:'Polinización '+VERSION,sincronizado:ahora},
     features:feats};
 }
 async function sincronizar(manual){

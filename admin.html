@@ -356,7 +356,11 @@ const codDeTexto=t=>{const m=String(t||'').trim().toUpperCase().match(/^(?:POL:(
 $('#nfcGrabar').onclick=async()=>{if(!NFCW.hay||!NFCW.cod)return;const x=NFC_COD.find(y=>y.c===NFCW.cod);
   const ctrl=new AbortController();NFCW.ctrl=ctrl;const tm=setTimeout(()=>{if(NFCW.ctrl===ctrl){nfcTerminar();nfcMsg('Se agotó el tiempo (30 s). Pulse GRABAR de nuevo.','mal');}},30000);nfcPintar();
   nfcMsg(`📶 Acerque ahora la tarjeta a la parte trasera del celular para grabar <b>${x.c}</b> · ${esc(x.n)}…`);
-  try{await new NDEFReader().write({records:[{recordType:'text',lang:'es',data:x.c}]},{overwrite:true,signal:ctrl.signal});
+  try{const recs=[{recordType:'text',lang:'es',data:x.c}];
+    // Marca de Android (AAR): si la tarjeta se acerca con la app cerrada, Android abre Polinización y ninguna otra app
+    const conAar=[...recs,{recordType:'android.com:pkg',data:new TextEncoder().encode('co.palmasdetumaco.polinizacion')}];
+    try{await new NDEFReader().write({records:conAar},{overwrite:true,signal:ctrl.signal});}
+    catch(e1){if(e1&&e1.name==='AbortError')throw e1;await new NDEFReader().write({records:recs},{overwrite:true,signal:ctrl.signal});} // navegador sin soporte del AAR: solo el texto
     if(NFCW.ctrl!==ctrl)return;try{navigator.vibrate&&navigator.vibrate(150);}catch(e){}
     nfcMsg(`✅ Tarjeta grabada con <b>${x.c}</b> (${esc(x.n)}). Márquela con la letra ${x.c}. Para grabar otra, pulse GRABAR de nuevo.`,'bien');}
   catch(e){if(NFCW.ctrl===ctrl&&e.name!=='AbortError')nfcMsg('⚠️ '+nfcError(e),'mal');}

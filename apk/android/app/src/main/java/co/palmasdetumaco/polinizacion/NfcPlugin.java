@@ -37,6 +37,28 @@ public class NfcPlugin extends Plugin implements NfcAdapter.ReaderCallback {
             | NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS;
     private volatile boolean activo = false;
 
+    @Override
+    public void load() {
+        try { procesarIntento(getActivity().getIntent()); } catch (Exception ignored) { }
+    }
+
+    /** La app se abrió (o volvió al frente) porque se acercó una tarjeta con la app cerrada o en segundo plano. */
+    @Override
+    protected void handleOnNewIntent(Intent intent) {
+        super.handleOnNewIntent(intent);
+        procesarIntento(intent);
+    }
+
+    private void procesarIntento(Intent intent) {
+        if (intent == null) return;
+        String accion = intent.getAction();
+        if (!NfcAdapter.ACTION_NDEF_DISCOVERED.equals(accion) && !NfcAdapter.ACTION_TAG_DISCOVERED.equals(accion)
+                && !NfcAdapter.ACTION_TECH_DISCOVERED.equals(accion)) return;
+        Tag tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
+        intent.setAction(null); // no volver a procesarla si la actividad se recrea
+        if (tag != null) entregar(tag, true);
+    }
+
     private NfcAdapter adaptador() {
         try { return NfcAdapter.getDefaultAdapter(getContext()); } catch (Exception e) { return null; }
     }
@@ -137,7 +159,9 @@ public class NfcPlugin extends Plugin implements NfcAdapter.ReaderCallback {
      *  Android solo vuelve a llamar con la misma tarjeta cuando se retira y se acerca de nuevo, así que no hace falta vigilarla:
      *  se lee, se cierra la conexión de inmediato (para no bloquear la siguiente tarjeta) y se vibra para confirmar la lectura. */
     @Override
-    public void onTagDiscovered(Tag tag) {
+    public void onTagDiscovered(Tag tag) { entregar(tag, false); }
+
+    private void entregar(Tag tag, boolean retener) {
         final String id = hex(tag.getId());
         String texto = "";
         String motivo = "";
@@ -167,7 +191,8 @@ public class NfcPlugin extends Plugin implements NfcAdapter.ReaderCallback {
         r.put("id", id);
         r.put("motivo", motivo);
         r.put("t", System.currentTimeMillis());
-        notifyListeners("tarjeta", r);
+        r.put("abrioApp", retener);
+        notifyListeners("tarjeta", r, retener); // si la abrió la tarjeta, se guarda hasta que la app esté escuchando
     }
 
     private void vibrar(long[] patron) {

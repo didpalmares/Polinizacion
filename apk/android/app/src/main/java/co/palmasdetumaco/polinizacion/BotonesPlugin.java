@@ -3,7 +3,13 @@ package co.palmasdetumaco.polinizacion;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.KeyEvent;
+import android.app.ActivityManager;
+import android.content.Context;
+import android.os.Build;
+import android.view.View;
 import android.view.Window;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.view.WindowManager;
 
 import com.getcapacitor.JSObject;
@@ -55,6 +61,55 @@ public class BotonesPlugin extends Plugin {
         capturar = call.getBoolean("on", false);
         if (!capturar) { presionado = false; h.removeCallbacks(largo); }
         call.resolve();
+    }
+
+    /** Fija la app en la pantalla (función «Fijar aplicación» de Android): no se puede ir a Inicio ni a Recientes ni abrir otra app.
+     *  La primera vez Android pide confirmar. Para soltarla hace falta Atrás + Recientes (y el PIN si el celular lo pide). */
+    @PluginMethod
+    public void fijar(PluginCall call) {
+        final boolean on = call.getBoolean("on", false);
+        getActivity().runOnUiThread(() -> {
+            try {
+                if (on) { if (!fijada()) getActivity().startLockTask(); }
+                else if (fijada()) getActivity().stopLockTask();
+                JSObject r = new JSObject(); r.put("fijada", fijada()); call.resolve(r);
+            } catch (Exception e) { call.reject(e.getMessage()); }
+        });
+    }
+
+    @PluginMethod
+    public void estadoFijado(PluginCall call) { JSObject r = new JSObject(); r.put("fijada", fijada()); call.resolve(r); }
+
+    private boolean fijada() {
+        try {
+            ActivityManager am = (ActivityManager) getContext().getSystemService(Context.ACTIVITY_SERVICE);
+            if (Build.VERSION.SDK_INT >= 23) return am.getLockTaskModeState() != ActivityManager.LOCK_TASK_MODE_NONE;
+            return am.isInLockTaskMode();
+        } catch (Exception e) { return false; }
+    }
+
+    /** Pantalla completa: oculta la barra de estado y la de navegación (reaparecen un momento deslizando desde el borde). */
+    @PluginMethod
+    public void pantallaCompleta(PluginCall call) {
+        final boolean on = call.getBoolean("on", false);
+        getActivity().runOnUiThread(() -> {
+            try {
+                Window w = getActivity().getWindow();
+                if (Build.VERSION.SDK_INT >= 30) {
+                    WindowInsetsController c = w.getInsetsController();
+                    if (c != null) {
+                        if (on) { c.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+                            c.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE); }
+                        else c.show(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+                    }
+                } else {
+                    View d = w.getDecorView();
+                    d.setSystemUiVisibility(on ? (View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_FULLSCREEN
+                            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_LAYOUT_STABLE) : View.SYSTEM_UI_FLAG_VISIBLE);
+                }
+                call.resolve();
+            } catch (Exception e) { call.reject(e.getMessage()); }
+        });
     }
 
     @PluginMethod
