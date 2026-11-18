@@ -56,7 +56,7 @@ with sync_playwright() as p:
     pg.goto(BASE + '/index.html'); pg.wait_for_function("typeof avisoApk==='function'", timeout=30000); time.sleep(2)
     pg.evaluate("try{localStorage.clear()}catch(e){};APK.ultima=null")
     pg.evaluate("avisoApk()"); time.sleep(1.5)
-    check('Aviso al abrir la app cuando hay APK nueva', 'Hay una APK nueva (1.0.8)' in pg.evaluate("document.querySelector('#toast').textContent"), pg.evaluate("document.querySelector('#toast').textContent"))
+    check('Aviso al abrir la app cuando hay APK nueva (banner)', pg.is_visible('#bannerApk') and '1.0.8' in pg.text_content('#bkTxt'), pg.text_content('#bkTxt'))
     ctx.close()
     check('Sin errores de JavaScript', not errores, errores[:3])
     nav.close()

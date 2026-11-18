@@ -45,6 +45,7 @@ body.con-polbar #flot{bottom:calc(var(--dock) + var(--inf) + 250px)}body.con-pol
 #bloqueo .bq-ayuda{text-align:center;font-size:14px;line-height:1.6}
 #btDesbloq{background:#0d1a14;color:#8fb3a1;border:1px solid #1f3a2e}
 #btBloq{font-size:20px}
+#bannerApk{border-color:rgba(255,197,61,.7)}#bannerAct:not([hidden])~#bannerApk,#bannerApk:has(~#bannerAct:not([hidden])){top:calc(var(--sup) + var(--hud) + 78px)}
 </style>
 <style>/*FUENTES*/</style>
 <style>
@@ -83,8 +84,8 @@ button{cursor:pointer}
 #bannerInst .txt{flex:1;font-size:13.5px;line-height:1.35}
 #bannerInst .txt b{font-family:var(--t);font-size:16px;letter-spacing:.5px;display:block}
 @media(min-width:900px){#bannerInst{left:auto;width:420px}}
-#bannerAct{position:fixed;left:10px;right:10px;top:calc(var(--sup) + var(--hud) + 8px);z-index:1200;border-radius:16px;padding:10px 10px 10px 14px;display:flex;align-items:center;gap:10px;border-color:rgba(34,211,154,.6)}
-#bannerAct .txt{flex:1;font-size:13px;line-height:1.35}#bannerAct .txt b{font-family:var(--t);font-size:16px;letter-spacing:.5px;display:block}
+#bannerAct,#bannerApk{position:fixed;left:10px;right:10px;top:calc(var(--sup) + var(--hud) + 8px);z-index:1200;border-radius:16px;padding:10px 10px 10px 14px;display:flex;align-items:center;gap:10px;border-color:rgba(34,211,154,.6)}
+#bannerAct .txt,#bannerApk .txt{flex:1;font-size:13px;line-height:1.35}#bannerAct .txt b,#bannerApk .txt b{font-family:var(--t);font-size:16px;letter-spacing:.5px;display:block}
 @media(min-width:900px){#bannerAct{left:auto;width:420px}}
 #camara{position:fixed;inset:0;z-index:7000;background:#000;display:flex;align-items:center;justify-content:center}
 #camVid{width:100%;height:100%;object-fit:contain;background:#000}
@@ -485,6 +486,8 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
 <div id="bannerInst" class="glass" hidden><span style="font-size:26px">📲</span><div class="txt"><b>Instale Polinización</b>Quedará como una aplicación en este celular y funcionará sin internet.</div>
   <button class="btn nar" id="biOk" style="padding:10px 12px;font-size:14px">INSTALAR</button><button class="icono" id="biNo" aria-label="Cerrar">✕</button></div>
 <div id="instalar" hidden><div class="caja glass"><div style="display:flex;align-items:center;gap:8px"><h2 class="tit" style="flex:1;margin:0;font-size:21px;letter-spacing:1px">📲 Instalar en el celular</h2><button class="icono" id="instCerrar" aria-label="Cerrar">✕</button></div><div id="instCuerpo"></div></div></div>
+<div id="bannerApk" class="glass" hidden><span style="font-size:24px">📲</span><div class="txt"><b>Nueva APK disponible</b><span id="bkTxt"></span></div>
+  <button class="btn prim" id="bkOk" style="padding:9px 12px;font-size:14px">DESCARGAR</button><button class="icono" id="bkNo" aria-label="Cerrar">✕</button></div>
 <div id="bannerAct" class="glass" hidden><span style="font-size:24px">⟳</span><div class="txt"><b>Nueva versión disponible</b><span id="baTxt"></span></div>
   <button class="btn prim" id="baOk" style="padding:9px 12px;font-size:14px">ACTUALIZAR</button><button class="icono" id="baNo" aria-label="Cerrar">✕</button></div>
 <div id="toast"></div>
@@ -3100,7 +3103,13 @@ async function buscarActualizacion(manual){
   if(numVer(v)<=numVer(VERSION)){VERSION_NUEVA=null;$('#bannerAct').hidden=true;if(manual)toast(`✅ Tiene la última versión: ${VERSION}`,4500);return;}
   VERSION_NUEVA=v;
   if(manual){if(confirm(`Hay una versión nueva: ${v}\nVersión instalada: ${VERSION}\n\n¿Actualizar ahora? Sus datos y jornadas no se pierden.`))await aplicarActualizacion();}
-  else{$('#baTxt').textContent=`Versión ${v} disponible (tiene ${VERSION}).`;$('#bannerAct').hidden=false;}
+  else{
+    let ya=null;try{ya=JSON.parse(localStorage.getItem('sv_auto_act')||'null');}catch(e){}
+    const intentada=ya&&ya.v===v&&Date.now()-ya.t<15*60000;
+    if(!S.jornada&&!intentada){ // sin jornada en curso: se actualiza sola (los datos no se pierden)
+      try{localStorage.setItem('sv_auto_act',JSON.stringify({v,t:Date.now()}));}catch(e){}
+      toast(`⟳ Actualizando a la versión ${v}…`,6000);await aplicarActualizacion();return;}
+    $('#baTxt').textContent=`Versión ${v} disponible (tiene ${VERSION}).`;$('#bannerAct').hidden=false;}
 }
 async function aplicarActualizacion(){
   toast('Actualizando la aplicación…',8000);
@@ -3110,8 +3119,15 @@ async function aplicarActualizacion(){
 }
 $('#lgAct').onclick=()=>buscarActualizacion(true);
 $('#baOk').onclick=()=>{$('#bannerAct').hidden=true;aplicarActualizacion();};$('#baNo').onclick=()=>{$('#bannerAct').hidden=true;};
-setInterval(()=>{if(SES&&navigator.onLine)buscarActualizacion(false);},30*60000);
-window.addEventListener('online',()=>{if(SES)setTimeout(()=>buscarActualizacion(false),3000);});
+/* Revisión de versiones nuevas (app web y APK): al abrir, cada 10 min, al volver a la app y al recuperar internet. */
+let ULT_REVISION=0;
+function revisarNovedades(forzar){
+  if(!navigator.onLine)return;if(!forzar&&Date.now()-ULT_REVISION<2*60000)return;ULT_REVISION=Date.now();
+  buscarActualizacion(false).catch(()=>{});setTimeout(()=>avisoApk().catch(()=>{}),1500);}
+setInterval(()=>revisarNovedades(true),10*60000);
+window.addEventListener('online',()=>setTimeout(()=>revisarNovedades(true),3000));
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(()=>revisarNovedades(false),1500);});
+setTimeout(()=>revisarNovedades(true),5000);
 function ofrecerInstalacion(){
   if(estaInstalada())return;
   let ult=0;try{ult=Number(localStorage.getItem('sv_banner_inst'))||0;}catch(e){}
@@ -3128,9 +3144,11 @@ const textoApkInst=()=>EN_APK?(APK.inst||'1.0.6 o anterior'):'No instalada';
 function apkNueva(){if(!EN_APK||!APK.ultima)return false;return cmpVer(APK.ultima,APK.inst||'1.0.6')>0;}
 async function ultimaApk(forzar){
   let c=null;try{c=JSON.parse(localStorage.getItem('sv_apk_ultima')||'null');}catch(e){}
-  if(c&&c.v&&!forzar&&Date.now()-c.t<6*3600e3){APK.ultima=c.v;return c.v;}
-  if(navigator.onLine)try{const r=await fetch('https://api.github.com/repos/didpalmares/Polinizacion/releases/latest',{cache:'no-store',headers:{Accept:'application/vnd.github+json'}});
-    if(r.ok){const v=String((await r.json()).tag_name||'').replace(/^apk-/,'');if(/^\d+(\.\d+)*$/.test(v)){APK.ultima=v;try{localStorage.setItem('sv_apk_ultima',JSON.stringify({v,t:Date.now()}));}catch(e){}return v;}}}catch(e){}
+  if(c&&c.v&&!forzar&&Date.now()-c.t<15*60000){APK.ultima=c.v;return c.v;}
+  if(navigator.onLine)try{const h={Accept:'application/vnd.github+json'};if(c&&c.etag&&c.v)h['If-None-Match']=c.etag;
+    const r=await fetch('https://api.github.com/repos/didpalmares/Polinizacion/releases/latest',{cache:'no-store',headers:h});
+    if(r.status===304&&c&&c.v){APK.ultima=c.v;try{localStorage.setItem('sv_apk_ultima',JSON.stringify({...c,t:Date.now()}));}catch(e){}return c.v;}
+    if(r.ok){const v=String((await r.json()).tag_name||'').replace(/^apk-/,'');if(/^\d+(\.\d+)*$/.test(v)){APK.ultima=v;try{localStorage.setItem('sv_apk_ultima',JSON.stringify({v,t:Date.now(),etag:r.headers.get('ETag')||''}));}catch(e){}return v;}}}catch(e){}
   if(c&&c.v)APK.ultima=c.v;return APK.ultima;
 }
 function descargarApk(){
@@ -3151,9 +3169,12 @@ async function panelApk(){
     $('#apkDl').onclick=descargarApk;};
   pinta();if(!APK.ultima){await ultimaApk(true);if($('#apkDl'))pinta();}
 }
-async function avisoApk(){if(!EN_APK)return;await ultimaApk();if(!apkNueva())return;
-  const k='sv_apk_aviso_'+APK.ultima;try{if(localStorage.getItem(k)===fechaLocal())return;localStorage.setItem(k,fechaLocal());}catch(e){}
-  toast(`📲 Hay una APK nueva (${APK.ultima}). Menú → App Android para descargarla.`,7000);}
+async function avisoApk(){if(!EN_APK)return;await ultimaApk();if(!apkNueva()){$('#bannerApk').hidden=true;return;}
+  const k='sv_apk_cerrado_'+APK.ultima;let cerrado=0;try{cerrado=Number(localStorage.getItem(k))||0;}catch(e){}
+  if(Date.now()-cerrado<4*3600e3)return; // si el operario lo cerró, se vuelve a mostrar a las 4 horas
+  $('#bkTxt').textContent=`Versión ${APK.ultima} (tiene ${APK.inst||'anterior'}). Instálela encima de la actual.`;$('#bannerApk').hidden=false;}
+$('#bkOk').onclick=()=>{$('#bannerApk').hidden=true;descargarApk();};
+$('#bkNo').onclick=()=>{$('#bannerApk').hidden=true;try{localStorage.setItem('sv_apk_cerrado_'+APK.ultima,String(Date.now()));}catch(e){}};
 /* ---------- Auditoría por muestreo (supervisores y administradores) ----------
    El visor guarda la muestra en el repositorio de datos (auditoria/AUD-*.json). Aquí se lista sin el diagnóstico original
    (auditoría a ciegas) y los diagnósticos que el supervisor registre en esas palmas quedan marcados con «auditoria». */
@@ -3582,8 +3603,7 @@ async function despuesDeIngresar(){
   iniciarGPS();ocultarSplash();
   if(SES)toast(`Bienvenido, ${SES.nombre}.`);
   ofrecerInstalacion();
-  setTimeout(()=>buscarActualizacion(false),4000);
-  setTimeout(()=>avisoApk(),7000);
+  setTimeout(()=>revisarNovedades(true),4000);
   programarSync(5000);
 }
 </script>
