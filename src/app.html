@@ -1494,7 +1494,8 @@ function dentroLote(l,sx,sy){const f=featLote(l);if(!f)return true;const lng=sx/
   let m=LMET.get(l);if(!m){m=[];for(const p of polys)for(const r of p)m.push(r.map(c=>[c[0]*KX,c[1]*KY]));LMET.set(l,m);}
   for(const r of m)for(let i=1;i<r.length;i++)if(dSeg(sx,sy,r[i-1][0],r[i-1][1],r[i][0],r[i][1])<=2)return true;
   return false;}
-/* Polinización: una calle solo cuenta como trabajada si tiene al menos un registro (A, P, B, R o V) en alguna de sus líneas. */
+/* Polinización: una calle cuenta como trabajada si se recorre despacio (VEL_TRABAJO) o si tiene al menos un registro (A, P, B, R o V). */
+const VEL_TRABAJO=3/3.6; // 3 km/h en m/s
 function calleConRegistro(E,key){const lr=E.lineasReg;if(!lr)return false;const p=key.split('|');const l=p[0];
   return [p[1],p[2]].some(x=>x!==''&&x!=null&&lr.has(l+'|'+Number(x)));}
 function confirmarCalle(E,key,r,nuevos,t){E.abiertas.set(key,t);E.runs.delete(key);for(const [qq,tt] of r.qs){E.prov.delete(qq.id);marcarVisita(E,r.l,qq,nuevos,tt);}}
@@ -1523,13 +1524,15 @@ function proponer(E,cands,t,nuevos){
     if(c.key.endsWith('|T')){E.prov.delete(q.id);marcarVisita(E,c.l,q,nuevos,t);continue;}
     const ab=E.abiertas.get(c.key);if(ab!=null&&t-ab<=RUN_ABIERTA){E.abiertas.set(c.key,t);marcarVisita(E,c.l,q,nuevos,t);continue;}
     if(E.prov.has(q.id)){const rr=E.runs.get(c.key);if(rr)rr.ult=t;continue;} // quieto en una palma pendiente: la calle sigue viva
-    let r=E.runs.get(c.key);if(!r)E.runs.set(c.key,r={l:c.l,qs:[],ult:t,tot:c.tot,a0:Infinity,a1:-Infinity,x0:c.sx,y0:c.sy,dmax:0});
+    let r=E.runs.get(c.key);if(!r)E.runs.set(c.key,r={l:c.l,qs:[],ult:t,t0:t,tot:c.tot,a0:Infinity,a1:-Infinity,x0:c.sx,y0:c.sy,dmax:0});
     r.qs.push([q,t]);r.ult=t;E.prov.add(q.id);
     // avance del operario: a lo largo de la calle (proyección sobre la dirección de las líneas) o, en terrazas, distancia recorrida
     if(c.ux!=null){const a=c.sx*c.ux+c.sy*c.uy;if(a<r.a0)r.a0=a;if(a>r.a1)r.a1=a;}else r.dmax=Math.max(r.dmax,Math.hypot(c.sx-r.x0,c.sy-r.y0));
     const avance=c.ux!=null?r.a1-r.a0:r.dmax;
     r.ok=(r.qs.length>=3&&avance>=RUN_LARGO&&(c.ux!=null||r.qs.length>=RUN_MIN))||(r.tot<=RUN_MIN+1&&r.qs.length>=Math.max(2,Math.ceil(r.tot*.8)));
-    if(r.ok&&calleConRegistro(E,c.key))confirmarCalle(E,c.key,r,nuevos,t); // calle trabajada y con al menos un registro
+    // Trabajando: recorre la calle despacio (≤ 3 km/h en promedio, con paradas en las palmas) o ya registró algo en ella; de paso va más rápido.
+    const dt=(t-r.t0)/1000;r.lenta=dt>0&&avance/dt<=VEL_TRABAJO;
+    if(r.ok&&(r.lenta||calleConRegistro(E,c.key)))confirmarCalle(E,c.key,r,nuevos,t);
   }
 }
 function cerrarVisita(E){for(const r of E.runs.values())for(const [q] of r.qs)E.prov.delete(q.id);E.runs.clear();} // fin de jornada: lo pendiente es desplazamiento final

@@ -1,5 +1,5 @@
 """Palmas visitadas en lotes lineales (polinización), calle con ambas líneas:
-- Calle trabajada CON un registro en ella: cuenta las dos líneas.  SIN registros: no cuenta (va de paso).
+- Calle recorrida despacio (≤ 3 km/h) o CON un registro: cuenta las dos líneas. Rápido y sin registros: no cuenta (va de paso).
 - Sobre un sendero o vía (a 6 m o menos de su eje): no cuenta aunque haya registros.
 - Quedarse 3 min quieto polinizando una palma no descarta la calle (antes se perdía a los 90 s).
 - En vivo: al registrar una palma, la calle que ya se recorría se confirma.
@@ -30,8 +30,8 @@ PREP = """()=>{
   window.__lineaDe=Object.fromEntries(rows.map(r=>[String(r[0]),r[1]]));VIAS.gj=null;
 }"""
 
-CAMINAR = """async([x,y0,y1,regs,quieto])=>{const {kx,ky,lat0,lng0}=__K;const pts=[];let t=1.8e12;
-  for(let y=y0;y<=y1;y+=1){pts.push({lat:lat0+y/ky,lng:lng0+x/kx,t:(t+=1000),acc:4});
+CAMINAR = """async([x,y0,y1,regs,quieto,paso])=>{const {kx,ky,lat0,lng0}=__K;const pts=[];let t=1.8e12;
+  for(let y=y0;y<=y1;y+=1){pts.push({lat:lat0+y/ky,lng:lng0+x/kx,t:(t+=(paso||1)*1000),acc:4});
     if(quieto&&y===quieto)for(let s=0;s<180;s+=2)pts.push({lat:lat0+y/ky,lng:lng0+x/kx,t:(t+=2000),acc:4});}
   const R=(regs||[]).map(([ln,num])=>({lote:'T1',linea:ln,numero:num,palma_id:String((ln-1)*12+num),labor:'polinizacion',creado:new Date(1.8e12).toISOString()}));
   const E=await calcularVisita(pts,115,5,'calle',false,true,null,8,R);
@@ -46,9 +46,11 @@ with sync_playwright() as p:
     pg.wait_for_function("typeof calleConRegistro==='function' && typeof enSendero==='function'", timeout=30000)
     time.sleep(1)
     pg.evaluate(PREP)
-    c = lambda x, y0, y1, regs=None, quieto=None: pg.evaluate(CAMINAR, [x, y0, y1, regs or [], quieto])
+    c = lambda x, y0, y1, regs=None, quieto=None, paso=1: pg.evaluate(CAMINAR, [x, y0, y1, regs or [], quieto, paso])
     r = c(4.35, 0, 135)
-    check('Calle 1–2 recorrida SIN registros: no cuenta (va de paso)', sum(r.values()) == 0, r)
+    check('De paso (3,6 km/h) SIN registros: no cuenta', sum(r.values()) == 0, r)
+    r = c(4.35, 0, 135, paso=2)
+    check('Despacio (1,8 km/h) SIN registros: cuenta las dos líneas', r['1'] >= 11 and r['2'] >= 11, r)
     r = c(4.35, 0, 135, [[1, 5]])
     check('Calle 1–2 CON un registro (línea 1): cuenta las dos líneas', r['1'] >= 11 and r['2'] >= 11 and r['3'] == 0, r)
     r = c(4.35, 0, 135, [[3, 5]])
@@ -58,7 +60,7 @@ with sync_playwright() as p:
     # Sendero por la calle 1–2
     pg.evaluate("""()=>{const {kx,ky,lat0,lng0}=__K;VIAS.gj={type:'FeatureCollection',features:[{type:'Feature',properties:{tipo:'sendero_principal'},
       geometry:{type:'LineString',coordinates:[[lng0+4.35/kx,lat0-5/ky],[lng0+4.35/kx,lat0+150/ky]]}}]};SEND_IDX=null;}""")
-    r = c(4.35, 0, 135, [[1, 5], [2, 6]])
+    r = c(4.35, 0, 135, [[1, 5], [2, 6]], paso=2)
     check('Sobre un sendero (calle 1–2): solo cuentan las 2 palmas registradas, no la calle', r['1'] == 1 and r['2'] == 1, r)
     r = c(4.35 + 8.7 * 2, 0, 135, [[3, 5]])
     check('Calle 3–4 (a 17 m del sendero) con registro: sí cuenta', r['3'] >= 11 and r['4'] >= 11, r)
