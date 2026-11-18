@@ -548,8 +548,18 @@ function colorReg(r){if(!r)return '#999';if(r.estado==='alta')return COLOR_ALTA;
    cir/prod/rai/tra/obs: si aplican Cirugía, Producción, Raíces buenas, Transitabilidad y Observación · f: fuente. */
 const RAMAS=[{"r":1,"c":"A","n1":"A: Inflorescencia en Antesis","n2":null,"n3":null,"s":[],"h":null,"cir":false,"prod":false,"rai":false,"tra":false,"obs":true,"f":""},{"r":2,"c":"P","n1":"P: Inflorescencia en Post-Antesis","n2":null,"n3":null,"s":[],"h":null,"cir":false,"prod":false,"rai":false,"tra":false,"obs":true,"f":""},{"r":3,"c":"B","n1":"B: Balón (Post-Antesis pasada)","n2":null,"n3":null,"s":[],"h":null,"cir":false,"prod":false,"rai":false,"tra":false,"obs":true,"f":""},{"r":4,"c":"R","n1":"R: Palma Rancho / Tapada","n2":null,"n3":null,"s":[],"h":null,"cir":false,"prod":false,"rai":false,"tra":false,"obs":true,"f":""},{"r":5,"c":"V","n1":"V: Palma con Avispas","n2":null,"n3":null,"s":[],"h":null,"cir":false,"prod":false,"rai":false,"tra":false,"obs":true,"f":""}];
 const SIN_NOVEDAD={c:'SN',n1:'SIN NOVEDAD (PALMA SANA)'}; // solo para leer registros antiguos
-const MSJ_INICIO='Buenos días. Hoy inicia una nueva jornada. Gracias por hacer bien su trabajo: su esfuerzo y dedicación hacen grande a esta empresa. Arranque con toda la actitud, porque hay vida y salud. Que Dios le bendiga y le proteja a usted y a su familia. Palmas de Tumaco le desea un excelente día.';
-const MSJ_FIN='Muchas gracias por su labor. Feliz resto de día.';
+/* Mensajes de voz al iniciar y finalizar la jornada, con el nombre del operario y el saludo según la hora. */
+const MSJ_INICIO_TXT='Hoy inicia una nueva jornada. Gracias por hacer bien su trabajo: su esfuerzo y dedicación hacen grande a esta empresa. Arranque con toda la actitud, porque hay vida y salud. Que Dios le bendiga y le proteja a usted y a su familia. Palmas de Tumaco le desea un excelente día.';
+const PARTICULAS=new Set(['DE','DEL','LA','LAS','LOS','Y','SAN','SANTA']);
+/* «CABEZAS ANGULO ANDREA ALBERTA» → «Andrea»; «DE LA CRUZ REDIN JAIME ALEXIS» → «Jaime»; «ANGULO VERONICA» → «Veronica». */
+function nombrePila(n){const ps=String(n||'').trim().split(/\s+/).filter(Boolean);if(!ps.length)return '';
+  const u=[];for(let i=0;i<ps.length;i++){let w=ps[i];while(PARTICULAS.has(w.split(' ').pop().toUpperCase())&&i+1<ps.length)w+=' '+ps[++i];u.push(w);}
+  const p=u.length>=3?u[2]:u[u.length-1];const w=p.split(' ').pop();return w.charAt(0).toUpperCase()+w.slice(1).toLowerCase();}
+function nombreOperario(){return nombrePila((S.jornada&&S.jornada.evaluador)||(SES&&SES.nombre)||S.cfg.evaluador||'');}
+function saludoHora(){const h=new Date(typeof ahoraReal==='function'?ahoraReal():Date.now()).getHours();return h<12?'Buenos días':h<19?'Buenas tardes':'Buenas noches';}
+function msjInicio(){const n=nombreOperario();return `${saludoHora()}${n?', '+n:''}. ${MSJ_INICIO_TXT}`;}
+function msjFin(){const n=nombreOperario();const h=new Date(typeof ahoraReal==='function'?ahoraReal():Date.now()).getHours();
+  return `Muchas gracias por su labor${n?', '+n:''}. ${h>=19?'Feliz noche':'Feliz resto de día'}.`;}
 const N1S=[...RAMAS.filter((x,i,a)=>a.findIndex(y=>y.c===x.c)===i).map(x=>({c:x.c,n1:x.n1}))];
 const PROBLEMAS=N1S.filter(x=>x.c!=='SN').map(x=>({id:x.c,n:x.n1.charAt(0)+x.n1.slice(1).toLowerCase().replace(/\(([a-z]+)\)/,(m,g)=>'('+g.toUpperCase()+')')}));
 const TRANSIT=['Transitable','Poco transitable','No transitable'];
@@ -1314,7 +1324,7 @@ async function iniciarJornada(sel,evaluador){try{revisarHora();}catch(e){}
   if(S.cfg.seguir!==false){S.seguir=true;pintarSeguir();S.pausaSeguir=Date.now()+12000;} // primero muestra los lotes; luego centra al operario
   setTimeout(()=>revisarSegundoPlano(false),2500);
   toast(`▶ Jornada iniciada: ${sel.length} lote(s). Se está guardando el recorrido.`,4000);
-  hablar(MSJ_INICIO,true);
+  hablar(msjInicio(),true);
   setTimeout(()=>ortoLotes(sel.map(s=>s.lote),true),3000); // detalle de la ortofoto de los lotes elegidos, en segundo plano
   try{if('Notification' in window&&Notification.permission==='default')Notification.requestPermission().then(()=>avisoJornada(true));else avisoJornada(true);}catch(e){}
 }
@@ -1394,7 +1404,7 @@ async function finalizarJornada(){
   S.jornada=null;S.cfg.jornadaActiva=null;await guardarCfg();VIS=null;
   S.palmas=null;S.hechos.clear();indexar();dibujarPalmas();capaTrack.clearLayers();TRACK.linea=null;TRACK.pts=[];PAR.lista=[];capaParadas.clearLayers();
   if(VOZ.activa)alternarVoz();pantallaEncendida(false);gpsFondo(false);actualizarJornadaUI();dibujarLotes();
-  hablar(MSJ_FIN,true);avisoJornada(false);
+  {const fin=msjFin();hablar(fin,true);}avisoJornada(false);
   const res=j.visita;
   abrirHoja('Jornada finalizada',`
     <div class="stats">
