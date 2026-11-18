@@ -1,6 +1,6 @@
 # Polinización 3.4 — Guía de instalación y uso
 
-**Palmas de Tumaco S.A.S.** · Censo fitosanitario georreferenciado sin conexión
+**Palmas de Tumaco S.A.S.** · Registro de polinización georreferenciado sin conexión
 
 ## 1. Arquitectura
 

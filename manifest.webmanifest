@@ -1,7 +1,7 @@
 {
   "name": "Polinización · Palmas de Tumaco",
   "short_name": "Polinización",
-  "description": "Censo fitosanitario georreferenciado sin conexión de Palmas de Tumaco S.A.S.",
+  "description": "Registro de polinización georreferenciado sin conexión de Palmas de Tumaco S.A.S.",
   "lang": "es-CO",
   "start_url": "./index.html",
   "scope": "./",

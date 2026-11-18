@@ -83,7 +83,7 @@ def afiche():
     fT = fuente(['bahnschrift.ttf', 'segoeuib.ttf', 'arialbd.ttf'], 86)
     fS = fuente(['segoeui.ttf', 'arial.ttf'], 36)
     centrado(dr, 222, 'POLINIZACIÓN', fT, (255, 255, 255), W)
-    centrado(dr, 322, 'App de censo sanitario de palma', fS, (205, 240, 225), W)
+    centrado(dr, 322, 'App de registro de polinización', fS, (205, 240, 225), W)
     # Tarjeta blanca con sombra y el QR
     q = qr_bonito(760); x0, y0 = (W - 840) // 2, 455
     sombra = Image.new('RGBA', (W, H), (0, 0, 0, 0)); ImageDraw.Draw(sombra).rounded_rectangle([x0, y0 + 14, x0 + 840, y0 + 854], 56, fill=(3, 60, 40, 70))
