@@ -1926,7 +1926,7 @@ function elegirTransito(lote,momento){if(typeof BLOQ!=='undefined'&&BLOQ.on){des
     <p>${momento==='entrada'?'Antes de registrar palmas en este lote':'Para cerrar este lote'}, elija cómo está la transitabilidad:</p>
     <div style="display:grid;gap:10px">${TRANSIT.map(t=>`<button type="button" class="btn ancho grande${t==='Transitable'?' prim':''}" data-t="${esc(t)}">${esc(t)}</button>`).join('')}</div>`,
     {alCerrar:()=>{if(!listo)res(null);}});
-  document.querySelectorAll('#hojaCuerpo [data-t]').forEach(b=>b.onclick=()=>{listo=true;const t=b.dataset.t;cerrarHoja();res(t);if(typeof asegurarNfc==='function')asegurarNfc('dialogo');});});}
+  document.querySelectorAll('#hojaCuerpo [data-t]').forEach(b=>b.onclick=()=>{listo=true;const t=b.dataset.t;cerrarHoja();res(t);});});}
 async function cerrarTramo(t,motivo){
   const v=await elegirTransito(t.lote,'salida');if(!v)return false;
   t.salida=v;t.t_salida=new Date(ahoraReal()).toISOString();t.cierre=motivo||'boton';
@@ -2463,23 +2463,31 @@ $('#btDxVoz').onclick=alternarVozPol;
    Cada toque cuenta una vez: la misma tarjeta leída otra vez antes de 1,5 s se ignora, salvo que se haya retirado y vuelto a acercar.
    ===================================================================== */
 const NFC={modo:null,estado:'no',ult:null,cola:Promise.resolve(),lector:null,lis:null};
-const NFC_REPOSO=1500;
+const NFC_REPOSO=450; // rebote de la misma tarjeta (Android solo la vuelve a leer cuando se retira y se acerca)
 const NAT_N=()=>window.Capacitor.Plugins.Nfc;
 function nfcNativoDisponible(){try{return !!(NATIVO&&window.Capacitor&&typeof Capacitor.isPluginAvailable==='function'&&Capacitor.isPluginAvailable('Nfc'));}catch(e){return false;}}
 /* «A», «a», «pol:A», «POL://B» → código; null si la tarjeta no es de polinización. */
 function codigoNfc(t){const m=String(t??'').trim().toUpperCase().match(/^(?:POL:(?:\/\/)?)?\s*([APBRV])\s*$/);return m?m[1]:null;}
 /* Lectura de una tarjeta (la llaman el plugin nativo y Web NFC). Devuelve 'ok', 'repetida' o 'desconocida'. */
 function nfcLeido(ev){ev=ev||{};NFC.ultLect=Date.now();const ahora=Date.now(),texto=String(ev.texto??''),clave=ev.id?'id:'+ev.id:'tx:'+texto;
+  const st=statsNfc();st.lecturas++;
   const u=NFC.ult;
-  if(u&&u.clave===clave&&!u.retirada&&ahora-u.t<NFC_REPOSO){u.t=ahora;return 'repetida';} // sigue apoyada o rebotó: no cuenta otra vez
+  if(u&&u.clave===clave&&!u.retirada&&ahora-u.t<NFC_REPOSO){st.repetidas++;return 'repetida';} // rebote de la misma pasada
   NFC.ult={clave,t:ahora,retirada:false};
+  if(!texto){
+    if(ev.motivo==='sin_ndef'){st.en_blanco++;avisoPol('Tarjeta en blanco: grábela en Administración, Grabar tarjetas NFC.',true);return 'desconocida';}
+    st.fallidas++;NFC.ult=null;avisoPol('No se leyó bien la tarjeta. Acérquela de nuevo y déjela quieta un segundo.',true);return 'fallida';}
   const c=codigoNfc(texto);
-  if(!c){avisoPol(texto?`Tarjeta no reconocida (${texto.slice(0,20)}). Use tarjetas A, P, B, R o V.`:'Tarjeta vacía o sin texto. Grábela en Administración.',true);return 'desconocida';}
-  NFC.cola=NFC.cola.then(()=>sumarEnCola(c,'nfc')).catch(e=>console.warn(e));return 'ok';}
+  if(!c){st.desconocidas++;avisoPol(`Tarjeta no reconocida (${texto.slice(0,20)}). Use tarjetas A, P, B, R o V.`,true);return 'desconocida';}
+  st.ok++;pintarNfc();NFC.cola=NFC.cola.then(()=>sumarEnCola(c,'nfc')).catch(e=>console.warn(e));return 'ok';}
+/* Conteo de lecturas NFC de la jornada (se guarda con la jornada y llega al repositorio de datos para revisar fallas). */
+function statsNfc(){const j=S.jornada;const base={lecturas:0,ok:0,repetidas:0,fallidas:0,en_blanco:0,desconocidas:0};
+  if(!j)return NFC.statsSueltas||(NFC.statsSueltas=base);if(!j.nfc)j.nfc=base;
+  clearTimeout(NFC.tGuardar);NFC.tGuardar=setTimeout(()=>{try{if(S.jornada===j)dbPut('jornadas',j);}catch(e){}},3000);return j.nfc;}
 function nfcRetirada(ev){const id=ev&&ev.id;if(NFC.ult&&id&&NFC.ult.clave==='id:'+id)NFC.ult.retirada=true;}
 function pintarNfc(){const b=$('#polNfc');if(!b)return;const e=NFC.estado;
   const T={listo:'NFC listo',apagado:'NFC apagado',activar:'Activar NFC',no:'NFC no disponible',viejo:'NFC: actualice la APK',error:'NFC con error'};
-  b.textContent=T[e]||'NFC';b.className='nfc '+e;b.disabled=!(e==='apagado'||e==='activar'||e==='error');
+  b.textContent=T[e]||'NFC';{const s=S.jornada&&S.jornada.nfc;if(e==='listo'&&s&&s.ok)b.textContent=`NFC listo · ${s.ok}`;}b.className='nfc '+e;b.disabled=!(e==='apagado'||e==='activar'||e==='error');
   b.title=e==='apagado'?'Toque para abrir los ajustes de NFC del celular':e==='activar'?'Toque para leer tarjetas NFC':'';}
 async function iniciarNfc(gesto){
   try{
@@ -2510,7 +2518,7 @@ async function asegurarNfc(motivo){
   if(NFC.modo!=='nativo'){if(NFC.estado!=='listo')await iniciarNfc(false);return;}
   try{const N=NAT_N();const e=await N.estado();
     if(!e.disponible){NFC.estado='no';}else if(!e.habilitado){NFC.estado='apagado';}
-    else if(motivo!=='revisar'||!e.activo||Date.now()-(NFC.ultLect||0)>60000||Date.now()-(NFC.ultReinicio||0)>180000){NFC.ultReinicio=Date.now();try{await N.reiniciar();}catch(_){await N.iniciar();}NFC.estado='listo';}
+    else if(motivo!=='revisar'||!e.activo){NFC.ultReinicio=Date.now();try{await N.reiniciar();}catch(_){await N.iniciar();}NFC.estado='listo';}
     else NFC.estado='listo';
   }catch(e){NFC.estado='error';}
   pintarNfc();}
@@ -2853,7 +2861,7 @@ function geoJornada(j,regs,pts,ahora,archivoFotos){
     jornada:{id:j.id,labor:j.labor||LABOR_APP,evaluador:j.evaluador,usuario:j.usuario||'',dispositivo:j.dispositivo||S.cfg.dispositivo,fecha:fechaLocal(j.inicio),transito:Array.isArray(j.transito)?j.transito:[],
       hora_inicio:hhmm(j.inicio),hora_fin:hhmm(j.fin),duracion_min:j.fin?Math.round((Date.parse(j.fin)-Date.parse(j.inicio))/60000):null,inicio:j.inicio,fin:j.fin,
       km:+(j.km||0).toFixed(3),...(j.visita||{}),...(j.resumen_paradas||{}),secuencias:j.secuencias||[],tiempos:j.tiempos||null,velocidad_kmh:j.tiempos?j.tiempos.velocidad_kmh:null,lotes_seleccionados:j.seleccion,diagnosticos:regs.length,puntos_recorrido:pts.length,fotos:regs.reduce((a,r)=>a+(r.fotos||[]).length,0),
-      archivo_fotos:archivoFotos||null,desfase_hora_s:j.desfase_hora_s??null,hora_validacion_inicio:j.hora||null,hora_validacion_fin:j.hora_fin||null,cartografia:j.carto_version||'',equipo:j.equipo||null,cortes_gps:j.cortes_gps||[],eventos_gps:j.eventos_gps||[],app:'Polinización '+VERSION,sincronizado:ahora},
+      archivo_fotos:archivoFotos||null,desfase_hora_s:j.desfase_hora_s??null,nfc:j.nfc||null,hora_validacion_inicio:j.hora||null,hora_validacion_fin:j.hora_fin||null,cartografia:j.carto_version||'',equipo:j.equipo||null,cortes_gps:j.cortes_gps||[],eventos_gps:j.eventos_gps||[],app:'Polinización '+VERSION,sincronizado:ahora},
     features:feats};
 }
 async function sincronizar(manual){

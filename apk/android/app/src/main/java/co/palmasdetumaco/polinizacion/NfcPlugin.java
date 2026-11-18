@@ -32,9 +32,9 @@ import java.util.Arrays;
  */
 @CapacitorPlugin(name = "Nfc")
 public class NfcPlugin extends Plugin implements NfcAdapter.ReaderCallback {
+    // Las tarjetas son NFC-A (NTAG / MIFARE): buscar solo A y B hace la detección más rápida y estable que buscar todas las tecnologías.
     private static final int BANDERAS = NfcAdapter.FLAG_READER_NFC_A | NfcAdapter.FLAG_READER_NFC_B
-            | NfcAdapter.FLAG_READER_NFC_F | NfcAdapter.FLAG_READER_NFC_V | NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS;
-    private static final long VIGILAR_MAX_MS = 60000L;
+            | NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS;
     private volatile boolean activo = false;
 
     private NfcAdapter adaptador() {
@@ -106,7 +106,7 @@ public class NfcPlugin extends Plugin implements NfcAdapter.ReaderCallback {
         act.runOnUiThread(() -> {
             try {
                 Bundle extras = new Bundle();
-                extras.putInt(NfcAdapter.EXTRA_READER_PRESENCE_CHECK_DELAY, 500);
+                extras.putInt(NfcAdapter.EXTRA_READER_PRESENCE_CHECK_DELAY, 250);
                 a.enableReaderMode(act, yo, BANDERAS, extras);
             } catch (Exception ignored) { } // la actividad no está en primer plano: se activa en handleOnResume
         });
@@ -133,51 +133,50 @@ public class NfcPlugin extends Plugin implements NfcAdapter.ReaderCallback {
         super.handleOnPause();
     }
 
-    /** Hilo del lector NFC de Android: una llamada por cada vez que se acerca una tarjeta. */
+    /** Hilo del lector NFC de Android: una llamada por cada vez que se acerca una tarjeta.
+     *  Android solo vuelve a llamar con la misma tarjeta cuando se retira y se acerca de nuevo, así que no hace falta vigilarla:
+     *  se lee, se cierra la conexión de inmediato (para no bloquear la siguiente tarjeta) y se vibra para confirmar la lectura. */
     @Override
     public void onTagDiscovered(Tag tag) {
         final String id = hex(tag.getId());
-        final Ndef ndef = Ndef.get(tag);
         String texto = "";
-        if (ndef != null) {
-            NdefMessage m = ndef.getCachedNdefMessage();
-            texto = leer(m);
-            // Si la tarjeta pasó rápido o quedó en el borde de la antena, se reintenta la lectura hasta 4 veces
-            for (int i = 0; texto.isEmpty() && i < 4; i++) {
-                try {
-                    if (!ndef.isConnected()) ndef.connect();
-                    texto = leer(ndef.getNdefMessage());
-                } catch (Exception e) {
-                    try { Thread.sleep(80); } catch (InterruptedException ignored) { }
-                }
-            }
-        }
-        JSObject r = new JSObject();
-        r.put("texto", texto);
-        r.put("id", id);
-        notifyListeners("tarjeta", r);
-        if (ndef != null) vigilarRetiro(ndef, id);
-    }
-
-    /** Lee la tarjeta cada 200 ms hasta que deja de responder (se retiró) y entonces avisa con "retirada". */
-    private void vigilarRetiro(final Ndef ndef, final String id) {
-        new Thread(() -> {
+        String motivo = "";
+        Ndef ndef = Ndef.get(tag);
+        if (ndef == null) {
+            motivo = "sin_ndef"; // tarjeta sin formato NDEF (en blanco o de otro sistema)
+        } else {
             try {
-                if (!ndef.isConnected()) ndef.connect();
-                long fin = System.currentTimeMillis() + VIGILAR_MAX_MS;
-                while (System.currentTimeMillis() < fin) {
-                    Thread.sleep(300);
-                    ndef.getNdefMessage(); // lanza una excepción cuando la tarjeta ya no está
+                NdefMessage m = ndef.getCachedNdefMessage();
+                texto = leer(m);
+                for (int i = 0; texto.isEmpty() && i < 4; i++) { // la tarjeta pasó rápido o quedó en el borde de la antena
+                    try {
+                        if (!ndef.isConnected()) ndef.connect();
+                        texto = leer(ndef.getNdefMessage());
+                    } catch (Exception e) {
+                        try { Thread.sleep(60); } catch (InterruptedException ignored) { }
+                    }
                 }
-            } catch (Exception ignored) {
-                // tarjeta retirada (o error de lectura): se trata como retiro
+                if (texto.isEmpty()) motivo = "lectura";
             } finally {
                 try { ndef.close(); } catch (Exception ignored) { }
             }
-            JSObject r = new JSObject();
-            r.put("id", id);
-            notifyListeners("retirada", r);
-        }, "nfc-retiro").start();
+        }
+        vibrar(texto.isEmpty() ? new long[]{0, 40, 60, 40} : new long[]{0, 35});
+        JSObject r = new JSObject();
+        r.put("texto", texto);
+        r.put("id", id);
+        r.put("motivo", motivo);
+        r.put("t", System.currentTimeMillis());
+        notifyListeners("tarjeta", r);
+    }
+
+    private void vibrar(long[] patron) {
+        try {
+            android.os.Vibrator v = (android.os.Vibrator) getContext().getSystemService(android.content.Context.VIBRATOR_SERVICE);
+            if (v == null) return;
+            if (android.os.Build.VERSION.SDK_INT >= 26) v.vibrate(android.os.VibrationEffect.createWaveform(patron, -1));
+            else v.vibrate(patron, -1);
+        } catch (Exception ignored) { }
     }
 
     private static String leer(NdefMessage m) {

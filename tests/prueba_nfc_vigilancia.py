@@ -1,5 +1,5 @@
-"""Vigilancia del lector NFC nativo (plugin simulado): se reinicia al iniciar la jornada, al cerrar el aviso de transitabilidad,
-al volver a la app y cuando lleva más de 60 s sin leer; si el NFC del celular está apagado lo muestra; y una lectura sigue sumando."""
+"""Vigilancia del lector NFC nativo (plugin simulado): se reinicia al iniciar la jornada, al volver a la app y solo si el lector quedó inactivo
+(no se reinicia periódicamente ni tras la transitabilidad: cada reinicio lo apaga un instante); si el NFC del celular está apagado lo muestra; y una lectura sigue sumando."""
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 from comun import CANAL, INIT_VOZ
@@ -54,12 +54,14 @@ with sync_playwright() as p:
     pg.evaluate("__nfc.lis.tarjeta({texto:'A',id:'01'})")
     pg.wait_for_selector('#hojaCuerpo [data-t="Transitable"]', timeout=5000)
     pg.eval_on_selector('#hojaCuerpo [data-t="Transitable"]', 'b=>b.click()'); time.sleep(.6)
-    check('Tras elegir la transitabilidad: reinicia el lector', pg.evaluate("__nfc.reinicios") > r1)
+    check('Tras elegir la transitabilidad: NO reinicia (evita apagar el lector justo al acercar la tarjeta)', pg.evaluate("__nfc.reinicios") == r1)
     check('La tarjeta A sumó 1A', pg.evaluate("(S.hechos.get('P1')||{}).a") == 1)
     # Más de 60 s sin leer: la revisión periódica lo reinicia
     r2 = pg.evaluate("__nfc.reinicios")
-    pg.evaluate("NFC.ultLect=Date.now()-61000;NFC.ultReinicio=Date.now();asegurarNfc('revisar')"); time.sleep(.3)
-    check('Sin lecturas en 60 s: reinicia', pg.evaluate("__nfc.reinicios") > r2)
+    pg.evaluate("NFC.ultLect=Date.now()-600000;__nfc.activo=true;asegurarNfc('revisar')"); time.sleep(.3)
+    check('Lector activo sin lecturas en 10 min: NO reinicia', pg.evaluate("__nfc.reinicios") == r2)
+    pg.evaluate("__nfc.activo=false;asegurarNfc('revisar')"); time.sleep(.3)
+    check('Lector inactivo: la revisión lo reinicia', pg.evaluate("__nfc.reinicios") > r2)
     r3 = pg.evaluate("__nfc.reinicios")
     pg.evaluate("NFC.ultLect=Date.now();NFC.ultReinicio=Date.now();asegurarNfc('revisar')"); time.sleep(.3)
     check('Leyendo y reiniciado hace poco: no reinicia', pg.evaluate("__nfc.reinicios") == r3)
