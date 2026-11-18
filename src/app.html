@@ -46,6 +46,7 @@ body.con-polbar #flot{bottom:calc(var(--dock) + var(--inf) + 250px)}body.con-pol
 #btDesbloq{background:#0d1a14;color:#8fb3a1;border:1px solid #1f3a2e}
 #btBloq{font-size:20px}
 #bannerApk{border-color:rgba(255,197,61,.7)}#bannerAct:not([hidden])~#bannerApk,#bannerApk:has(~#bannerAct:not([hidden])){top:calc(var(--sup) + var(--hud) + 78px)}
+#bannerHora{border-color:#ff4d4d;background:rgba(80,10,10,.92)}#bannerHora .txt b{color:#ff8a80}
 </style>
 <style>/*FUENTES*/</style>
 <style>
@@ -84,8 +85,8 @@ button{cursor:pointer}
 #bannerInst .txt{flex:1;font-size:13.5px;line-height:1.35}
 #bannerInst .txt b{font-family:var(--t);font-size:16px;letter-spacing:.5px;display:block}
 @media(min-width:900px){#bannerInst{left:auto;width:420px}}
-#bannerAct,#bannerApk{position:fixed;left:10px;right:10px;top:calc(var(--sup) + var(--hud) + 8px);z-index:1200;border-radius:16px;padding:10px 10px 10px 14px;display:flex;align-items:center;gap:10px;border-color:rgba(34,211,154,.6)}
-#bannerAct .txt,#bannerApk .txt{flex:1;font-size:13px;line-height:1.35}#bannerAct .txt b,#bannerApk .txt b{font-family:var(--t);font-size:16px;letter-spacing:.5px;display:block}
+#bannerAct,#bannerApk,#bannerHora{position:fixed;left:10px;right:10px;top:calc(var(--sup) + var(--hud) + 8px);z-index:1200;border-radius:16px;padding:10px 10px 10px 14px;display:flex;align-items:center;gap:10px;border-color:rgba(34,211,154,.6)}
+#bannerAct .txt,#bannerApk .txt,#bannerHora .txt{flex:1;font-size:13px;line-height:1.35}#bannerAct .txt b,#bannerApk .txt b,#bannerHora .txt b{font-family:var(--t);font-size:16px;letter-spacing:.5px;display:block}
 @media(min-width:900px){#bannerAct{left:auto;width:420px}}
 #camara{position:fixed;inset:0;z-index:7000;background:#000;display:flex;align-items:center;justify-content:center}
 #camVid{width:100%;height:100%;object-fit:contain;background:#000}
@@ -486,6 +487,8 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
 <div id="bannerInst" class="glass" hidden><span style="font-size:26px">📲</span><div class="txt"><b>Instale Polinización</b>Quedará como una aplicación en este celular y funcionará sin internet.</div>
   <button class="btn nar" id="biOk" style="padding:10px 12px;font-size:14px">INSTALAR</button><button class="icono" id="biNo" aria-label="Cerrar">✕</button></div>
 <div id="instalar" hidden><div class="caja glass"><div style="display:flex;align-items:center;gap:8px"><h2 class="tit" style="flex:1;margin:0;font-size:21px;letter-spacing:1px">📲 Instalar en el celular</h2><button class="icono" id="instCerrar" aria-label="Cerrar">✕</button></div><div id="instCuerpo"></div></div></div>
+<div id="bannerHora" class="glass" hidden role="alert"><span style="font-size:24px">🕒</span><div class="txt"><b>Hora del celular incorrecta</b><span id="bhTxt"></span></div>
+  <button class="btn" id="bhOk" style="padding:9px 12px;font-size:14px">AJUSTAR</button><button class="icono" id="bhNo" aria-label="Cerrar">✕</button></div>
 <div id="bannerApk" class="glass" hidden><span style="font-size:24px">📲</span><div class="txt"><b>Nueva APK disponible</b><span id="bkTxt"></span></div>
   <button class="btn prim" id="bkOk" style="padding:9px 12px;font-size:14px">DESCARGAR</button><button class="icono" id="bkNo" aria-label="Cerrar">✕</button></div>
 <div id="bannerAct" class="glass" hidden><span style="font-size:24px">⟳</span><div class="txt"><b>Nueva versión disponible</b><span id="baTxt"></span></div>
@@ -1301,9 +1304,9 @@ async function confirmarPlan(){
   }
 }
 function idJornada(){const d=new Date();return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}-${uid().slice(0,6)}`;}
-async function iniciarJornada(sel,evaluador){
+async function iniciarJornada(sel,evaluador){try{revisarHora();}catch(e){}
   {const m=motivoNoIniciar();if(m){avisarFueraPlantacion(m);return;}}
-  const j={id:idJornada(),labor:LABOR_APP,inicio:new Date().toISOString(),fin:null,evaluador,usuario:SES?SES.u:'',dispositivo:S.cfg.dispositivo,seleccion:sel,estado:'activa',
+  const j={id:idJornada(),labor:LABOR_APP,inicio:new Date().toISOString(),inicio_real:new Date(ahoraReal()).toISOString(),hora:estadoHora(),fin:null,evaluador,usuario:SES?SES.u:'',dispositivo:S.cfg.dispositivo,seleccion:sel,estado:'activa',
     km:0,sync:'pendiente',version_app:VERSION,carto_version:CARTO.version,modo_programacion:modoProgDe(MPROG_APP.c,LABOR_APP),densidad:Number(S.cfg.densidad)||115,buffer:Number(S.cfg.bufferVisita)||5,bufferTerraza:Number(S.cfg.bufferTerraza)||8,metodoVisita:S.cfg.metodoVisita||'calle',paradaRadio:Number(S.cfg.paradaRadio)||20,paradaMin:Number(S.cfg.paradaMin)||5};
   await dbPut('jornadas',j);S.jornada=j;S.cfg.jornadaActiva=j.id;S.cfg.evaluador=evaluador;await guardarCfg();
   TRACK.ultimo=null;TRACK.n=0;TRACK.pts=[];prepararTrack([]);VIS=nuevoEstadoVisita(j.densidad,j.buffer,j.metodoVisita,j.bufferTerraza);PAR.lista=[];capaParadas.clearLayers();
@@ -1379,7 +1382,7 @@ async function finalizarJornada(){
   if(!confirm(`¿Finalizar la jornada?\n\nCensadas: ${c.hec} de ${c.tot} palmas.\nSe detendrá el registro del recorrido.`))return;
   {const ab=tramoAbierto();if(ab&&!await cerrarTramo(ab,'fin_jornada'))return;}
   await cerrarRecorrido(j);
-  j.fin=new Date().toISOString();j.estado='finalizada';j.sync='pendiente';j.cierre={modo:'boton',usuario:SES?SES.u:'',fecha:j.fin};
+  j.fin=new Date().toISOString();j.fin_real=new Date(ahoraReal()).toISOString();j.hora_fin=estadoHora();j.estado='finalizada';j.sync='pendiente';j.cierre={modo:'boton',usuario:SES?SES.u:'',fecha:j.fin};
   const regs=S.registros.filter(r=>r.jornada_id===j.id);const pts=await puntosTrack(j.id);
   const E=await calcularVisita(pts,j.densidad,j.buffer,j.metodoVisita||'buffer',true,true,j.seleccion,j.bufferTerraza);const par=detectarParadas(pts,j.paradaRadio,j.paradaMin,regs);
   j.paradas=par;j.resumen_paradas=resumenParadas(par,j);j.visita=paradasEnLotes(resumenVisita(E,regs,true),par);
@@ -1878,7 +1881,7 @@ function elegirTransito(lote,momento){if(typeof BLOQ!=='undefined'&&BLOQ.on){des
   document.querySelectorAll('#hojaCuerpo [data-t]').forEach(b=>b.onclick=()=>{listo=true;const t=b.dataset.t;cerrarHoja();res(t);if(typeof asegurarNfc==='function')asegurarNfc('dialogo');});});}
 async function cerrarTramo(t,motivo){
   const v=await elegirTransito(t.lote,'salida');if(!v)return false;
-  t.salida=v;t.t_salida=new Date().toISOString();t.cierre=motivo||'boton';
+  t.salida=v;t.t_salida=new Date(ahoraReal()).toISOString();t.cierre=motivo||'boton';
   S.jornada.sync='pendiente';await dbPut('jornadas',S.jornada);await marcarJornadaPendiente(S.jornada.id);pintarPolBar();return true;}
 /* Devuelve true cuando el lote tiene la entrada registrada (la pide si falta; si había otro lote abierto, primero pide su salida). */
 async function asegurarEntradaLote(lote){
@@ -1886,7 +1889,7 @@ async function asegurarEntradaLote(lote){
   const ab=tramoAbierto();if(ab&&ab.lote===lote)return true;
   if(ab){toast(`Cierre el lote ${ab.lote}: elija la transitabilidad de salida.`,4000);if(!await cerrarTramo(ab,'cambio_lote'))return false;}
   const v=await elegirTransito(lote,'entrada');if(!v)return false;
-  j.transito.push({lote:String(lote),entrada:v,t_entrada:new Date().toISOString(),salida:'',t_salida:''});
+  j.transito.push({lote:String(lote),entrada:v,t_entrada:new Date(ahoraReal()).toISOString(),salida:'',t_salida:''});
   j.sync='pendiente';await dbPut('jornadas',j);await marcarJornadaPendiente(j.id);pintarPolBar();return true;}
 async function finalizarLoteActual(){const ab=tramoAbierto();if(!ab){toast('No hay un lote abierto.');return;}
   if(await cerrarTramo(ab,'boton'))toast(`✅ Lote ${ab.lote} cerrado (${ab.salida}).`);}
@@ -1948,7 +1951,7 @@ async function guardarPol(r,op={}){
   if(SYNC.activo){alert('Se está sincronizando con GitHub. Intente de nuevo en unos segundos.');return false;}
   completarPol(r);
   {const ab=tramoAbierto();r.transitabilidad=ab&&ab.lote===String(r.lote)?ab.entrada:(r.transitabilidad||'');}
-  if(!r.creado){r.creado=new Date().toISOString();r.fecha=ahoraLocal();
+  if(!r.creado){{const tr=ahoraReal();r.creado=new Date(tr).toISOString();r.fecha=ahoraLocalDe(tr);r.creado_telefono=new Date().toISOString();r.hora_fuente=HORA.desfase==null?'telefono':HORA.fuente;r.desfase_hora_s=Math.round((HORA.desfase||0)/1000);}
     if(S.gps){r.gps_lat=+S.gps.lat.toFixed(7);r.gps_lng=+S.gps.lng.toFixed(7);r.gps_acc=Math.round(S.gps.acc*10)/10;r.dist_gps=Math.round(dist(S.gps.lat,S.gps.lng,r.lat,r.lng)*10)/10;}
     else{r.gps_lat=null;r.gps_lng=null;r.gps_acc=null;r.dist_gps=null;}}
   if(AUD.m&&AUD.ids.has(String(r.palma_id)))r.auditoria=AUD.m.id;
@@ -2769,7 +2772,7 @@ async function descargarRecorridos(ids,fmt){
   descargar(new Blob([kml],{type:'application/vnd.google-earth.kml+xml'}),`recorridos_${n}.kml`);}
 function geoJornada(j,regs,pts,ahora,archivoFotos){
   const sel=regs.map(r=>({...r,sync:'sincronizado',sync_fecha:ahora}));
-  const feats=sel.filter(r=>r.lat!=null).map(r=>{const f=featReg(r);f.properties={tipo:'diagnostico',...f.properties,...(r.pasadas&&r.pasadas.length?{pasadas:r.pasadas}:{})};return f;});
+  const feats=sel.filter(r=>r.lat!=null).map(r=>{const f=featReg(r);f.properties={tipo:'diagnostico',...f.properties,...(r.pasadas&&r.pasadas.length?{pasadas:r.pasadas}:{}),...(r.creado_telefono?{creado_telefono:r.creado_telefono,hora_fuente:r.hora_fuente,desfase_hora_s:r.desfase_hora_s}:{})};return f;});
   if(pts.length)feats.push({type:'Feature',properties:{tipo:'recorrido',jornada_id:j.id,evaluador:j.evaluador,inicio:j.inicio,fin:j.fin,km:+(j.km||0).toFixed(3),
     n_puntos:pts.length,tiempos:pts.map(p=>new Date(p.t).toISOString()),precision_m:pts.map(p=>p.acc)},
     geometry:pts.length>1?{type:'LineString',coordinates:pts.map(p=>[p.lng,p.lat])}:{type:'Point',coordinates:[pts[0].lng,pts[0].lat]}});
@@ -2780,7 +2783,7 @@ function geoJornada(j,regs,pts,ahora,archivoFotos){
     jornada:{id:j.id,labor:j.labor||LABOR_APP,evaluador:j.evaluador,usuario:j.usuario||'',dispositivo:j.dispositivo||S.cfg.dispositivo,fecha:fechaLocal(j.inicio),transito:Array.isArray(j.transito)?j.transito:[],
       hora_inicio:hhmm(j.inicio),hora_fin:hhmm(j.fin),duracion_min:j.fin?Math.round((Date.parse(j.fin)-Date.parse(j.inicio))/60000):null,inicio:j.inicio,fin:j.fin,
       km:+(j.km||0).toFixed(3),...(j.visita||{}),...(j.resumen_paradas||{}),secuencias:j.secuencias||[],tiempos:j.tiempos||null,velocidad_kmh:j.tiempos?j.tiempos.velocidad_kmh:null,lotes_seleccionados:j.seleccion,diagnosticos:regs.length,puntos_recorrido:pts.length,fotos:regs.reduce((a,r)=>a+(r.fotos||[]).length,0),
-      archivo_fotos:archivoFotos||null,cartografia:j.carto_version||'',equipo:j.equipo||null,cortes_gps:j.cortes_gps||[],eventos_gps:j.eventos_gps||[],app:'Polinización '+VERSION,sincronizado:ahora},
+      archivo_fotos:archivoFotos||null,inicio_real:j.inicio_real||null,fin_real:j.fin_real||null,hora:j.hora||null,hora_fin:j.hora_fin||null,cartografia:j.carto_version||'',equipo:j.equipo||null,cortes_gps:j.cortes_gps||[],eventos_gps:j.eventos_gps||[],app:'Polinización '+VERSION,sincronizado:ahora},
     features:feats};
 }
 async function sincronizar(manual){
@@ -3094,6 +3097,56 @@ $('#instalar').onclick=e=>{if(e.target.id==='instalar')$('#instalar').hidden=tru
 $('#lgInstalar').onclick=instalarApp;
 $('#biOk').onclick=()=>{$('#bannerInst').hidden=true;instalarApp();};
 $('#biNo').onclick=()=>{$('#bannerInst').hidden=true;try{localStorage.setItem('sv_banner_inst',String(Date.now()));}catch(e){}};
+/* ---------- Hora real del celular ----------
+   Desfase = hora real − hora del celular. Se mide con el GPS (APK: hora de los satélites, sirve sin internet) o con internet
+   (cabecera Date del servidor). Si pasa de 5 minutos se advierte (no se bloquea) y los registros guardan siempre la hora real.
+   Si alguien cambia la hora del celular durante la jornada, el salto se detecta con el reloj interno y se compensa. */
+const HORA={desfase:null,fuente:'',medido:0,base:null,avisado:0,cerrado:0};
+const TOL_HORA=5*60000;
+function ahoraReal(){return Date.now()+(HORA.desfase||0);}
+function ahoraLocalDe(ms){const d=new Date(ms);return `${fechaLocal(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`;}
+function estadoHora(){return {fuente:HORA.desfase==null?'telefono':HORA.fuente,desfase_s:Math.round((HORA.desfase||0)/1000),medido:HORA.medido?new Date(HORA.medido).toISOString():null};}
+const NAT_H=()=>{try{return NATIVO&&window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.Hora||null;}catch(e){return null;}};
+function fijarDesfase(d,fuente){
+  HORA.desfase=Math.abs(d)<2000?0:d; // menos de 2 s: ruido de la medición
+  HORA.fuente=fuente;HORA.medido=Date.now();HORA.base=Date.now()-performance.now();
+  try{localStorage.setItem('sv_hora',JSON.stringify({d:HORA.desfase,fuente,t:Date.now()}));}catch(e){}
+  pintarHora();}
+async function medirHoraGps(){const H=NAT_H();if(!H||typeof H.gps!=='function')return false;
+  try{const r=await H.gps();if(!r||!r.ok||!r.real)return false;fijarDesfase(Math.round(r.real-r.telefono),'gps');return true;}catch(e){return false;}}
+async function medirHoraInternet(){if(!navigator.onLine)return false;
+  try{const t0=Date.now();const r=await fetch('version.json?h='+t0,{cache:'no-store'});const t1=Date.now();
+    const s=Date.parse(r.headers.get('Date')||'');if(!s||t1-t0>15000)return false; // respuesta muy lenta: medición poco confiable
+    fijarDesfase(Math.round(s+500-(t0+t1)/2),'internet');return true;}catch(e){return false;}}
+let REV_HORA=null;
+async function revisarHora(){if(REV_HORA)return REV_HORA;
+  REV_HORA=(async()=>{try{if(!(await medirHoraGps()))await medirHoraInternet();}finally{REV_HORA=null;}pintarHora();})();return REV_HORA;}
+function textoDesfase(ms){const m=Math.round(Math.abs(ms)/60000);const h=Math.floor(m/60),mm=m%60;
+  return (h?`${h} h ${mm} min`:`${m} min`)+(ms>0?' atrasada':' adelantada');}
+function pintarHora(){
+  const b=$('#bannerHora');if(!b)return;const d=HORA.desfase;
+  const mal=d!=null&&Math.abs(d)>TOL_HORA;
+  if(!mal){b.hidden=true;return;}
+  $('#bhTxt').textContent=`Está ${textoDesfase(d)}. Hora real: ${fmtHora(ahoraReal()).slice(0,5)} (${HORA.fuente==='gps'?'GPS':'internet'}). Los registros se guardan con la hora real.`;
+  if(Date.now()-HORA.cerrado>30*60000)b.hidden=false;
+  if(Date.now()-HORA.avisado>30*60000){HORA.avisado=Date.now();
+    try{navigator.vibrate&&navigator.vibrate([200,100,200]);}catch(e){}
+    if(typeof HAY_VOZ==='function'&&HAY_VOZ())hablar(`Atención: la hora del celular está ${textoDesfase(d)}. Corrija la fecha y hora del celular.`,true);}
+}
+async function ajustarHora(){const H=NAT_H();
+  if(H&&typeof H.abrirAjustesFecha==='function'){try{const r=await H.abrirAjustesFecha();if(r&&r.abierto)return;}catch(e){}}
+  alert('Abra los Ajustes del celular → Sistema (o Ajustes generales) → Fecha y hora, y active «Fecha y hora automáticas» (o «Usar hora de la red»).');}
+$('#bhOk').onclick=ajustarHora;
+$('#bhNo').onclick=()=>{HORA.cerrado=Date.now();$('#bannerHora').hidden=true;};
+// Desfase guardado (hasta que se vuelva a medir)
+try{const c=JSON.parse(localStorage.getItem('sv_hora')||'null');if(c&&Date.now()-c.t<6*3600e3){HORA.desfase=c.d;HORA.fuente=c.fuente;HORA.medido=c.t;HORA.base=Date.now()-performance.now();}}catch(e){}
+// Cambio manual de la hora del celular: el reloj del celular salta respecto al reloj interno
+setInterval(()=>{const base=Date.now()-performance.now();if(HORA.base==null){HORA.base=base;return;}
+  const salto=base-HORA.base;if(Math.abs(salto)>30000){HORA.base=base;if(HORA.desfase!=null){HORA.desfase-=salto;pintarHora();}revisarHora();}},15000);
+setInterval(()=>revisarHora(),5*60000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(revisarHora,800);});
+window.addEventListener('online',()=>setTimeout(revisarHora,2000));
+setTimeout(revisarHora,3000);
 /* ---------- Actualización de la app ----------
    Compara la versión instalada con version.json publicado (siempre desde la red). Si hay una más reciente,
    actualiza el service worker, borra la copia guardada de la app (no los datos ni la ortofoto) y recarga. */
