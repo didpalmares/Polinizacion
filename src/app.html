@@ -28,7 +28,7 @@
 #polInfo{flex:1;min-width:0;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pol-bts{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .pol-bts button{min-height:66px;border-radius:12px;border:0;padding:4px 6px;color:#111;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-family:Rajdhani,system-ui,sans-serif}
-.pol-bts button b{font-size:28px;line-height:1}.pol-bts button small{font-size:12.5px;font-weight:700;line-height:1.1;text-align:center}
+.pol-bts button{position:relative}.pol-bts button b{font-size:28px;line-height:1}.pol-n{position:absolute;top:-7px;right:-5px;min-width:30px;height:30px;padding:0 6px;border-radius:15px;background:#0b1f17;color:#fff;border:2px solid #fff;font:800 19px/26px Rajdhani,system-ui,sans-serif;font-style:normal;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.5)}.pol-n[hidden]{display:none}.pol-bts button small{font-size:12.5px;font-weight:700;line-height:1.1;text-align:center}
 .pol-bts button:active{transform:scale(.94)}
 .cA{background:#00c853}.cP{background:#ffab00}.cB{background:#d84315;color:#fff!important}.cR{background:#8d6e63;color:#fff!important}.cV{background:#e53935;color:#fff!important}
 .pol-bts .deshacer{background:#37474f;color:#fff}
@@ -435,7 +435,7 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
 </div>
 <div id="polBar" class="glass" hidden>
   <div class="pol-cab"><div id="polInfo">—</div><button id="polNfc" class="nfc no" type="button" disabled>NFC</button><button id="polFin" class="btn" hidden>Finalizar lote</button></div>
-  <div class="pol-bts"><button data-c="A" class="cA" aria-label="A: Inflorescencia en Antesis"><b>A</b><small>Inflorescencia en Antesis</small></button><button data-c="P" class="cP" aria-label="P: Inflorescencia en Post-Antesis"><b>P</b><small>Inflorescencia en Post-Antesis</small></button><button data-c="B" class="cB" aria-label="B: Balón (Post-Antesis pasada)"><b>B</b><small>Balón (Post-Antesis pasada)</small></button><button data-c="R" class="cR" aria-label="R: Palma Rancho / Tapada"><b>R</b><small>Palma Rancho / Tapada</small></button><button data-c="V" class="cV" aria-label="V: Palma con Avispas"><b>V</b><small>Palma con Avispas</small></button><button id="polDeshacer" class="deshacer" aria-label="Deshacer el último registro"><b>↶</b><small>Deshacer</small></button></div>
+  <div class="pol-bts"><button data-c="A" class="cA" aria-label="A: Inflorescencia en Antesis"><b>A</b><small>Inflorescencia en Antesis</small><i class="pol-n" hidden></i></button><button data-c="P" class="cP" aria-label="P: Inflorescencia en Post-Antesis"><b>P</b><small>Inflorescencia en Post-Antesis</small><i class="pol-n" hidden></i></button><button data-c="B" class="cB" aria-label="B: Balón (Post-Antesis pasada)"><b>B</b><small>Balón (Post-Antesis pasada)</small><i class="pol-n" hidden></i></button><button data-c="R" class="cR" aria-label="R: Palma Rancho / Tapada"><b>R</b><small>Palma Rancho / Tapada</small><i class="pol-n" hidden></i></button><button data-c="V" class="cV" aria-label="V: Palma con Avispas"><b>V</b><small>Palma con Avispas</small><i class="pol-n" hidden></i></button><button id="polDeshacer" class="deshacer" aria-label="Deshacer el último registro"><b>↶</b><small>Deshacer</small></button></div>
 </div>
 <button id="btLeyenda" class="glass">LEYENDA</button>
 <div id="leyenda" class="glass" hidden></div>
@@ -1964,6 +1964,10 @@ function pintarPolBar(rUlt){
   const r=rUlt||(f?S.hechos.get(f.properties._id):null);
   $('#polInfo').innerHTML=(ab?`<b>Lote ${esc(ab.lote)}</b> · ${esc(ab.entrada)}`:'<b>Sin lote abierto</b>')+
     (f?` · Cerca: ${esc(etiquetaPalma(f.properties))}`+(r&&r.palma_id===f.properties._id?` · <b>${esc(textoPol(r))}</b>`:''):(S.gps?' · Ninguna palma a '+(Number(S.cfg.radioSel)||10)+' m':' · Sin GPS'));
+  /* Cantidades ya registradas en la palma que se está trabajando (la más cercana): número sobre A, P y B; ✓ sobre R o V */
+  {const rp=f?((rUlt&&rUlt.palma_id===f.properties._id)?rUlt:S.hechos.get(f.properties._id)):null;
+   document.querySelectorAll('#polBar [data-c]').forEach(b=>{const c=b.dataset.c,k=(COD_INF.find(x=>x.c===c)||{}).k;
+     const v=rp?(k?(rp[k]||0):(rp.cond===c?'✓':0)):0;const i=b.querySelector('.pol-n');if(i){i.textContent=v||'';i.hidden=!v;}});}
   $('#polFin').hidden=!ab;
   sincronizarBloqueo();actualizarBloqueo(rUlt);
 }
