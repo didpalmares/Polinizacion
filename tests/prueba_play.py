@@ -54,22 +54,22 @@ with sync_playwright() as p:
     vz.evaluate("""()=>{document.querySelector('#login').hidden=true;document.querySelector('#app').hidden=false;mapa.invalidateSize();
       window.chunkLote=async()=>[];
       const t0=Date.parse('2026-11-13T13:00:00Z');const c=[],t=[];for(let i=0;i<=60;i++){c.push([-78.70,1.70+i*0.00005]);t.push(t0+i*60000);}
-      const d=(id,min,txt)=>({tipo:'diagnostico',id,palma_id:'P'+id,lote:'IT01',linea:3,palma:min,nivel1:txt,estado:'enferma',evaluador:'Operario Uno',creado:new Date(t0+min*60000).toISOString(),lat:1.70+min*0.00005,lng:-78.70,n_fotos:0});
+      const d=(id,min,x)=>({tipo:'diagnostico',id,palma_id:'P'+id,lote:'IT01',linea:3,palma:min,labor:'polinizacion',a:0,p:0,b:0,cond:'',...x,evaluador:'Operario Uno',creado:new Date(t0+min*60000).toISOString(),lat:1.70+min*0.00005,lng:-78.70,n_fotos:0});
       const j={id:'JV',fecha:'2026-11-13',evaluador:'Operario Uno',usuario:'op1',inicio:new Date(t0).toISOString(),fin:new Date(t0+3600e3).toISOString(),hora_inicio:'08:00',hora_fin:'09:00',duracion_min:60,
         km:0.33,ha:2.35,palmas:270,metodo:'calle',n_paradas:0,min_paradas:0,min_mov:60,por_lote:[],densidad:115,app:'',lotes:new Set(['IT01']),paradas:[],
         track:{c,t,acc:c.map(()=>4)},header:{},secuencias:null,tiempos:{min_efectivo_labor:47,hora_inicio_labor:'08:05',hora_fin_labor:'08:58'},vel:2};
-      j.diags=[d('V1',10,'Pudrición del cogollo'),d('V2',40,'Marchitez letal')];JOR=[j]; // como en el visor real: los diagnósticos de la jornada no llevan _j
+      j.diags=[d('V1',10,{a:2,p:1}),d('V2',40,{cond:'V'})];JOR=[j]; // como en el visor real: los diagnósticos de la jornada no llevan _j
       abrirDetalle(j);}""")
     vr = vz.evaluate("document.querySelector('.play-res').innerText.replace(/\\n/g,' ')")
     check('Visor: resumen con Inicio, Fin, Ha y T. efectivo', all(k in vr for k in ('Inicio', '08:00', 'Fin', '09:00', '2,35', 'T. efectivo', '0:47')) or all(k in vr for k in ('Inicio', 'Fin', '2.35', '0:47')), vr)
     vz.select_option('#pVel', '600'); vz.click('#pBt')
     vz.wait_for_function("!!document.querySelector('.leaflet-popup-content')", timeout=15000)
     pc = vz.evaluate("document.querySelector('.leaflet-popup-content').innerText.replace(/\\n/g,' ')")
-    check('Visor: ficha automática del diagnóstico', 'Pudrición del cogollo' in pc, pc[:100])
+    check('Visor: ficha automática del registro', '2A + 1P' in pc, pc[:100])
     va = vz.evaluate('PLAY.t'); time.sleep(1.5); vb = vz.evaluate('PLAY.t')
     check('Visor: pausa mientras muestra el diagnóstico', abs(vb - va) < 1, (va, vb))
-    vz.wait_for_function("(document.querySelector('.leaflet-popup-content')||{innerText:''}).innerText.includes('Marchitez')", timeout=20000)
-    check('Visor: ficha del 2.º diagnóstico', True)
+    vz.wait_for_function("(document.querySelector('.leaflet-popup-content')||{innerText:''}).innerText.includes('V: Palma con Avispas')", timeout=20000)
+    check('Visor: ficha del 2.º registro', True)
     # Foto que tarda en bajar: una sola descarga, la ficha muestra la foto y la pausa son 5 s desde que se ve
     import io, zipfile, base64 as b64
     png = b64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==')

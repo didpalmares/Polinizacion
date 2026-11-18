@@ -18,12 +18,11 @@ with sync_playwright() as p:
     pg.goto(BASE + '/visor.html'); pg.wait_for_function("typeof abrirRep==='function'&&typeof mapa!=='undefined'", timeout=30000); time.sleep(1)
     pg.evaluate("""()=>{document.querySelector('#login').hidden=true;document.querySelector('#app').hidden=false;mapa.invalidateSize();window.chunkLote=async()=>[];
       const mk=(id,u,nom,fecha,h0,dlng,ndiag)=>{const t0=Date.parse(fecha+'T'+h0+':00-05:00');const c=[],t=[];for(let i=0;i<=40;i++){c.push([-78.70+dlng,1.50+i*0.0001]);t.push(t0+i*60000);}
-        const diags=[...Array(ndiag)].map((_,k)=>({tipo:'diagnostico',id:id+'d'+k,palma_id:'P'+k,lote:'IT01',linea:3,palma:k+1,nivel1:'PUDRICIÓN DE COGOLLO (PC)',n1_codigo:'PC',estado:'enferma',evaluador:nom,creado:new Date(t0+(10+k*10)*60000).toISOString(),lat:1.50+(10+k*10)*0.0001,lng:-78.70+dlng,n_fotos:0}));
+        const diags=[...Array(ndiag)].map((_,k)=>({tipo:'diagnostico',id:id+'d'+k,palma_id:'P'+k,lote:'IT01',linea:3,palma:k+1,labor:'polinizacion',a:2,p:1,b:0,cond:'',evaluador:nom,creado:new Date(t0+(10+k*10)*60000).toISOString(),lat:1.50+(10+k*10)*0.0001,lng:-78.70+dlng,n_fotos:0}));
         const j={id,fecha,evaluador:nom,usuario:u,inicio:new Date(t0).toISOString(),fin:new Date(t0+40*60000).toISOString(),hora_inicio:h0,hora_fin:'',duracion_min:40,km:0.44,ha:1,palmas:100,metodo:'calle',
           n_paradas:0,min_paradas:0,min_mov:40,por_lote:[],densidad:115,app:'',lotes:new Set(['IT01']),paradas:[],track:{c,t,acc:c.map(()=>4)},header:{},secuencias:null,tiempos:null,vel:2,diags};
         diags.forEach(d=>d._j=j);return j;};
       JOR=[mk('J1','1000000001','GOMEZ PEREZ ANDRES','2026-11-13','07:00',0,2),mk('J2','1000000002','LOPEZ DIAZ CARLOS','2026-11-13','07:10',0.002,1),mk('J3','1000000003','MORA RUIZ JAVIER','2026-11-14','07:05',0.004,0)];
-      JOR[0].diags[1].nivel2='CRATER';JOR[1].diags[0].nivel1='PUDRICIÓN DE ESTÍPITE (PE)';JOR[1].diags[0].n1_codigo='PE';JOR[1].diags[0].nivel2='PE PARTIDA';
       aplicarFiltros(true);}""")
     time.sleep(.5)
     pg.click('#btRep'); time.sleep(1)
@@ -37,11 +36,6 @@ with sync_playwright() as p:
     pg.evaluate("ponerRep(REP.T0+3*60000)")
     b = pg.evaluate("({act:+document.querySelector('#repAct').textContent,inact:document.querySelectorAll('#repOps span.inact').length})")
     check('A las 07:03 solo uno ha empezado (los otros, atenuados)', b['act'] == 1 and b['inact'] == 2, b)
-    pg.evaluate("ponerRep(REP.T0+22*60000)")
-    c = pg.evaluate("({n:document.querySelectorAll('#mapa .alerta-critica').length,et:[...document.querySelectorAll('#mapa .alerta-critica .et')].map(e=>e.innerText).sort(),fr:document.querySelector('#repCrit').classList.contains('on'),tx:document.querySelector('#repCrit').innerText})")
-    check('Todos a la vez: PE partida y PC cráter titilan y la franja lo avisa', c['n'] == 2 and c['et'] == ['⚠ CRÁTER · ERRADICAR', '✝ PE PARTIDA · MUERTA'] and c['fr'] and '1 PE PARTIDA' in c['tx'] and '1 PC CRÁTER' in c['tx'], c)
-    pg.evaluate("ponerRep(REP.T0+5*60000)")
-    check('Al retroceder, las alertas desaparecen', pg.evaluate("document.querySelectorAll('#mapa .alerta-critica').length") == 0 and not pg.evaluate("document.querySelector('#repCrit').classList.contains('on')"))
     pg.select_option('#repVel', '3600'); pg.click('#repBt'); time.sleep(1.5)
     check('Play avanza el reloj', pg.evaluate("REP.T>REP.T0+5*60000"), pg.evaluate("document.querySelector('#repReloj').textContent"))
     pg.click('#repBt')
@@ -51,8 +45,7 @@ with sync_playwright() as p:
     check('Uno a uno: 1 de 3 con su hora real', u['n'] == 1 and u['tit'].startswith('1 de 3') and 'GOMEZ' in u['tit'] and u['reloj'] == '07:00:00', u)
     pg.evaluate("ponerRep(REP.T0+20*60000)")
     q = pg.evaluate("Object.fromEntries([...document.querySelectorAll('#repAcu div')].map(d=>[d.firstChild.textContent.trim(),d.querySelector('b').textContent]))")
-    check('Uno a uno: datos acumulados (inicio, fin, transcurrido, km, velocidad, ha, palmas, diagnósticos)', q.get('Inicio') == '07:00' and q.get('Transcurrido') == '00:20:00' and abs(float(q.get('Km recorridos', 0)) - 0.22) < 0.02 and q.get('Velocidad prom.', '').endswith('km/h') and abs(float(q.get('Velocidad prom.', '0').split()[0]) - 0.7) < 0.1 and q.get('Hectáreas') == '0.50' and q.get('Palmas visitadas') == '50' and q.get('Diagnósticos') == '2', q)
-    check('Uno a uno: el cráter titila', pg.evaluate("document.querySelectorAll('#mapa .alerta-critica.crater').length") == 1 and 'CRÁTER' in pg.evaluate("document.querySelector('#repCrit').innerText"))
+    check('Uno a uno: datos acumulados (inicio, fin, transcurrido, km, velocidad, ha, palmas, diagnósticos)', q.get('Inicio') == '07:00' and q.get('Transcurrido') == '00:20:00' and abs(float(q.get('Km recorridos', 0)) - 0.22) < 0.02 and q.get('Velocidad prom.', '').endswith('km/h') and abs(float(q.get('Velocidad prom.', '0').split()[0]) - 0.7) < 0.1 and q.get('Hectáreas') == '0.50' and q.get('Palmas visitadas') == '50' and q.get('Registros') == '2', q)
     pg.click('#repSig'); time.sleep(.6)
     check('Siguiente: 2 de 3', pg.evaluate("document.querySelector('#rep .t').textContent").startswith('2 de 3'))
     pg.click('#repAnt'); time.sleep(.6)
@@ -65,7 +58,7 @@ with sync_playwright() as p:
     pg.evaluate("pausarRep();REP.i=0;prepararRep();REP.vel=3600;document.querySelector('#repDiag').checked=true;iniciarRep()")
     pg.wait_for_function("!!document.querySelector('.leaflet-popup-content')", timeout=15000)
     t1 = pg.evaluate("REP.T"); time.sleep(1.2); t2 = pg.evaluate("REP.T")
-    check('Uno a uno: muestra el diagnóstico y pausa', abs(t2 - t1) < 1 and 'PUDRICIÓN' in pg.evaluate("document.querySelector('.leaflet-popup-content').innerText"))
+    check('Uno a uno: muestra el diagnóstico y pausa', abs(t2 - t1) < 1 and '2A + 1P' in pg.evaluate("document.querySelector('.leaflet-popup-content').innerText"))
     # Cerrar
     pg.click('#repX'); time.sleep(.5)
     c = pg.evaluate("({vis:!document.querySelector('#rep').hidden,rec:mapa.hasLayer(capaRec),diag:mapa.hasLayer(capaDiag),on:REP.on})")
