@@ -39,6 +39,12 @@ body.con-polbar #flot{bottom:calc(var(--dock) + var(--inf) + 250px)}body.con-pol
 .pol-cont{display:grid;grid-template-columns:auto 1fr 52px 48px 52px;align-items:center;gap:8px;margin:8px 0}
 .pol-cont output{text-align:center;font:700 26px Rajdhani,system-ui}.pol-cont .btn{min-height:46px;font-size:24px;padding:0}
 .pol-cod{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:9px;font-weight:800;color:#111}
+#bloqueo{position:fixed;inset:0;z-index:6000;background:#000;color:#5f7a6d;display:flex;flex-direction:column;justify-content:space-between;padding:calc(var(--sup,0px) + 28px) 22px calc(var(--inf,0px) + 26px);touch-action:none;user-select:none;-webkit-user-select:none}
+#bloqueo[hidden]{display:none}
+#bloqueo .bq-sup{font-size:15px;line-height:1.5}#bloqueo .bq-sup b{letter-spacing:2px;color:#7e9a8c}#bqUlt{margin-top:6px;font-size:22px;font-weight:700;color:#8fb3a1}
+#bloqueo .bq-ayuda{text-align:center;font-size:14px;line-height:1.6}
+#btDesbloq{background:#0d1a14;color:#8fb3a1;border:1px solid #1f3a2e}
+#btBloq{font-size:20px}
 </style>
 <style>/*FUENTES*/</style>
 <style>
@@ -419,7 +425,13 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
 <div id="flot">
   <button id="btVoz" class="glass" aria-label="Guía por voz" data-ic="vozOff"></button>
   <button id="btDxVoz" class="glass" aria-label="Registro por voz" title="Registro por voz" hidden><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+  <button id="btBloq" class="glass" aria-label="Bloquear pantalla" title="Bloquear pantalla (o mantenga VOLUMEN ARRIBA 2 s)" hidden>🔒</button>
   <button id="btSeguir" class="glass" aria-label="Pantalla fija"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="13.5" cy="3.6" r="2.3" fill="currentColor"/><path d="M12.6 7.2 9.4 9.3 8 13.2M12.6 7.2l-1.4 6 3.3 3.1 1.1 5.2M11.2 13.2l-2.6 3.2-3 4.6M12.6 7.2l2.3 3.3 3.2 1.1" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><small>FIJA</small></button>
+</div>
+<div id="bloqueo" hidden role="dialog" aria-label="Pantalla bloqueada">
+  <div class="bq-sup"><b>🔒 PANTALLA BLOQUEADA</b><div id="bqInfo">—</div><div id="bqUlt"></div></div>
+  <div class="bq-ayuda">Las tarjetas NFC siguen funcionando.<br>Para desbloquear: mantenga <b>VOLUMEN ARRIBA</b> 2 segundos<br>o el botón de abajo.</div>
+  <button id="btDesbloq" class="btn ancho grande">🔓 MANTENER 2 s PARA DESBLOQUEAR</button>
 </div>
 <div id="polBar" class="glass" hidden>
   <div class="pol-cab"><div id="polInfo">—</div><button id="polNfc" class="nfc no" type="button" disabled>NFC</button><button id="polFin" class="btn" hidden>Finalizar lote</button></div>
@@ -502,7 +514,7 @@ if(EN_APK&&!NATIVO){try{if(navigator.onLine&&!sessionStorage.getItem('sv_puente'
 // registerPlugin solo existe si se carga @capacitor/core, por eso se usa como alternativa.
 const NAT=NATIVO?(()=>{const C=window.Capacitor;const r=n=>{try{const p=C.Plugins&&C.Plugins[n];if(p)return p;}catch(e){}
   try{return typeof C.registerPlugin==='function'?C.registerPlugin(n):null;}catch(e){return null;}};
-  return {get bg(){return r('BackgroundGeolocation');},get tts(){return r('TextToSpeech');},get ln(){return r('LocalNotifications');},get en(){return r('Energia');},get rec(){return r('Recorrido');}};})():null;
+  return {get bg(){return r('BackgroundGeolocation');},get tts(){return r('TextToSpeech');},get ln(){return r('LocalNotifications');},get en(){return r('Energia');},get bt(){return r('Botones');},get rec(){return r('Recorrido');}};})():null;
 /* Si un service worker antiguo entregó la app en la dirección del visor o de administración, se actualiza y se recarga una vez. */
 if(/\/(visor|admin)\.html$/.test(location.pathname)){try{if(!sessionStorage.getItem('sv_redir')){sessionStorage.setItem('sv_redir','1');
   (navigator.serviceWorker?navigator.serviceWorker.getRegistrations().then(rs=>Promise.all(rs.map(r=>r.update()))):Promise.resolve()).catch(()=>{}).finally(()=>setTimeout(()=>location.reload(),1200));}}catch(e){}}
@@ -620,11 +632,11 @@ const num=x=>Number(x||0).toLocaleString('es-CO');
 const esperar=ms=>new Promise(r=>setTimeout(r,ms));
 function toast(m,ms=2800){const t=$('#toast');t.textContent=m;t.classList.add('ver');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('ver'),ms);}
 /* Botón que se debe mantener presionado ms milisegundos para ejecutar fn (evita finalizar por un toque accidental). */
-function botonMantener(boton,fn,ms=2000){
+function botonMantener(boton,fn,ms=2000,msgCorto){
   if(!boton)return;let t=null,ini=0;boton.style.setProperty('--ms',ms+'ms');
   const vib=p=>{try{navigator.vibrate&&navigator.vibrate(p);}catch(e){}};
   const soltar=()=>{if(!t)return;clearTimeout(t);t=null;boton.classList.remove('presionando');
-    if(Date.now()-ini<ms)toast('Mantenga presionado el botón 2 segundos para finalizar.',3000);};
+    if(Date.now()-ini<ms)toast(msgCorto||'Mantenga presionado el botón 2 segundos para finalizar.',3000);};
   boton.addEventListener('pointerdown',e=>{if(e.button>0||t)return;ini=Date.now();boton.classList.remove('presionando');void boton.offsetWidth;boton.classList.add('presionando');vib(30);
     try{boton.setPointerCapture&&boton.setPointerCapture(e.pointerId);}catch(_){}
     t=setTimeout(()=>{t=null;boton.classList.remove('presionando');vib([60,40,120]);fn();},ms);});
@@ -1851,7 +1863,8 @@ function frasePol(r){if(r.cond)return NOMBRE_COD[r.cond];
 
 /* ----- Transitabilidad del lote: obligatoria al entrar y al salir ----- */
 function tramoAbierto(){const j=S.jornada;if(!j||!Array.isArray(j.transito))return null;return j.transito.find(t=>!t.salida)||null;}
-function elegirTransito(lote,momento){return new Promise(res=>{let listo=false;
+function elegirTransito(lote,momento){if(typeof BLOQ!=='undefined'&&BLOQ.on){desbloquearPantalla();if(HAY_VOZ())hablar(`Elija la transitabilidad de ${momento==='entrada'?'entrada al':'salida del'} lote ${paraVoz(lote)}`,true);}
+  return new Promise(res=>{let listo=false;
   abrirHoja(`Transitabilidad · ${momento==='entrada'?'entrada al':'salida del'} lote ${lote}`,`
     <p>${momento==='entrada'?'Antes de registrar palmas en este lote':'Para cerrar este lote'}, elija cómo está la transitabilidad:</p>
     <div style="display:grid;gap:10px">${TRANSIT.map(t=>`<button type="button" class="btn ancho grande${t==='Transitable'?' prim':''}" data-t="${esc(t)}">${esc(t)}</button>`).join('')}</div>`,
@@ -1945,18 +1958,55 @@ async function guardarPol(r,op={}){
 function pintarPolBar(rUlt){
   const bar=$('#polBar');if(!bar)return;
   const on=!!S.jornada&&!(typeof esLaborRuta==='function'&&esLaborRuta(S.jornada));bar.hidden=!on;document.body.classList.toggle('con-polbar',on);
-  if(!on)return;
+  if(!on){sincronizarBloqueo();return;}
   const ab=tramoAbierto();
   const {f}=S.gps?palmaCercanaPol():{f:null};
   const r=rUlt||(f?S.hechos.get(f.properties._id):null);
   $('#polInfo').innerHTML=(ab?`<b>Lote ${esc(ab.lote)}</b> · ${esc(ab.entrada)}`:'<b>Sin lote abierto</b>')+
     (f?` · Cerca: ${esc(etiquetaPalma(f.properties))}`+(r&&r.palma_id===f.properties._id?` · <b>${esc(textoPol(r))}</b>`:''):(S.gps?' · Ninguna palma a '+(Number(S.cfg.radioSel)||10)+' m':' · Sin GPS'));
   $('#polFin').hidden=!ab;
+  sincronizarBloqueo();actualizarBloqueo(rUlt);
 }
 function iniciarPolBar(){
   document.querySelectorAll('#polBar [data-c]').forEach(b=>b.onclick=()=>sumarCodigo(b.dataset.c,'boton'));
   $('#polDeshacer').onclick=deshacerPol;$('#polFin').onclick=finalizarLoteActual;$('#polNfc').onclick=()=>tocarNfc();
   setInterval(()=>{if(S.jornada&&!$('#polBar').hidden)pintarPolBar();},3000);
+}
+
+/* ---------- Bloqueo de pantalla del registro (modo campo) ----------
+   Pantalla negra con brillo mínimo que no responde a toques; el NFC sigue leyendo (Android solo lee con la pantalla encendida).
+   Se bloquea y desbloquea con VOLUMEN ARRIBA mantenido 2 s (APK) o con los botones 🔒 / 🔓 (2 s). */
+const BLOQ={on:false};
+async function bloquearPantalla(){
+  if(BLOQ.on||!S.jornada)return;BLOQ.on=true;cerrarHoja&&cerrarHoja();
+  $('#bloqueo').hidden=false;actualizarBloqueo();pantallaEncendida(true);
+  try{if(NAT&&NAT.bt)await NAT.bt.brillo({nivel:0.01});}catch(e){}
+  try{navigator.vibrate&&navigator.vibrate([60,60,60]);}catch(e){}
+  if(HAY_VOZ())hablar('Pantalla bloqueada',true);
+}
+async function desbloquearPantalla(){
+  if(!BLOQ.on)return;BLOQ.on=false;$('#bloqueo').hidden=true;
+  try{if(NAT&&NAT.bt)await NAT.bt.brillo({nivel:-1});}catch(e){}
+  try{navigator.vibrate&&navigator.vibrate(120);}catch(e){}
+  if(HAY_VOZ())hablar('Pantalla desbloqueada',true);
+}
+function alternarBloqueo(){BLOQ.on?desbloquearPantalla():bloquearPantalla();}
+function actualizarBloqueo(r){
+  if(!BLOQ.on)return;const i=$('#polInfo');$('#bqInfo').textContent=i?i.textContent:'';
+  if(r)$('#bqUlt').textContent=`${etiquetaReg(r)}: ${textoPol(r)}`;
+}
+function sincronizarBloqueo(){
+  const on=!!S.jornada&&!(typeof esLaborRuta==='function'&&esLaborRuta(S.jornada));
+  $('#btBloq').hidden=!on;
+  try{if(NAT&&NAT.bt)NAT.bt.capturar({on});}catch(e){}
+  if(!on&&BLOQ.on)desbloquearPantalla();
+}
+function iniciarBloqueo(){
+  $('#btBloq').onclick=bloquearPantalla;
+  botonMantener($('#btDesbloq'),desbloquearPantalla,2000,'Mantenga presionado 2 segundos para desbloquear.');
+  ['pointerdown','click','touchstart','wheel','contextmenu'].forEach(ev=>$('#bloqueo').addEventListener(ev,e=>{if(!e.target.closest('#btDesbloq')){e.preventDefault();e.stopPropagation();}},{passive:false}));
+  try{if(NAT&&NAT.bt&&NAT.bt.addListener)NAT.bt.addListener('volumenLargo',alternarBloqueo);}catch(e){}
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&BLOQ.on){try{NAT&&NAT.bt&&NAT.bt.brillo({nivel:0.01});}catch(e){}}});
 }
 
 /* ---------- Formulario de la palma (edición manual: conteos, R/V, observación y fotos opcionales) ---------- */
@@ -2392,7 +2442,7 @@ async function iniciarNfc(gesto){
   pintarNfc();}
 async function tocarNfc(){if(NFC.estado==='apagado'&&NFC.modo==='nativo'){try{await NAT_N().abrirAjustes();}catch(e){}return;}await iniciarNfc(true);}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&NFC.modo==='nativo')iniciarNfc(false);});
-iniciarPolBar();iniciarNfc(false);{const _aju=actualizarJornadaUI;actualizarJornadaUI=function(){_aju.apply(this,arguments);pintarPolBar();};}
+iniciarPolBar();iniciarBloqueo();iniciarNfc(false);{const _aju=actualizarJornadaUI;actualizarJornadaUI=function(){_aju.apply(this,arguments);pintarPolBar();};}
 if(motorVoz()||EN_APK)$('#btDxVoz').hidden=false;
 $('#guia').onclick=e=>{
   if(e.target.closest('#guiaRepetir')){e.stopPropagation();const id=$('#guia').dataset.id;const f=id&&S.idx.get(id);hablar(f?frasePalma(f):(VOZ.ultimaFrase||'Sin palma cercana.'));return;}
