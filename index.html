@@ -1045,7 +1045,7 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
   <div class="tit">POLINIZACIÓN<small>REGISTRO DE POLINIZACIÓN GEORREFERENCIADO</small></div>
   <div class="carga"><i></i></div>
   <div id="splashMsg">Iniciando…</div>
-  <div id="splashVer">VERSIÓN 20261118:1150</div>
+  <div id="splashVer">VERSIÓN 20261118:1157</div>
 </div>
 
 <div id="login" hidden>
@@ -1060,7 +1060,7 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
     <p class="tenue" id="lgMsg"></p>
   </form>
   <p id="lgRed"></p>
-  <div id="lgVer2">VERSIÓN 20261118:1150</div>
+  <div id="lgVer2">VERSIÓN 20261118:1157</div>
   <button type="button" class="btn" id="lgAct" style="margin-top:4px;font-size:13px;padding:7px 12px">⟳ BUSCAR ACTUALIZACIÓN</button>
   <button type="button" class="btn" id="lgInstalar" hidden>📲 INSTALAR EN ESTE CELULAR</button>
 </div>
@@ -1191,7 +1191,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
    Registro de polinización georreferenciado sin conexión, con jornadas,
    registro del recorrido y sincronización con GitHub.
    ===================================================================== */
-const VERSION='20261118:1150';
+const VERSION='20261118:1157';
 /* Ejecutándose dentro de la APK de Android (Capacitor) o en el navegador. */
 const NATIVO=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
 /* APK sin puente nativo (copia guardada antigua): con internet se recarga una vez para recibirlo. */
@@ -2492,7 +2492,7 @@ function detectarParadas(pts,R,Tmin,regs,ahora){
     }else i++;
   }
   out.forEach((p,k)=>{p.n=k+1;p.duracion_min=Math.round((p.fin-p.inicio)/60000);p.lote=loteDe(p.lat,p.lng)||'';
-    p.diagnosticos=(regs||[]).filter(r=>{const t=Date.parse(r.creado);return t>=p.inicio-60000&&t<=p.fin+60000;}).length;
+    p.diagnosticos=(regs||[]).filter(r=>{const t=tRegTel(r);return t>=p.inicio-60000&&t<=p.fin+60000;}).length;
     p.tipo=p.diagnosticos?'con diagnóstico':(p.sin_senal_min>=Math.max(3,(Number(Tmin)||5)-1)?'sin señal GPS':'sin actividad');});
   return out;
 }
@@ -2534,7 +2534,7 @@ function secuenciasDe(pts,o){
   if(!isFinite(ini0)||!fin0)return [];
   const dens=Number(o.densidad)||115,par=o.paradas||[],regs=o.regs||[];
   const marcas=(o.visitas||[]).map(v=>({t:v.t,l:String(v.l),v:1}));
-  for(const r of regs){const t=Date.parse(r.creado);if(t&&r.lote)marcas.push({t,l:String(r.lote),v:0});}
+  for(const r of regs){const t=tRegTel(r);if(t&&r.lote)marcas.push({t,l:String(r.lote),v:0});}
   marcas.sort((a,b)=>a.t-b.t);
   let bl=[];for(const m of marcas){const u=bl[bl.length-1];if(u&&u.l===m.l){u.t1=m.t;u.n++;u.pv+=m.v;}else bl.push({l:m.l,t0:m.t,t1:m.t,n:1,pv:m.v});}
   let cambio=true;while(cambio&&bl.length>1){cambio=false; // bloques mínimos (un registro suelto en otro lote): se funden con el vecino
@@ -2544,7 +2544,7 @@ function secuenciasDe(pts,o){
   const out=[];
   const fila=(tipo,lote,a,b,extra)=>{let pm=0,np=0;for(const p of par){const s=Math.max(a,p.inicio),e=Math.min(b,p.fin);if(e>s){pm+=e-s;np++;}}
     let km=0,prev=null;for(const p of pts){if(p.t<=a){prev=p;continue;}if(p.t>b)break;if(prev){const d=dist(prev.lat,prev.lng,p.lat,p.lng);if(d<500)km+=d/1000;}prev=p;}
-    const dg=regs.filter(x=>{const t=Date.parse(x.creado);return (out.length?t>a:t>=a)&&t<=b;}).length;const mov=(b-a-pm)/3600000;
+    const dg=regs.filter(x=>{const t=tRegTel(x);return (out.length?t>a:t>=a)&&t<=b;}).length;const mov=(b-a-pm)/3600000;
     out.push({secuencia:null,tipo,lote,inicio:new Date(a).toISOString(),fin:new Date(b).toISOString(),hora_inicio:hhmm(a),hora_fin:hhmm(b),
       min_total:+((b-a)/60000).toFixed(1),min_desplazamiento:0,min_paradas:+(pm/60000).toFixed(1),min_efectivo:tipo==='lote'?+((b-a-pm)/60000).toFixed(1):null,paradas:np,
       palmas_visitadas:0,ha:0,diagnosticos:dg,km:+km.toFixed(3),vel_kmh:mov>=1/60&&km>0?+(km/mov).toFixed(2):null,...extra});};
@@ -3416,7 +3416,7 @@ async function abrirPlay(jid){
   L.polyline(pts.map(p=>[p.lat,p.lng]),{color:'#90cdf1',weight:3,opacity:.35,dashArray:'6 7',interactive:false}).addTo(PLAY.capa);
   PLAY.brillo=L.polyline([],{color:'#22d39a',weight:12,opacity:.2,interactive:false}).addTo(PLAY.capa);
   PLAY.estela=L.polyline([],{color:'#22d39a',weight:4.5,opacity:1,interactive:false}).addTo(PLAY.capa);
-  PLAY.regs=S.registros.filter(r=>r.jornada_id===jid&&r.lat!=null).map(r=>({r,t:Date.parse(r.creado),m:L.circleMarker([r.lat,r.lng],{radius:7,color:'#fff',weight:2,fillColor:colorReg(r),fillOpacity:1}).bindTooltip(`${etiquetaReg(r)} · ${esc(textoDiag(r)||(estadoDe(r.estado)||{}).n||'')} · ${fmtHora(Date.parse(r.creado))}`),on:false})).sort((a,b)=>a.t-b.t);
+  PLAY.regs=S.registros.filter(r=>r.jornada_id===jid&&r.lat!=null).map(r=>({r,t:tRegTel(r),m:L.circleMarker([r.lat,r.lng],{radius:7,color:'#fff',weight:2,fillColor:colorReg(r),fillOpacity:1}).bindTooltip(`${etiquetaReg(r)} · ${esc(textoDiag(r)||(estadoDe(r.estado)||{}).n||'')} · ${fmtHora(tRegTel(r))}`),on:false})).sort((a,b)=>a.t-b.t);
   PLAY.paradas=(j.paradas||detectarParadas(pts,j.paradaRadio,j.paradaMin,S.registros.filter(r=>r.jornada_id===jid))).map(p=>({t:p.inicio,p,m:null}));
   PLAY.capaVis=L.layerGroup().addTo(PLAY.capa);PLAY.vis=[];PLAY.visN=0;
   try{PLAY.vis=await palmasVisitadasPlay(j,pts);}catch(e){PLAY.vis=[];}
@@ -3575,16 +3575,37 @@ async function descargarRecorridos(ids,fmt){
   const js=(await dbAll('jornadas')).filter(j=>ids.includes(j.id)).sort((a,b)=>String(a.inicio).localeCompare(String(b.inicio)));
   if(!js.length){toast('No hay recorridos registrados en este celular.');return;}
   const n=js.length===1?js[0].id:`${fechaLocal(js[0].inicio)}_a_${fechaLocal(js[js.length-1].inicio)}`;const ahora=new Date().toISOString();
-  if(fmt==='geojson'){const feats=[],res=[];for(const j of js){const pts=await puntosTrack(j.id);const g=geoJornada(j,S.registros.filter(r=>r.jornada_id===j.id),pts,j.sync_fecha||ahora,null);feats.push(...g.features.map(f=>({...f,properties:{jornada_id:j.id,...f.properties}})));res.push(g.jornada);}
+  if(fmt==='geojson'){const feats=[],res=[];for(const j of js){const pts=await puntosTrack(j.id);const HR=horaRealJornada(j,S.registros.filter(r=>r.jornada_id===j.id),pts);const g=geoJornada(HR.j,HR.regs,HR.pts,j.sync_fecha||ahora,null);feats.push(...g.features.map(f=>({...f,properties:{jornada_id:j.id,...f.properties}})));res.push(g.jornada);}
     descargar(new Blob([JSON.stringify({type:'FeatureCollection',name:'recorridos_'+n,jornadas:res,features:feats})],{type:'application/geo+json'}),`recorridos_${n}.geojson`);return;}
-  if(fmt==='csv'){const filas=[];for(const j of js){const pts=await puntosTrack(j.id);for(const p of pts)filas.push([j.id,j.evaluador,fechaLocal(p.t),fmtHora(p.t),p.lat,p.lng,p.acc]);}
+  if(fmt==='csv'){const filas=[];for(const j of js){const pts=await puntosTrack(j.id);const D=desfaseJornada(j);for(const p of pts)filas.push([j.id,j.evaluador,fechaLocal(p.t+D),fmtHora(p.t+D),p.lat,p.lng,p.acc]);}
     descargar(new Blob(['\ufeff'+aCSV(['jornada_id','evaluador','fecha','hora','lat','lng','precision_m'],filas)],{type:'text/csv'}),`recorridos_puntos_${n}.csv`);return;}
   const x=s=>String(s??'').replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));let pm='';
   for(const j of js){const pts=await puntosTrack(j.id);if(pts.length<2)continue;const v=j.visita||{};
-    pm+=`<Placemark><name>${x(fechaLocal(j.inicio)+' '+hhmm(j.inicio)+'–'+hhmm(j.fin)+' · '+j.evaluador)}</name><description>${x(`Km ${(j.km||0).toFixed(2)} · Palmas visitadas ${v.palmas_visitadas??'—'} · Ha ${v.ha_recorridas??'—'}`)}</description><styleUrl>#rec</styleUrl><LineString><tessellate>1</tessellate><coordinates>${pts.map(p=>p.lng+','+p.lat+',0').join(' ')}</coordinates></LineString></Placemark>`;
+    const D=desfaseJornada(j);pm+=`<Placemark><name>${x(fechaLocal(Date.parse(j.inicio)+D)+' '+hhmm(Date.parse(j.inicio)+D)+'–'+(j.fin?hhmm(Date.parse(j.fin)+D):'')+' · '+j.evaluador)}</name><description>${x(`Km ${(j.km||0).toFixed(2)} · Palmas visitadas ${v.palmas_visitadas??'—'} · Ha ${v.ha_recorridas??'—'}`)}</description><styleUrl>#rec</styleUrl><LineString><tessellate>1</tessellate><coordinates>${pts.map(p=>p.lng+','+p.lat+',0').join(' ')}</coordinates></LineString></Placemark>`;
     for(const q of j.paradas||[])pm+=`<Placemark><name>${x('Parada '+q.n+' · '+q.duracion_min+' min')}</name><styleUrl>#par</styleUrl><Point><coordinates>${q.lng},${q.lat},0</coordinates></Point></Placemark>`;}
   const kml=`<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${x('Recorridos '+n)}</name><Style id="rec"><LineStyle><color>ff9ad322</color><width>3</width></LineStyle></Style><Style id="par"><IconStyle><color>ff1c9fff</color></IconStyle></Style>${pm}</Document></kml>`;
   descargar(new Blob([kml],{type:'application/vnd.google-earth.kml+xml'}),`recorridos_${n}.kml`);}
+/* ---------- Reportes en hora real ----------
+   La app guarda el recorrido, las paradas y las secuencias con la hora del celular (para compararlos entre sí). Al sincronizar
+   y al descargar se corrigen con el desfase medido de la jornada (GPS o internet): todos los reportes salen con la hora real. */
+function tRegTel(r){return Date.parse((r&&r.creado_telefono)||(r&&r.creado));}
+function desfaseJornada(j){
+  for(const h of [j&&j.hora_fin,j&&j.hora])if(h&&h.fuente&&h.fuente!=='telefono'&&h.desfase_s!=null)return h.desfase_s*1000;
+  return (typeof HORA!=='undefined'&&HORA.desfase!=null&&HORA.fuente)?HORA.desfase:0;}
+function horaRealJornada(j,regs,pts){
+  const D=desfaseJornada(j);
+  const sh=v=>{if(v==null||v==='')return v;const n=typeof v==='number'?v:Date.parse(v);if(!isFinite(n))return v;return typeof v==='number'?n+D:new Date(n+D).toISOString();};
+  const hh=v=>{const n=typeof v==='number'?v:Date.parse(v);return isFinite(n)?hhmm(n+D):v;};
+  const j2={...j,inicio:sh(j.inicio),fin:sh(j.fin),desfase_hora_s:Math.round(D/1000),
+    paradas:(j.paradas||[]).map(p=>({...p,inicio:sh(p.inicio),fin:sh(p.fin)})),
+    secuencias:(j.secuencias||[]).map(s=>({...s,inicio:sh(s.inicio),fin:sh(s.fin),hora_inicio:s.inicio?hh(s.inicio):s.hora_inicio,hora_fin:s.fin?hh(s.fin):s.hora_fin,
+      ...(s.inicio_labor?{inicio_labor:sh(s.inicio_labor),hora_inicio_labor:hh(s.inicio_labor)}:{})})),
+    visita:j.visita?{...j.visita,...(j.visita.t0_visita?{t0_visita:sh(j.visita.t0_visita)}:{})}:j.visita};
+  const regs2=(regs||[]).map(r=>{const real=r.hora_fuente&&r.hora_fuente!=='telefono';const tt=tRegTel(r);
+    return {...r,...(real?{}:{creado:sh(r.creado_telefono||r.creado),fecha:isFinite(tt)?ahoraLocalDe(tt+D):r.fecha,hora_fuente:D?'corregida':(r.hora_fuente||'telefono'),desfase_hora_s:Math.round(D/1000)}),
+      ...(r.pasadas?{pasadas:r.pasadas.map(x=>({...x,t:sh(x.t)}))}:{})};});
+  const pts2=(pts||[]).map(p=>({...p,t:p.t+D}));
+  return {j:j2,regs:regs2,pts:pts2,D};}
 function geoJornada(j,regs,pts,ahora,archivoFotos){
   const sel=regs.map(r=>({...r,sync:'sincronizado',sync_fecha:ahora}));
   const feats=sel.filter(r=>r.lat!=null).map(r=>{const f=featReg(r);f.properties={tipo:'diagnostico',...f.properties,...(r.pasadas&&r.pasadas.length?{pasadas:r.pasadas}:{}),...(r.creado_telefono?{creado_telefono:r.creado_telefono,hora_fuente:r.hora_fuente,desfase_hora_s:r.desfase_hora_s}:{})};return f;});
@@ -3598,7 +3619,7 @@ function geoJornada(j,regs,pts,ahora,archivoFotos){
     jornada:{id:j.id,labor:j.labor||LABOR_APP,evaluador:j.evaluador,usuario:j.usuario||'',dispositivo:j.dispositivo||S.cfg.dispositivo,fecha:fechaLocal(j.inicio),transito:Array.isArray(j.transito)?j.transito:[],
       hora_inicio:hhmm(j.inicio),hora_fin:hhmm(j.fin),duracion_min:j.fin?Math.round((Date.parse(j.fin)-Date.parse(j.inicio))/60000):null,inicio:j.inicio,fin:j.fin,
       km:+(j.km||0).toFixed(3),...(j.visita||{}),...(j.resumen_paradas||{}),secuencias:j.secuencias||[],tiempos:j.tiempos||null,velocidad_kmh:j.tiempos?j.tiempos.velocidad_kmh:null,lotes_seleccionados:j.seleccion,diagnosticos:regs.length,puntos_recorrido:pts.length,fotos:regs.reduce((a,r)=>a+(r.fotos||[]).length,0),
-      archivo_fotos:archivoFotos||null,inicio_real:j.inicio_real||null,fin_real:j.fin_real||null,hora:j.hora||null,hora_fin:j.hora_fin||null,cartografia:j.carto_version||'',equipo:j.equipo||null,cortes_gps:j.cortes_gps||[],eventos_gps:j.eventos_gps||[],app:'Polinización '+VERSION,sincronizado:ahora},
+      archivo_fotos:archivoFotos||null,desfase_hora_s:j.desfase_hora_s??null,hora_validacion_inicio:j.hora||null,hora_validacion_fin:j.hora_fin||null,cartografia:j.carto_version||'',equipo:j.equipo||null,cortes_gps:j.cortes_gps||[],eventos_gps:j.eventos_gps||[],app:'Polinización '+VERSION,sincronizado:ahora},
     features:feats};
 }
 async function sincronizar(manual){
@@ -3622,13 +3643,13 @@ async function sincronizar(manual){
       if(!j.paradas){j.paradas=detectarParadas(pts,j.paradaRadio,j.paradaMin,regs);j.resumen_paradas=resumenParadas(j.paradas,j);}
       if(!j.visita||!j.secuencias||!j.tiempos){const E=await calcularVisita(pts,j.densidad,j.buffer,j.metodoVisita||'buffer',true,true,j.seleccion,j.bufferTerraza,regs);if(!j.visita||!j.tiempos)j.visita=paradasEnLotes(resumenVisita(E,regs,true),j.paradas);
         j.secuencias=secuenciasDe(pts,{inicio:Date.parse(j.inicio),fin:Date.parse(j.fin||new Date().toISOString()),paradas:j.paradas||[],regs,densidad:j.densidad,visitas:E.conf});j.tiempos=tiemposJornada(j.secuencias,j);}
-      const ahora=new Date().toISOString();const base=`jornadas/${fechaLocal(j.inicio)}/${j.id}`;
+      const ahora=new Date().toISOString();const HR=horaRealJornada(j,regs,pts);const base=`jornadas/${fechaLocal(HR.j.inicio)}/${j.id}`;
       const archivos=[];let nombreZip=null;
       const ids=regs.flatMap(r=>r.fotos||[]);
       if(ids.length){const z=new JSZip();for(const fid of ids){const f=await dbGet('fotos',fid);if(f)z.file(fid+'.jpg',f.buf);}
-        nombreZip=j.id+'_fotos.zip';archivos.push({path:`jornadas/${fechaLocal(j.inicio)}/${nombreZip}`,b64:aB64(await z.generateAsync({type:'uint8array',compression:'STORE'}))});}
-      archivos.unshift({path:base+'.geojson',texto:JSON.stringify(geoJornada(j,regs,pts,ahora,nombreZip))});
-      const sha=await ghCommit(archivos,`Polinización · ${j.evaluador} · jornada ${fechaLocal(j.inicio)} · ${regs.length} registro(s) · u:${j.usuario||''}`);
+        nombreZip=j.id+'_fotos.zip';archivos.push({path:`jornadas/${fechaLocal(HR.j.inicio)}/${nombreZip}`,b64:aB64(await z.generateAsync({type:'uint8array',compression:'STORE'}))});}
+      archivos.unshift({path:base+'.geojson',texto:JSON.stringify(geoJornada(HR.j,HR.regs,HR.pts,ahora,nombreZip))});
+      const sha=await ghCommit(archivos,`Polinización · ${j.evaluador} · jornada ${fechaLocal(HR.j.inicio)} · ${regs.length} registro(s) · u:${j.usuario||''}`);
       regs.forEach(r=>{r.sync='sincronizado';r.sync_fecha=ahora;r.sync_commit=sha;});if(regs.length)await dbPutVarios('registros',regs);
       pts.forEach(p=>p.s=1);if(pts.length)await dbPutVarios('track',pts);
       j.sync='sincronizado';j.sync_fecha=ahora;j.sync_commit=sha;await dbPut('jornadas',j);
