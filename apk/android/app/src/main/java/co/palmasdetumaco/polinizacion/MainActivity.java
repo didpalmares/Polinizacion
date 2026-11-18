@@ -8,8 +8,9 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(EnergiaPlugin.class); // batería y bloqueo de pantalla (registro del recorrido en segundo plano)
-        registerPlugin(VoskPlugin.class);
-        registerPlugin(RecorridoPlugin.class); // GPS nativo del recorrido: puntos guardados en el celular y vigilancia cada minuto    // reconocimiento de voz sin conexión (diagnóstico por voz)
+        registerPlugin(VoskPlugin.class); // reconocimiento de voz sin conexión (registro por voz)
+        registerPlugin(RecorridoPlugin.class); // GPS nativo del recorrido: puntos guardados en el celular y vigilancia cada minuto
+        registerPlugin(NfcPlugin.class); // tarjetas NFC del registro de polinización (A, P, B, R, V)
         super.onCreate(savedInstanceState);
     }
 }
