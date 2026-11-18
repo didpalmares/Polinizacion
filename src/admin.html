@@ -45,6 +45,12 @@ td input,td select{padding:8px 10px}
 .aviso{background:rgba(255,197,61,.10);border:1px solid rgba(255,197,61,.45);color:#ffe6a6;border-radius:12px;padding:10px 12px;font-size:13.5px;margin:10px 0}
 .ok{background:rgba(34,211,154,.10);border:1px solid rgba(34,211,154,.5);color:#c9f7e6;border-radius:12px;padding:10px 12px;font-size:14px;margin:10px 0}
 .err{color:var(--rojo);font-size:13.5px;min-height:18px;margin-top:6px}
+.nfc-cods{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.nfc-cods button{display:flex;align-items:center;gap:10px;text-align:left;border:2px solid var(--borde2);background:rgba(255,255,255,.05);border-radius:14px;padding:10px 12px;cursor:pointer}
+.nfc-cods button b{flex:none;width:40px;height:40px;border-radius:10px;background:var(--c);color:#fff;display:grid;place-items:center;font-family:var(--t);font-size:26px}
+.nfc-cods button span{font-size:13.5px;font-weight:600;line-height:1.2}
+.nfc-cods button.on{border-color:var(--acento);background:rgba(34,211,154,.14)}
+.nfc-msg{margin-top:12px;font-size:15px;line-height:1.45;min-height:22px}.nfc-msg.bien{color:#7ff0c6}.nfc-msg.mal{color:#ffb3b3}
 .paso{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--naranja);color:#fff;font-family:var(--t);font-weight:700;margin-right:8px}
 code{background:rgba(255,255,255,.08);padding:1px 6px;border-radius:6px}
 .rEnf{border:1px solid var(--borde);border-radius:14px;padding:10px;margin:10px 0;background:rgba(255,255,255,.03)}
@@ -80,7 +86,7 @@ table.usuarios td{font-size:13.5px}
     <h1>POLINIZACIÓN<small>ADMINISTRACIÓN DE ACCESOS</small></h1>
   </header>
   <div class="aviso">Todo el cifrado ocurre en este navegador: el token y las contraseñas no se envían a ningún servidor. Los archivos que genere se publican en la carpeta <code>datos/</code> del repositorio de la aplicación.</div>
-  <div class="tabs" id="tabs"><button data-t="crear" class="on">Crear paquete nuevo</button><button data-t="editar">Modificar paquete existente</button></div>
+  <div class="tabs" id="tabs"><button data-t="crear" class="on">Crear paquete nuevo</button><button data-t="editar">Modificar paquete existente</button><button data-t="nfc">Grabar tarjetas NFC</button></div>
 
   <!-- ================= CREAR ================= -->
   <section id="crear">
@@ -193,6 +199,26 @@ table.usuarios td{font-size:13.5px}
       </div>
     </div>
   </section>
+
+  <!-- ================= TARJETAS NFC ================= -->
+  <section id="nfc" hidden>
+    <div class="tarjeta">
+      <h2>Grabar tarjetas NFC</h2>
+      <p class="tenue">Cada operario lleva <b>5 tarjetas o llaveros NFC</b>, uno por código. En campo, acercar la tarjeta a la parte trasera del celular suma 1 a la palma más cercana (a 10 m o menos), igual que el botón de la barra de registro. Cada tarjeta se graba con el texto de su código (registro NDEF de texto).</p>
+      <div class="aviso" id="nfcNo" hidden>Este navegador no puede grabar tarjetas NFC. Abra esta misma página (<code>admin.html</code>) en <b>Google Chrome de un celular Android con NFC</b>, active el NFC en los ajustes del celular y vuelva a esta pestaña. En computadores y en iPhone no está disponible.</div>
+      <label>1. Elija el código que va a grabar</label>
+      <div class="nfc-cods" id="nfcCods"></div>
+      <label>2. Grabe la tarjeta</label>
+      <ol class="tenue" style="margin:4px 0 10px;padding-left:20px;line-height:1.6">
+        <li>Use tarjetas o llaveros NFC en blanco (NTAG213, NTAG215 o NTAG216; las tarjetas bancarias o de transporte no sirven).</li>
+        <li>Pulse <b>GRABAR</b> y, cuando lo indique, acerque la tarjeta a la parte trasera del celular (cerca de la cámara) y manténgala quieta hasta el aviso.</li>
+        <li>Marque la tarjeta con su letra (A, P, B, R o V) y su color, para que el operario la reconozca.</li>
+        <li>Si la tarjeta ya tenía un código, se reemplaza. Use <b>Leer tarjeta</b> para comprobarla.</li>
+      </ol>
+      <div class="fila"><button class="btn nar" id="nfcGrabar" disabled>GRABAR</button><button class="btn" id="nfcLeer" disabled>Leer tarjeta</button><button class="btn" id="nfcCancelar" hidden>Cancelar</button></div>
+      <div class="nfc-msg" id="nfcMsg"></div>
+    </div>
+  </section>
 </div>
 <script>/*LIB_JSZIP*/</script>
 <script>
@@ -295,7 +321,41 @@ function mostrarResultado(cont,archivos,lista){
 }
 
 /* ---------- Pestañas ---------- */
-$('#tabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;$$('#tabs button').forEach(x=>x.classList.toggle('on',x===b));$('#crear').hidden=b.dataset.t!=='crear';$('#editar').hidden=b.dataset.t!=='editar';};
+$('#tabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;$$('#tabs button').forEach(x=>x.classList.toggle('on',x===b));$('#crear').hidden=b.dataset.t!=='crear';$('#editar').hidden=b.dataset.t!=='editar';$('#nfc').hidden=b.dataset.t!=='nfc';};
+
+/* ---------- Grabar tarjetas NFC (Web NFC: Chrome en Android) ----------
+   La App lee el texto «A», «P», «B», «R» o «V» (también «pol:A»): cada toque suma 1 a la palma más cercana. */
+const NFC_COD=[{c:'A',n:'Inflorescencia en Antesis',col:'#2e7d32'},{c:'P',n:'Inflorescencia en Post-Antesis',col:'#f9a825'},{c:'B',n:'Balón (Post-Antesis pasada)',col:'#d84315'},
+  {c:'R',n:'Palma Rancho / Tapada',col:'#6d4c41'},{c:'V',n:'Palma con Avispas',col:'#c62828'}];
+const NFCW={cod:null,ctrl:null,hay:'NDEFReader' in window};
+function nfcMsg(t,cls){const m=$('#nfcMsg');m.className='nfc-msg'+(cls?' '+cls:'');m.innerHTML=t;}
+function nfcPintar(){$('#nfcCods').innerHTML=NFC_COD.map(x=>`<button type="button" data-c="${x.c}" class="${NFCW.cod===x.c?'on':''}" style="--c:${x.col}"><b>${x.c}</b><span>${esc(x.n)}</span></button>`).join('');
+  $('#nfcGrabar').disabled=!NFCW.hay||!NFCW.cod||!!NFCW.ctrl;$('#nfcLeer').disabled=!NFCW.hay||!!NFCW.ctrl;$('#nfcCancelar').hidden=!NFCW.ctrl;
+  $('#nfcGrabar').textContent=NFCW.cod?'GRABAR «'+NFCW.cod+'»':'GRABAR';}
+$('#nfcNo').hidden=NFCW.hay;
+$('#nfcCods').onclick=e=>{const b=e.target.closest('[data-c]');if(!b||NFCW.ctrl)return;NFCW.cod=b.dataset.c;nfcPintar();nfcMsg('');};
+function nfcTerminar(){if(NFCW.ctrl){try{NFCW.ctrl.abort();}catch(e){}}NFCW.ctrl=null;nfcPintar();}
+const nfcError=e=>e&&e.name==='NotAllowedError'?'Permita el uso de NFC para esta página (Chrome lo pregunta la primera vez) y verifique que el NFC del celular esté activado.'
+  :e&&e.name==='NotSupportedError'?'Este celular no tiene NFC o está desactivado. Actívelo en Ajustes → Conexiones → NFC.':'No se pudo: '+esc(String(e&&e.message||e))+'. Intente de nuevo sin mover la tarjeta.';
+const codDeTexto=t=>{const m=String(t||'').trim().toUpperCase().match(/^(?:POL:(?:\/\/)?)?\s*([APBRV])\s*$/);return m?NFC_COD.find(y=>y.c===m[1]):null;};
+$('#nfcGrabar').onclick=async()=>{if(!NFCW.hay||!NFCW.cod)return;const x=NFC_COD.find(y=>y.c===NFCW.cod);
+  const ctrl=new AbortController();NFCW.ctrl=ctrl;const tm=setTimeout(()=>{if(NFCW.ctrl===ctrl){nfcTerminar();nfcMsg('Se agotó el tiempo (30 s). Pulse GRABAR de nuevo.','mal');}},30000);nfcPintar();
+  nfcMsg(`📶 Acerque ahora la tarjeta a la parte trasera del celular para grabar <b>${x.c}</b> · ${esc(x.n)}…`);
+  try{await new NDEFReader().write({records:[{recordType:'text',lang:'es',data:x.c}]},{overwrite:true,signal:ctrl.signal});
+    if(NFCW.ctrl!==ctrl)return;try{navigator.vibrate&&navigator.vibrate(150);}catch(e){}
+    nfcMsg(`✅ Tarjeta grabada con <b>${x.c}</b> (${esc(x.n)}). Márquela con la letra ${x.c}. Para grabar otra, pulse GRABAR de nuevo.`,'bien');}
+  catch(e){if(NFCW.ctrl===ctrl&&e.name!=='AbortError')nfcMsg('⚠️ '+nfcError(e),'mal');}
+  finally{clearTimeout(tm);if(NFCW.ctrl===ctrl){NFCW.ctrl=null;nfcPintar();}}};
+$('#nfcLeer').onclick=async()=>{if(!NFCW.hay)return;const ctrl=new AbortController();NFCW.ctrl=ctrl;nfcPintar();nfcMsg('📶 Acerque la tarjeta que quiere comprobar…');
+  try{const r=new NDEFReader();r.onreading=ev=>{if(NFCW.ctrl!==ctrl)return;let t='';
+      for(const rec of ev.message.records){try{if(rec.recordType==='text')t=new TextDecoder(rec.encoding||'utf-8').decode(rec.data);else if(rec.recordType==='url'||rec.recordType==='absolute-url')t=new TextDecoder().decode(rec.data);}catch(e){}if(t.trim())break;}
+      const x=codDeTexto(t);
+      nfcMsg(x?`✅ Tarjeta <b>${x.c}</b> · ${esc(x.n)} (número ${esc(ev.serialNumber||'—')}).`:`⚠️ La tarjeta no tiene un código de polinización${t?' (contiene «'+esc(t.slice(0,40))+'»)':' (está vacía)'}.`,x?'bien':'mal');nfcTerminar();};
+    r.onreadingerror=()=>nfcMsg('⚠️ No se pudo leer la tarjeta. Acérquela de nuevo.','mal');
+    await r.scan({signal:ctrl.signal});}
+  catch(e){if(e.name!=='AbortError')nfcMsg('⚠️ '+nfcError(e),'mal');nfcTerminar();}};
+$('#nfcCancelar').onclick=()=>{nfcTerminar();nfcMsg('Cancelado.');};
+nfcPintar();
 
 /* ---------- Crear paquete ---------- */
 filaUsuario($('#cUsuarios'),{u:'admin',nombre:'Administrador',rol:'admin'});filaUsuario($('#cUsuarios'));

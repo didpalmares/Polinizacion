@@ -32,6 +32,8 @@
 .pol-bts button:active{transform:scale(.94)}
 .cA{background:#00c853}.cP{background:#ffab00}.cB{background:#d84315;color:#fff!important}.cR{background:#8d6e63;color:#fff!important}.cV{background:#e53935;color:#fff!important}
 .pol-bts .deshacer{background:#37474f;color:#fff}
+#polNfc{flex:none;height:26px;padding:0 8px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#cfd8dc;font-size:11.5px;font-weight:700;white-space:nowrap;cursor:default}
+#polNfc.listo{background:rgba(34,211,154,.18);border-color:#22d39a;color:#7ff0c6}#polNfc.apagado,#polNfc.activar,#polNfc.error{background:rgba(255,197,61,.16);border-color:#ffc53d;color:#ffe08a;cursor:pointer}
 #polFin{flex:none;min-height:0;height:32px;padding:0 10px;font-size:13px;white-space:nowrap}
 body.con-polbar #flot{bottom:calc(var(--dock) + var(--inf) + 250px)}body.con-polbar #btLeyenda,body.con-polbar #leyenda{bottom:calc(var(--dock) + var(--inf) + 205px)}
 .pol-cont{display:grid;grid-template-columns:auto 1fr 52px 48px 52px;align-items:center;gap:8px;margin:8px 0}
@@ -416,11 +418,11 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
 
 <div id="flot">
   <button id="btVoz" class="glass" aria-label="Guía por voz" data-ic="vozOff"></button>
-  <button id="btDxVoz" class="glass" aria-label="Diagnóstico por voz" title="Diagnóstico por voz" hidden><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+  <button id="btDxVoz" class="glass" aria-label="Registro por voz" title="Registro por voz" hidden><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
   <button id="btSeguir" class="glass" aria-label="Pantalla fija"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="13.5" cy="3.6" r="2.3" fill="currentColor"/><path d="M12.6 7.2 9.4 9.3 8 13.2M12.6 7.2l-1.4 6 3.3 3.1 1.1 5.2M11.2 13.2l-2.6 3.2-3 4.6M12.6 7.2l2.3 3.3 3.2 1.1" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><small>FIJA</small></button>
 </div>
 <div id="polBar" class="glass" hidden>
-  <div class="pol-cab"><div id="polInfo">—</div><button id="polFin" class="btn" hidden>Finalizar lote</button></div>
+  <div class="pol-cab"><div id="polInfo">—</div><button id="polNfc" class="nfc no" type="button" disabled>NFC</button><button id="polFin" class="btn" hidden>Finalizar lote</button></div>
   <div class="pol-bts"><button data-c="A" class="cA" aria-label="A: Inflorescencia en Antesis"><b>A</b><small>Inflorescencia en Antesis</small></button><button data-c="P" class="cP" aria-label="P: Inflorescencia en Post-Antesis"><b>P</b><small>Inflorescencia en Post-Antesis</small></button><button data-c="B" class="cB" aria-label="B: Balón (Post-Antesis pasada)"><b>B</b><small>Balón (Post-Antesis pasada)</small></button><button data-c="R" class="cR" aria-label="R: Palma Rancho / Tapada"><b>R</b><small>Palma Rancho / Tapada</small></button><button data-c="V" class="cV" aria-label="V: Palma con Avispas"><b>V</b><small>Palma con Avispas</small></button><button id="polDeshacer" class="deshacer" aria-label="Deshacer el último registro"><b>↶</b><small>Deshacer</small></button></div>
 </div>
 <button id="btLeyenda" class="glass">LEYENDA</button>
@@ -1000,7 +1002,7 @@ async function revisarSegundoPlano(forzar){
     ${item(++n,'Ahorro de batería',null,xiaomi?'Elija «Sin restricciones».':'En «Batería» de la app elija «Sin restricciones» o «No optimizar».',bt('sbAhorro','Abrir ahorro de batería'))}
     ${item(++n,'Ubicación todo el tiempo',rc?!!rc.ubicacionFondo:null,'Permisos → Ubicación → «Permitir todo el tiempo» y active «Usar ubicación precisa». Así la App puede reanudar el GPS sola si Android lo cierra.',bt('sbUbic','Abrir permiso de ubicación',rc&&!rc.ubicacionFondo))}
     ${item(++n,'Notificaciones',null,'Permita las notificaciones: el aviso «Jornada en curso» mantiene vivo el registro del recorrido.',bt('sbNotif','Permitir notificaciones'))}
-    ${item(++n,'Todos los permisos',null,'Cámara (fotos), micrófono (diagnóstico por voz), ubicación y notificaciones deben estar en «Permitir».',bt('sbApp','Abrir todos los permisos de la app'))}
+    ${item(++n,'Todos los permisos',null,'Cámara (fotos), micrófono (registro por voz), ubicación y notificaciones deben estar en «Permitir».',bt('sbApp','Abrir todos los permisos de la app'))}
     ${xiaomi?item(++n,'Xiaomi · Bloquear la app en recientes',null,'Abra las apps recientes, mantenga presionada Polinización y toque el candado 🔒.',''):''}
     ${rc?`<div class="ficha" style="margin-top:8px"><b>Vigilancia del recorrido</b> <span class="sello ok">✔ ACTIVA</span>
       <div class="tenue">Si pasa más de 1 minuto sin GPS, el celular vibra, avisa por voz y muestra una alerta, aunque esté bloqueado. Si Android cierra el registro, se reanuda solo.</div>
@@ -1874,8 +1876,10 @@ async function finalizarLoteActual(){const ab=tramoAbierto();if(!ab){toast('No h
 const DESHACER=[];
 function palmaCercanaPol(){const R=Number(S.cfg.radioSel)||10;
   const l=palmasEnRadio(R).filter(x=>x.f.properties._existe!==false);return l.length?{...l[0],R}:{f:null,R};}
+/* VOZ.ultimoPol: última confirmación (la repite el comando de voz «repetir»). Durante una frase de voz (VOZ.silPol) solo se lee la última. */
 function avisoPol(txt,mal){toast(txt,mal?4000:2200);try{if(navigator.vibrate)navigator.vibrate(mal?[80,60,80,60,80]:60);}catch(e){}
-  if(mal)pitido(300,320);else pitido(1100,90);if(HAY_VOZ())hablar(txt.replace(/^[^\wÁÉÍÓÚÑáéíóúñ]+/,''),true);}
+  VOZ.ultimoPol=txt.replace(/^[^\wÁÉÍÓÚÑáéíóúñ]+/,'');VOZ.ultimoPolMal=!!mal;
+  if(mal)pitido(300,320);else pitido(1100,90);if(!VOZ.silPol&&HAY_VOZ())hablar(VOZ.ultimoPol,true);}
 let POL_OCUPADO=false;
 async function sumarCodigo(c,fuente){
   if(POL_OCUPADO)return;POL_OCUPADO=true;
@@ -1951,7 +1955,7 @@ function pintarPolBar(rUlt){
 }
 function iniciarPolBar(){
   document.querySelectorAll('#polBar [data-c]').forEach(b=>b.onclick=()=>sumarCodigo(b.dataset.c,'boton'));
-  $('#polDeshacer').onclick=deshacerPol;$('#polFin').onclick=finalizarLoteActual;
+  $('#polDeshacer').onclick=deshacerPol;$('#polFin').onclick=finalizarLoteActual;$('#polNfc').onclick=()=>tocarNfc();
   setInterval(()=>{if(S.jornada&&!$('#polBar').hidden)pintarPolBar();},3000);
 }
 
@@ -2031,14 +2035,7 @@ async function abrirCamara(){
 function cerrarCamara(){try{CAM.stream&&CAM.stream.getTracks().forEach(t=>t.stop());}catch(e){}CAM.stream=null;$('#camVid').srcObject=null;$('#camara').hidden=true;}
 $('#camX').onclick=cerrarCamara;$('#camOk').onclick=cerrarCamara;
 /* Solo cámara: no se permiten fotos desde la galería. */
-/* El disparo deja su promesa en CAM.prom: los comandos de voz esperan a que la foto quede guardada (en celulares lentos comprimirla tarda). */
-$('#camDisparo').onclick=()=>{CAM.prom=dispararFoto();return CAM.prom;};
-const fotoPendiente=async(max=12000)=>{if(CAM.prom)try{await Promise.race([CAM.prom,esperar(max)]);}catch(e){}};
-async function tomarFotoVoz(){const a=nFotosF();
-  // Si la cámara aún no muestra imagen (recién reabierta), espera y vuelve a intentar: hasta 3 disparos.
-  for(let k=0;k<3&&nFotosF()===a;k++){await abrirCamaraVoz();if(!CAM.stream)break;   /* sin cámara en la app se usó la del celular */
-    $('#camDisparo').click();await fotoPendiente();if(nFotosF()===a)await esperar(700);}
-  return nFotosF()>a;}
+$('#camDisparo').onclick=()=>dispararFoto();
 async function dispararFoto(){
   const v=$('#camVid');if(!v.videoWidth||!F)return;const M=1280;const k=Math.min(1,M/Math.max(v.videoWidth,v.videoHeight));
   const c=document.createElement('canvas');c.width=Math.round(v.videoWidth*k);c.height=Math.round(v.videoHeight*k);c.getContext('2d').drawImage(v,0,0,c.width,c.height);
@@ -2161,7 +2158,8 @@ if('speechSynthesis' in window){elegirVoz();speechSynthesis.onvoiceschanged=eleg
 function paraVoz(t){return String(t??'').trim().replace(/([A-Za-zÑñ])(?=\d)/g,'$1 ').replace(/(\d)(?=[A-Za-zÑñ])/g,'$1 ').replace(/\b[A-ZÑ]{2,3}\b/g,m=>m.split('').join(' '));}
 /* prio: mensajes de inicio y fin de jornada; mientras suenan, los avisos de la guía no los interrumpen. */
 const HAY_VOZ=()=>(NATIVO&&NAT.tts)||('speechSynthesis' in window);
-function hablar(txt,prio){if(!prio&&(VOZ.flujo||Date.now()<(VOZ.bloq||0)))return; // durante el diagnóstico por voz la guía no interrumpe
+function hablar(txt,prio){if(!prio&&Date.now()<(VOZ.bloq||0))return;
+  if(VOZ.escucha){decir(txt);return;} // con el registro por voz activo la app habla con el micrófono en pausa (no se escucha a sí misma)
   VOZ.ultimaFrase=txt;
   if(NATIVO&&NAT.tts){const rate=Number(S.cfg.velocidadVoz)||1;if(prio)VOZ.bloq=Date.now()+txt.length*90/rate+2000;else VOZ.bloq=0;
     const dec=async()=>{for(const lang of [VOZ.langNat,'es-US','es-MX','es-ES','es'].filter(Boolean)){
@@ -2231,53 +2229,61 @@ function alternarVoz(){
 $('#btVoz').onclick=alternarVoz;
 $('#btSeguir').onclick=()=>modoSeguir(!S.seguir);
 /* =====================================================================
-   DIAGNÓSTICO POR VOZ (manos libres; el formulario sigue funcionando con el dedo)
-   APK: Vosk (plugin nativo; el modelo de español se descarga una sola vez, ~40 MB). Navegador: reconocimiento de voz del navegador.
-   Flujo (modo dictado): «realizar diagnóstico» → el operario dicta enfermedad, opción, síntomas, campos, observación y fotos sin que la app
-   pregunte → «registrar diagnóstico» → la app pregunta solo lo que falte y confirma por voz lo registrado.
-   Comandos en cualquier momento: repetir, atrás / corregir, cancelar, registrar diagnóstico.
+   REGISTRO POR VOZ (manos libres): el operario dice el código y la app suma a la palma más cercana (sumarCodigo, fuente «voz»).
+   APK: Vosk (plugin nativo, sin internet; el modelo de español se descarga una sola vez, ~40 MB) con una gramática que solo
+   admite las palabras del registro. Navegador: reconocimiento de voz del navegador.
+   Frases: «A», «antesis», «dos A», «una P», «post antesis», «un balón», «erre», «rancho», «avispas», «dos A una P un B».
+   Comandos: «deshacer» / «borrar», «finalizar lote», «repetir».
    ===================================================================== */
-const frmAbierto=()=>!!$('#frm')&&!$('#hoja').classList.contains('oculto');
-const VOSK_URL='https://alphacephei.com/vosk/models/vosk-model-small-es-0.42.zip';
-const RV={motor:null,on:false,cb:null,web:null,hablando:false,lis:null};
-const VD={on:false,estado:'off',pila:[],obs:false,paso:null,g:null};
-const CMD_INICIO=['realizar diagnóstico','diagnosticar','nuevo diagnóstico','hacer diagnóstico'];
-const CMD_GEN=['repetir','atrás','corregir','cancelar','cancelar diagnóstico','registrar diagnóstico','guardar diagnóstico','siguiente','listo','ninguno','ninguna','omitir','mantener'];
-const CMD_FOTO=['tomar foto','guardar foto','repetir foto','borrar foto','otra foto',...CMD_GEN];
-const NUMV=['cero','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez','once','doce','trece','catorce','quince'];
+/* Modelo de voz en español publicado como recurso de una versión (release) del repositorio de la App. */
+const VOSK_URL='https://github.com/didpalmares/Polinizacion/releases/download/vosk-es/vosk-model-small-es-0.42.zip';
+const RV={motor:null,on:false,cb:null,web:null,hablando:false,lis:null,nh:0};
+const PV={on:false,cola:Promise.resolve()};
 function voskDisponible(){try{return !!(NATIVO&&window.Capacitor&&typeof Capacitor.isPluginAvailable==='function'&&Capacitor.isPluginAvailable('Vosk'));}catch(e){return false;}}
 function motorVoz(){if(voskDisponible())return 'vosk';if(!EN_APK&&(window.SpeechRecognition||window.webkitSpeechRecognition))return 'web';return null;}
 const NAT_V=()=>window.Capacitor.Plugins.Vosk;
-const normV=s=>String(s??'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\(.*?\)/g,' ').replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ').trim();
-const gramTxt=s=>String(s??'').toLowerCase().replace(/\(.*?\)/g,' ').replace(/[^a-záéíóúüñ ]+/g,' ').replace(/\s+/g,' ').trim();
-function numDe(t){t=normV(t).replace(/^(la |el )?(opcion|numero) /,'');if(/^\d+$/.test(t))return +t;if(t==='una')return 1;const i=NUMV.indexOf(t);return i>=0?i:null;}
-function bigr(s){const a=[];for(let i=0;i<s.length-1;i++)a.push(s.slice(i,i+2));return a;}
-/* Índice de la opción que mejor coincide con lo dicho (o su número); -1 si ninguna se parece lo suficiente. */
-function elegirOpcion(texto,ops,umbral=.6,conNumero=true){
-  if(conNumero){const n=numDe(texto);if(n!=null&&n>=1&&n<=ops.length)return n-1;}
-  const tt=normV(texto);if(!tt)return -1;let mejor=-1,ms=0;
-  ops.forEach((o,i)=>{const on=normV(o.t);if(!on)return;let sc;
-    if(tt===on)sc=1;else if((' '+tt+' ').includes(' '+on+' '))sc=.9+on.length/1000;
-    else{const A=bigr(tt),B=bigr(on),m=new Map();B.forEach(x=>m.set(x,(m.get(x)||0)+1));let c=0;A.forEach(x=>{const k=m.get(x);if(k){c++;m.set(x,k-1);}});sc=A.length+B.length?2*c/(A.length+B.length):0;}
-    if(sc>ms){ms=sc;mejor=i;}});
-  return ms>=umbral?mejor:-1;}
-/* Comandos: igual, parecido (≥ 85 %) o contenido en la frase si el comando tiene dos palabras o más («por favor tomar foto»). */
-function coincide(t,lista){const tt=normV(t);if(!tt)return false;
-  return lista.some(c=>{const cn=normV(c);if(!cn)return false;if(tt===cn)return true;
-    if(cn.includes(' ')&&(' '+tt+' ').includes(' '+cn+' '))return true;
-    const A=bigr(tt),B=bigr(cn),m=new Map();B.forEach(x=>m.set(x,(m.get(x)||0)+1));let k=0;A.forEach(x=>{const v=m.get(x);if(v){k++;m.set(x,v-1);}});
-    return A.length+B.length>0&&2*k/(A.length+B.length)>=.85;});}
-const gramDe=lista=>[...new Set([...lista.map(gramTxt),...NUMV.slice(1),...CMD_GEN.map(gramTxt)].filter(Boolean))];
+const normV=s=>String(s??'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ').trim();
+
+/* ---------- Interpretación de lo dicho ---------- */
+const NUM_VOZ={un:1,una:1,uno:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10,
+  once:11,doce:12,trece:13,catorce:14,quince:15,dieciseis:16,diecisiete:17,dieciocho:18,diecinueve:19,veinte:20}; // más de diez: se rechaza
+/* Palabras → código. La B y la V suenan igual en español: «be» es B y «ve» / «uve» es V, como las dice el reconocedor. */
+const PAL_COD={a:'A',ah:'A',ha:'A',antesis:'A',antecis:'A',
+  p:'P',pe:'P',postantesis:'P',posantesis:'P',postantecis:'P',posantecis:'P',
+  b:'B',be:'B',balon:'B',balones:'B',
+  r:'R',erre:'R',ere:'R',rancho:'R',ranchos:'R',tapada:'R',tapadas:'R',tapado:'R',
+  v:'V',ve:'V',uve:'V',avispa:'V',avispas:'V'};
+const RELLENO=new Set(['y','e','de','del','con','en','la','el','los','las','palma','inflorescencia','inflorescencias','mas','registrar','registro','codigo','letra','por','favor','otra','otro']);
+/* Gramática de Vosk: solo estas palabras y frases (el reconocimiento sin conexión es mucho más preciso así). */
+const GRAM_POL=[...new Set(['a','antesis','pe','post antesis','pos antesis','posantesis','be','balón','balones','erre','rancho','tapada','ve','uve','avispa','avispas',
+  'un','una','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez','y','de','deshacer','borrar','finalizar lote','repetir'])];
+/* Devuelve {cmd} ('deshacer' | 'finalizar' | 'repetir'), {items:[[código, veces], …]} o null si no se entendió. */
+function interpretarVoz(t){
+  const toks=normV(t).replace(/(\d+)([a-z]+)/g,'$1 $2').split(' ').filter(Boolean);if(!toks.length)return null;
+  const tj=' '+toks.join(' ')+' ';
+  if(/ (deshacer|deshaga|deshace|borrar|borra|borre|anular) /.test(tj))return {cmd:'deshacer'};
+  if(/ (finalizar|finaliza|cerrar|terminar) (el )?lote /.test(tj))return {cmd:'finalizar'};
+  if(/ (repetir|repite|repita) /.test(tj))return {cmd:'repetir'};
+  const items=[];let n=null,raro=0;
+  for(let i=0;i<toks.length;i++){const w=toks[i];
+    if(/^\d+$/.test(w)){n=+w;continue;}
+    if(NUM_VOZ[w]!=null){n=NUM_VOZ[w];continue;}
+    if((w==='post'||w==='pos')&&/^antes?[cs]is$/.test(toks[i+1]||'')){i++;items.push(['P',n||1]);n=null;continue;}
+    if(w==='post'||w==='pos'){items.push(['P',n||1]);n=null;continue;}
+    const c=PAL_COD[w];
+    if(c){items.push([c,n||1]);n=null;continue;}
+    if(!RELLENO.has(w))raro++;}
+  if(!items.length)return null;
+  if(items.some(x=>x[1]<1||x[1]>10))return {fuera:true};
+  return {items,raro};}
 
 /* ---------- Motor de reconocimiento ---------- */
-function alTexto(t){if(RV.hablando||!t)return;t=String(t).trim();if(!t)return;
-  if(VD.estado!=='espera'&&VD.estado!=='off'&&!frmAbierto()){modoEspera(false);return;} // el formulario se cerró con el dedo
-  toast('🎙 '+t,1800);const cb=RV.cb;if(cb)cb(t);}
+function alTexto(t){if(RV.hablando||!t)return;t=String(t).trim();if(!t)return;toast('🎙 '+t,1800);const cb=RV.cb;if(cb)cb(t);}
 function iniciarWeb(){if(RV.web||!RV.on)return;const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)return;const r=new SR();
   r.lang='es-CO';r.continuous=true;r.interimResults=false;r.maxAlternatives=1;
   r.onresult=e=>{for(let i=e.resultIndex;i<e.results.length;i++)if(e.results[i].isFinal)alTexto(e.results[i][0].transcript);};
   r.onend=()=>{if(RV.web===r)RV.web=null;if(RV.on&&!RV.hablando)setTimeout(()=>{if(RV.on&&!RV.hablando&&!RV.web)iniciarWeb();},300);};
-  r.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed'){apagarDxVoz();toast('Permita el uso del micrófono para el diagnóstico por voz.',5000);}};
+  r.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed'){apagarVozPol();toast('Permita el uso del micrófono para el registro por voz.',5000);}};
   RV.web=r;try{r.start();}catch(e){}}
 async function escucharV(frases,cb){RV.cb=cb;RV.on=true;
   if(RV.motor==='vosk')await NAT_V().iniciar({gramatica:frases||[]});else iniciarWeb();}
@@ -2290,18 +2296,18 @@ function hablarEsperar(txt){return new Promise(res=>{VOZ.ultimaFrase=txt;let ok=
   if(!('speechSynthesis' in window))return fin();
   try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(txt);u.lang=VOZ.voz?VOZ.voz.lang:'es-CO';if(VOZ.voz)u.voice=VOZ.voz;u.rate=Number(S.cfg.velocidadVoz)||1;
     u.onend=u.onerror=fin;speechSynthesis.speak(u);setTimeout(fin,txt.length*110+3000);}catch(e){fin();}});}
-/* Habla sin escucharse: el micrófono se pausa mientras la app habla. */
-const paraHabla=t=>String(t).replace(/[A-ZÁÉÍÓÚÜÑ]{4,}/g,w=>w.toLowerCase()); // MAYÚSCULAS → minúsculas para que no las deletree
-async function decir(txt){txt=paraHabla(txt);RV.hablando=true;await pausarRec(true);try{await hablarEsperar(txt);}finally{await esperar(250);RV.hablando=false;if(RV.on)await pausarRec(false);}}
+/* Habla sin escucharse: el micrófono se pausa mientras la app habla (si no, la confirmación «dos antesis» se volvería a registrar). */
+async function decir(txt){if(!txt)return;RV.nh++;RV.hablando=true;if(RV.nh===1)await pausarRec(true);
+  try{await hablarEsperar(txt);}finally{await esperar(250);if(--RV.nh<=0){RV.nh=0;RV.hablando=false;if(RV.on)await pausarRec(false);}}}
 
 /* ---------- Activar / desactivar ---------- */
-async function alternarDxVoz(){
-  if(VD.on){apagarDxVoz();toast('Diagnóstico por voz desactivado.');return;}
+async function alternarVozPol(){
+  if(PV.on){apagarVozPol();toast('Registro por voz desactivado.');return;}
   RV.motor=motorVoz();
-  if(!RV.motor){toast(EN_APK?'Actualice la APK para usar el diagnóstico por voz.':'Este navegador no reconoce la voz. Use Google Chrome.',5000);return;}
+  if(!RV.motor){toast(EN_APK?'Actualice la APK para usar el registro por voz.':'Este navegador no reconoce la voz. Use Google Chrome.',5000);return;}
   if(RV.motor==='vosk'){const V=NAT_V();
     try{const e=await V.estado();
-      if(!e.modelo){if(!confirm('El diagnóstico por voz necesita descargar una sola vez el modelo de voz en español (unos 40 MB). ¿Descargarlo ahora?'))return;
+      if(!e.modelo){if(!confirm('El registro por voz necesita descargar una sola vez el modelo de voz en español (unos 40 MB). ¿Descargarlo ahora?'))return;
         toast('Descargando el modelo de voz…',120000);
         const h=await V.addListener('progresoModelo',p=>{if(p.fase==='descarga'&&p.pct>=0)toast(`Descargando el modelo de voz… ${p.pct} %`,120000);else if(p.fase==='descomprimir')toast('Instalando el modelo de voz…',120000);});
         try{await V.prepararModelo({url:VOSK_URL});}finally{try{h.remove();}catch(_){}}
@@ -2309,176 +2315,84 @@ async function alternarDxVoz(){
       if(!RV.lis)RV.lis=[await V.addListener('resultado',x=>alTexto(x.texto)),await V.addListener('error',x=>console.warn('Vosk',x&&x.mensaje))];}
     catch(err){toast(String(err&&err.message||err),6000);return;}}
   try{if(!VOZ.ctx)VOZ.ctx=new (window.AudioContext||window.webkitAudioContext)();else VOZ.ctx.resume();}catch(e){}
-  VD.on=true;$('#btDxVoz').classList.add('on');pantallaEncendida(true);
-  try{await modoEspera(true);}catch(e){apagarDxVoz();toast(String(e&&e.message||e),6000);}
+  PV.on=true;VOZ.escucha=true;$('#btDxVoz').classList.add('on');pantallaEncendida(true);
+  try{await decir('Registro por voz activado. Diga, por ejemplo: dos A, una P.');await escucharV(GRAM_POL,t=>{PV.cola=PV.cola.then(()=>procesarVoz(t)).catch(e=>console.warn(e));});}
+  catch(e){apagarVozPol();toast(String(e&&e.message||e),6000);}
 }
-function apagarDxVoz(){VD.on=false;VD.estado='off';VOZ.flujo=false;RV.on=false;RV.cb=null;$('#btDxVoz').classList.remove('on');
+function apagarVozPol(){PV.on=false;VOZ.escucha=false;RV.on=false;RV.cb=null;$('#btDxVoz').classList.remove('on');
   if(RV.motor==='vosk'){try{NAT_V().detener();}catch(e){}}else{const r=RV.web;RV.web=null;try{r&&r.abort();}catch(e){}}
   if(!S.jornada&&!VOZ.activa)pantallaEncendida(false);}
-async function modoEspera(saludar){if(!VD.on)return;VD.estado='espera';VOZ.flujo=false;VD.g=null;VD.dictado=false;
-  if(saludar)await decir('Diagnóstico por voz activado. Frente a la palma, diga: realizar diagnóstico.');
-  await escucharV(CMD_INICIO.map(gramTxt),t=>{if(VD.estado==='espera'&&coincide(t,CMD_INICIO))iniciarDxVoz();});}
+/* Espera su turno: un registro por botón o tarjeta en curso no se pierde ni se mezcla. */
+async function sumarEnCola(c,fuente){for(let k=0;POL_OCUPADO&&k<3000;k++)await esperar(40);return sumarCodigo(c,fuente);}
+/* Ejecuta lo dicho; las confirmaciones intermedias no se leen (solo la última, con el estado final de la palma). */
+async function procesarVoz(t){
+  if(!PV.on)return;const q=interpretarVoz(t);
+  if(!q){pitido(330,200);await decir('No entendí. Diga A, P, B, R o V.');return;}
+  if(q.fuera){pitido(330,200);await decir('Máximo diez por vez.');return;}
+  if(q.cmd==='repetir'){await decir(VOZ.ultimoPol||VOZ.ultimaFrase||'No hay nada para repetir.');return;}
+  VOZ.silPol=true;VOZ.ultimoPol=null;VOZ.ultimoPolMal=false;
+  try{
+    if(q.cmd==='deshacer'){while(POL_OCUPADO)await esperar(40);await deshacerPol();if(!VOZ.ultimoPol)VOZ.ultimoPol='No hay nada para deshacer.';}
+    else if(q.cmd==='finalizar'){const ab=tramoAbierto();
+      if(!ab)VOZ.ultimoPol='No hay un lote abierto.';
+      else{decir('Elija la transitabilidad de salida del lote '+paraVoz(ab.lote)+'.');await finalizarLoteActual();
+        VOZ.ultimoPol=ab.salida?`Lote ${paraVoz(ab.lote)} cerrado, ${ab.salida}.`:'El lote sigue abierto.';}}
+    else{fuera:for(const [c,n] of q.items){const veces=(c==='R'||c==='V')?1:n;
+      for(let k=0;k<veces;k++){VOZ.ultimoPol=null;VOZ.ultimoPolMal=false;await sumarEnCola(c,'voz');
+        if(!VOZ.ultimoPol||VOZ.ultimoPolMal)break fuera;}}}   // un rechazo (o la transitabilidad cancelada) detiene el resto
+  }finally{VOZ.silPol=false;}
+  await decir(VOZ.ultimoPol||'No se registró.');}
+$('#btDxVoz').onclick=alternarVozPol;
 
-/* ---------- Flujo del diagnóstico ---------- */
-function palmaParaVoz(){if(!S.gps)return null;const R=Number(S.cfg.radioSel)||10;
-  const u=VOZ.ultimaPalma&&S.idx.get(VOZ.ultimaPalma);
-  if(u){const [x,y]=u.geometry.coordinates;if(dist(S.gps.lat,S.gps.lng,y,x)<=R)return u;}
-  const c=S.palmas?palmaMasCercana(S.gps.lat,S.gps.lng):null;return c&&c.d<=R?c.f:null;}
-function frasePalmaCorta(p){return [p._lote?'lote '+paraVoz(p._lote):'',p._linea?'línea '+paraVoz(p._linea):'',p._num?'palma '+paraVoz(p._num):'palma '+paraVoz(p._id)].filter(Boolean).join(', ');}
-async function iniciarDxVoz(){
-  if(!S.jornada){await decir('Inicie una jornada para registrar diagnósticos.');return;}
-  if(!S.gps){await decir('Esperando señal G P S.');return;}
-  const f=palmaParaVoz();if(!f){await decir(`No hay ninguna palma a ${Number(S.cfg.radioSel)||10} metros o menos. Acérquese a la palma.`);return;}
-  const id=f.properties._id,hoy=S.hechos.get(id);
-  VD.estado='form';VOZ.flujo=true;VD.pila=[];VD.obs=false;VD.dictado=true;
-  await abrirFormulario(hoy||{palma_id:id});
-  if(!F||$('#frm fieldset[disabled]')){await decir('Ese diagnóstico no se puede modificar.');return modoEspera(false);}
-  await decir(`${hoy?'Corrección de':''} ${frasePalmaCorta(f.properties)}. Dicte.`);
-  return iniciarDictado();}
-function gruposForm(){const frm=$('#frm');if(!frm)return [];const out=[];
-  frm.querySelectorAll('label.campo').forEach(l=>{const ch=l.nextElementSibling;if(!ch||!ch.classList.contains('chips'))return;
-    const ins=[...ch.querySelectorAll('input')];if(!ins.length)return;
-    out.push({titulo:l.textContent.replace('*','').replace(/\(.*?\)/g,'').trim(),name:ins[0].name,tipo:ins[0].type,req:!!l.querySelector('i'),
-      ops:ins.map(i=>({v:i.value,t:((i.nextElementSibling||{}).textContent||i.value).trim()})),resp:ins.some(i=>i.checked)});});
-  return out;}
-const nFotosF=()=>F?(F.r.fotos||[]).filter(x=>!F.fotosQuitar.includes(x)).length+F.fotosNuevas.length:0;
-async function siguientePaso(){
-  if(!F||!frmAbierto())return modoEspera(false);
-  if(VD.dictado)return registrarVoz();
-  const g=gruposForm().find(x=>!VD.pila.includes(x.name));
-  if(g)return preguntar(g);
-  if(!VD.obs)return pedirObs();
-  return pasoFoto();}
-async function preguntar(g){VD.estado='pregunta';VD.g=g;VD.paso=()=>preguntar(gruposForm().find(x=>x.name===g.name)||g);
-  const lista=g.ops.map((o,k)=>`${k+1}, ${o.t}`).join('. ');
-  await decir(`${VD.dictado?'Falta ':''}${g.titulo}. ${g.tipo==='checkbox'?'Puede decir varios; al terminar diga listo. ':''}${g.resp&&g.tipo==='radio'?'Para dejar la respuesta actual diga mantener. ':''}Opciones: ${lista}.`);
-  await escucharV(gramDe(g.ops.map(o=>o.t)),t=>responder(g,t));}
-function marcarHecho(name){const i=VD.pila.indexOf(name);if(i>=0)VD.pila=VD.pila.slice(0,i);VD.pila.push(name);}
-async function responder(g,t){
-  if(VD.g!==g)return;
-  if(await comandoGeneral(t))return;
-  const frm=$('#frm');if(!frm)return modoEspera(false);
-  if(g.tipo==='checkbox'&&coincide(t,['listo','siguiente','ninguno','ninguna','omitir'])){marcarHecho(g.name);return siguientePaso();}
-  if(coincide(t,['mantener','siguiente','omitir'])&&(g.resp||!g.req)){marcarHecho(g.name);return siguientePaso();}
-  const k=elegirOpcion(t,g.ops);
-  if(k<0){await decir('No entendí. Repita la opción o diga su número.');return;}
-  const o=g.ops[k];const inp=[...frm.querySelectorAll(`input[name="${g.name}"]`)].find(i=>i.value===o.v);if(!inp)return siguientePaso();
-  if(g.tipo==='checkbox')inp.checked=!inp.checked;else inp.checked=true;
-  inp.dispatchEvent(new Event('change',{bubbles:true}));
-  if(g.tipo==='checkbox'){await decir(`${inp.checked?'Marcado':'Desmarcado'}: ${o.t}. Diga otro, o listo.`);return;}
-  marcarHecho(g.name);await decir('Marcado: '+o.t+'.');return siguientePaso();}
-async function comandoGeneral(t){
-  if(coincide(t,['repetir','repite'])){if(VD.paso)await VD.paso();return true;}
-  if(coincide(t,['atrás','corregir','anterior','volver'])){
-    if(VD.dictado){if(!$('#camara').hidden)cerrarCamara();await decir('Dicte la corrección.');await iniciarDictado();return true;}
-    if(VD.estado==='foto'){VD.obs=false;VD.pila=VD.pila.filter(n=>n!=='__obs');}else VD.pila.pop();
-    if(!$('#camara').hidden)cerrarCamara();
-    await siguientePaso();return true;}
-  if(coincide(t,['cancelar','cancelar diagnóstico'])){if(!$('#camara').hidden)cerrarCamara();cerrarHoja();F=null;await decir('Diagnóstico cancelado. No se guardó nada.');await modoEspera(false);return true;}
-  if(coincide(t,['registrar diagnóstico','guardar diagnóstico','registrar'])){await registrarVoz();return true;}
-  return false;}
-async function pedirObs(){VD.estado='obs';VD.g=null;VD.paso=pedirObs;
-  await decir('Observación. Dígala ahora, o diga ninguna.');
-  const tok={};VD.tokObs=tok;
-  await escucharV(null,async t=>{if(VD.tokObs!==tok||VD.estado!=='obs')return;
-    if(await comandoGeneral(t))return;
-    if(!coincide(t,['ninguna','ninguno','sin observación','no'])){const ta=$('#frm textarea[name=observaciones]');if(ta)ta.value=t;await decir('Observación: '+t+'.');}
-    VD.obs=true;marcarHecho('__obs');return pasoFoto();});}
-function quitarUltimaFoto(){if(!F||!F.fotosNuevas.length)return false;F.fotosNuevas.pop();const c=$('#fotos');if(c&&c.lastElementChild)c.lastElementChild.remove();
-  CAM.n=Math.max(0,CAM.n-1);$('#camN').textContent=CAM.n+(CAM.n===1?' foto':' fotos');return true;}
-async function abrirCamaraVoz(){if($('#camara').hidden||!CAM.stream){await abrirCamara();await esperar(300);}
-  for(let i=0;i<60&&!($('#camVid').videoWidth>0);i++)await esperar(100);} // espera a que la cámara muestre imagen (celulares lentos)
-async function pasoFoto(){VD.estado='foto';VD.g=null;VD.paso=pasoFoto;
-  const n=nFotosF();await abrirCamaraVoz();
-  await decir(n?`Tiene ${n} foto${n>1?'s':''}. Diga tomar foto para otra, o registrar diagnóstico.`:'Cámara lista. Diga tomar foto.');
-  await escucharV(CMD_FOTO.map(gramTxt),async t=>{if(VD.estado!=='foto')return;
-    if(coincide(t,['repetir foto','borrar foto'])){if(quitarUltimaFoto()){await abrirCamaraVoz();await decir('Foto borrada. Diga tomar foto.');}else await decir('No hay foto para borrar. Diga tomar foto.');return;}
-    if(coincide(t,['guardar foto','listo'])){await fotoPendiente();if(!nFotosF()){await decir('Aún no hay foto. Diga tomar foto.');return;}
-      if(!$('#camara').hidden)cerrarCamara();await decir('Foto guardada. Diga registrar diagnóstico, u otra foto.');return;}
-    if(coincide(t,['tomar foto','otra foto','foto'])){const ok=await tomarFotoVoz();
-      await decir(ok?'Foto tomada. Diga guardar foto, o repetir foto.':'No se pudo tomar la foto. Intente de nuevo.');return;}
-    if(await comandoGeneral(t))return;
-    await decir('No entendí. Diga tomar foto, guardar foto o registrar diagnóstico.');});}
-function fraseRegistro(r){const e=estadoDe(r.estado)||{n:r.estado||''};const sint=(r.sintomas||[]).join(', ');
-  return `Se registró la palma ${paraVoz(r.numero||r.palma_id)}${r.linea?', línea '+paraVoz(r.linea):''}${r.lote?', del lote '+paraVoz(r.lote):''}. `+
-    `Enfermedad: ${r.n1||e.n}${r.n2?', '+r.n2:''}. Diagnóstico: ${r.n3||e.n}.${sint?' Síntomas: '+sint+'.':''}`;}
-async function registrarVoz(){
-  await fotoPendiente();   // una foto recién disparada termina de guardarse antes de validar
-  if(!F||!frmAbierto())return modoEspera(false);
-  const falta=gruposForm().find(g=>g.req&&!g.resp);
-  if(falta){VD.pila=VD.pila.filter(n=>n!==falta.name);if(!$('#camara').hidden)cerrarCamara();await decir('Falta.');return preguntar(falta);}
-  if(!nFotosF()){await decir('Falta la foto de la palma.');return pasoFoto();}
-  if(!$('#camara').hidden)cerrarCamara();
-  const id=F.r.id;await guardarRegistro($('#frm'));
-  if(F&&F.r&&F.r.id===id){await decir('No se pudo registrar el diagnóstico. Revise la pantalla.');return;}
-  const r=S.registros.find(x=>x.id===id);if(!r){await decir('No se pudo registrar el diagnóstico.');return modoEspera(false);}
-  const m=fraseRegistro(r);toast('✅ '+m,7000);await decir(m);return modoEspera(false);}
-/* ---------- Modo dictado: el operario dice todo seguido y la app marca el formulario sin preguntar ----------
-   Ej.: «Pudrición de cogollo, PC inicial. Síntomas manchas necróticas. Cirugía no. Producción sí. Transitabilidad transitable.
-   Observación hojas amarillas. Tomar foto. Guardar foto. Registrar diagnóstico.»
-   Enfermedad y opción se reconocen por su nombre; los demás campos por su nombre + la respuesta («cirugía no»).
-   Al registrar, la app pregunta solo lo que falte y confirma por voz lo registrado. */
-const CLAVES_CAMPO={sintomas:['sintomas','sintoma'],hongo:['hongo'],cirugia:['cirugia'],produccion:['produccion'],raices:['raices','raiz'],transitabilidad:['transitabilidad','transito']};
-const MARCAS_DICTADO=[['observacion','obs'],['observaciones','obs'],['tomar foto','tomar'],['otra foto','tomar'],['guardar foto','guardar'],['repetir foto','repetir'],['borrar foto','repetir'],
-  ['registrar diagnostico','registrar'],['guardar diagnostico','registrar'],['registrar','registrar'],['cancelar diagnostico','cancelar'],['cancelar','cancelar'],['resumen','resumen'],['leer resumen','resumen']];
-const tokV=t=>normV(t).split(' ').filter(Boolean);
-function diceV(a,b){if(a===b)return 1;const A=bigr(a),B=bigr(b),m=new Map();B.forEach(x=>m.set(x,(m.get(x)||0)+1));let k=0;A.forEach(x=>{const v=m.get(x);if(v){k++;m.set(x,v-1);}});return A.length+B.length?2*k/(A.length+B.length):0;}
-const palabraIgual=(a,b)=>a===b||(a.length>3&&b.length>3&&diceV(a,b)>=.8);
-/* Mejor opción cuyo nombre aparece en las palabras dichas (ventana deslizante con tolerancia); -1 si ninguna. */
-function buscarFrase(toks,ops,conPrefijo=false){let mejor=-1,ms=0;
-  ops.forEach((o,k)=>{const ot=tokV(o.t);if(!ot.length)return;const L=ot.length,oj=ot.join(' ');
-    if(conPrefijo&&L>2)for(let w=2;w<L;w++){const pj=ot.slice(0,w).join(' ');if(pj.length<10)continue; // basta el comienzo del nombre («manchas necróticas»)
-      for(let i=0;i+w<=toks.length;i++){const sc=Math.min(.97,diceV(toks.slice(i,i+w).join(' '),pj))*(.9+.1*w/L);if(sc>ms){ms=sc;mejor=k;}}}
-    for(let w=Math.max(1,L-1);w<=L+1;w++)for(let i=0;i+w<=toks.length;i++){const win=toks.slice(i,i+w);
-      let sc;if(w===L&&win.every((x,j)=>x===ot[j]))sc=1+oj.length/1000;          // nombre exacto (el más largo gana: «no transitable» > «transitable»)
-      else if(oj.length<=3)continue;                                              // «sí», «no»: solo exactos
-      else sc=diceV(win.join(' '),oj);
-      if(sc>ms){ms=sc;mejor=k;}}});
-  return ms>=.78?mejor:-1;}
-function posClave(toks,claves,desde=0){for(let i=desde;i<toks.length;i++)if(claves.some(c=>palabraIgual(toks[i],c)))return i;return -1;}
-/* Separa lo dictado en: palabras de campos, texto de observación y comandos (en el orden dicho). */
-function segmentarDictado(t){const toks=tokV(t),campos=[],cmds=[];let obs=null,i=0,enObs=false;
-  while(i<toks.length){let m=null;
-    for(const [frase,cmd] of MARCAS_DICTADO){const ft=frase.split(' ');if(i+ft.length<=toks.length&&ft.every((w,j)=>palabraIgual(toks[i+j],w))){if(!m||ft.length>m.n)m={cmd,n:ft.length};}}
-    if(m){if(m.cmd==='obs'){enObs=true;obs=obs||[];}else{enObs=false;cmds.push(m.cmd);}i+=m.n;continue;}
-    (enObs?obs:campos).push(toks[i]);i++;}
-  return {campos,obs:obs?obs.join(' '):null,cmds};}
-function marcarInput(name,val,on=true){const frm=$('#frm');if(!frm)return false;const inp=[...frm.querySelectorAll(`input[name="${name}"]`)].find(i=>i.value===val);
-  if(!inp||inp.checked===on)return false;inp.checked=on;inp.dispatchEvent(new Event('change',{bubbles:true}));return true;}
-/* Aplica al formulario lo dictado; devuelve cuántos campos marcó. */
-function aplicarDictado(toks){if(!toks.length)return 0;let n=0;
-  for(const name of ['n1','n2']){const g=gruposForm().find(x=>x.name===name);if(!g)continue;const k=buscarFrase(toks,g.ops);if(k>=0&&marcarInput(name,g.ops[k].v)){n++;marcarHecho(name);}}
-  const gs=gruposForm().filter(g=>g.name!=='n1'&&g.name!=='n2');
-  const claveDe=g=>CLAVES_CAMPO[g.name]||[tokV(g.titulo).find(w=>w.length>3)||normV(g.titulo)];
-  const todas=gs.flatMap(g=>claveDe(g));
-  for(const g of gs){const p=posClave(toks,claveDe(g));if(p<0)continue;
-    let fin=toks.length;for(let j=p+1;j<toks.length;j++)if(todas.some(c=>palabraIgual(toks[j],c))){fin=j;break;}
-    const resto=toks.slice(p+1,g.tipo==='checkbox'?fin:Math.min(fin,p+5));
-    if(g.tipo==='checkbox'){for(const o of g.ops)if(buscarFrase(resto,[o],true)===0&&marcarInput(g.name,o.v))n++;marcarHecho(g.name);}
-    else{const k=buscarFrase(resto,g.ops);if(k>=0&&marcarInput(g.name,g.ops[k].v)){n++;marcarHecho(g.name);}}}
-  return n;}
-function resumenForm(){const gs=gruposForm();const partes=gs.map(g=>{const frm=$('#frm');const sel=[...frm.querySelectorAll(`input[name="${g.name}"]:checked`)].map(i=>((i.nextElementSibling||{}).textContent||i.value).trim());
-    return sel.length?`${g.titulo}: ${sel.join(', ')}`:(g.req?`${g.titulo}: falta`:'');}).filter(Boolean);
-  const ob=($('#frm textarea[name=observaciones]')||{}).value;if(ob)partes.push('Observación: '+ob);partes.push(`Fotos: ${nFotosF()}`);
-  return partes.join('. ')+'.';}
-async function iniciarDictado(){VD.estado='dictado';VD.dictado=true;VD.g=null;VD.paso=iniciarDictado;
-  await escucharV(null,t=>dictar(t));}
-async function dictar(t){
-  if(VD.estado!=='dictado'||!frmAbierto())return;
-  const seg=segmentarDictado(t);
-  let n=aplicarDictado(seg.campos);
-  if(seg.obs){const ta=$('#frm textarea[name=observaciones]');if(ta){ta.value=seg.obs;n++;}}
-  if(n)pitido(980,90);else if(!seg.cmds.length)pitido(330,200); // pitido agudo: entendido; grave: no se reconoció ningún campo
-  for(const c of seg.cmds){if(VD.estado!=='dictado'&&c!=='registrar')break;
-    if(c==='tomar'){if(await tomarFotoVoz())pitido(1200,70);else await decir('No se pudo tomar la foto.');}
-    else if(c==='guardar'){await fotoPendiente();if(!$('#camara').hidden)cerrarCamara();pitido(980,90);}
-    else if(c==='repetir'){quitarUltimaFoto();await abrirCamaraVoz();await decir('Foto borrada.');}
-    else if(c==='resumen'){await decir(resumenForm());}
-    else if(c==='cancelar'){if(!$('#camara').hidden)cerrarCamara();cerrarHoja();F=null;await decir('Diagnóstico cancelado. No se guardó nada.');return modoEspera(false);}
-    else if(c==='registrar'){return registrarVoz();}}
-}
-$('#btDxVoz').onclick=alternarDxVoz;
-iniciarPolBar();{const _aju=actualizarJornadaUI;actualizarJornadaUI=function(){_aju.apply(this,arguments);pintarPolBar();};}
+/* =====================================================================
+   TARJETAS NFC: cada operario lleva 5 tarjetas o llaveros grabados con el texto «A», «P», «B», «R» o «V»
+   (registro NDEF de texto; también «pol:A»). Acercar la tarjeta = sumarCodigo(código, 'nfc').
+   APK: plugin nativo «Nfc» (NfcPlugin.java, modo lector con la app en primer plano). Navegador (Chrome Android): Web NFC (NDEFReader).
+   Cada toque cuenta una vez: la misma tarjeta leída otra vez antes de 1,5 s se ignora, salvo que se haya retirado y vuelto a acercar.
+   ===================================================================== */
+const NFC={modo:null,estado:'no',ult:null,cola:Promise.resolve(),lector:null,lis:null};
+const NFC_REPOSO=1500;
+const NAT_N=()=>window.Capacitor.Plugins.Nfc;
+function nfcNativoDisponible(){try{return !!(NATIVO&&window.Capacitor&&typeof Capacitor.isPluginAvailable==='function'&&Capacitor.isPluginAvailable('Nfc'));}catch(e){return false;}}
+/* «A», «a», «pol:A», «POL://B» → código; null si la tarjeta no es de polinización. */
+function codigoNfc(t){const m=String(t??'').trim().toUpperCase().match(/^(?:POL:(?:\/\/)?)?\s*([APBRV])\s*$/);return m?m[1]:null;}
+/* Lectura de una tarjeta (la llaman el plugin nativo y Web NFC). Devuelve 'ok', 'repetida' o 'desconocida'. */
+function nfcLeido(ev){ev=ev||{};const ahora=Date.now(),texto=String(ev.texto??''),clave=ev.id?'id:'+ev.id:'tx:'+texto;
+  const u=NFC.ult;
+  if(u&&u.clave===clave&&!u.retirada&&ahora-u.t<NFC_REPOSO){u.t=ahora;return 'repetida';} // sigue apoyada o rebotó: no cuenta otra vez
+  NFC.ult={clave,t:ahora,retirada:false};
+  const c=codigoNfc(texto);
+  if(!c){avisoPol(texto?`Tarjeta no reconocida (${texto.slice(0,20)}). Use tarjetas A, P, B, R o V.`:'Tarjeta vacía o sin texto. Grábela en Administración.',true);return 'desconocida';}
+  NFC.cola=NFC.cola.then(()=>sumarEnCola(c,'nfc')).catch(e=>console.warn(e));return 'ok';}
+function nfcRetirada(ev){const id=ev&&ev.id;if(NFC.ult&&id&&NFC.ult.clave==='id:'+id)NFC.ult.retirada=true;}
+function pintarNfc(){const b=$('#polNfc');if(!b)return;const e=NFC.estado;
+  const T={listo:'NFC listo',apagado:'NFC apagado',activar:'Activar NFC',no:'NFC no disponible',viejo:'NFC: actualice la APK',error:'NFC con error'};
+  b.textContent=T[e]||'NFC';b.className='nfc '+e;b.disabled=!(e==='apagado'||e==='activar'||e==='error');
+  b.title=e==='apagado'?'Toque para abrir los ajustes de NFC del celular':e==='activar'?'Toque para leer tarjetas NFC':'';}
+async function iniciarNfc(gesto){
+  try{
+    if(nfcNativoDisponible()){NFC.modo='nativo';const N=NAT_N();
+      if(!NFC.lis)NFC.lis=[await N.addListener('tarjeta',nfcLeido),await N.addListener('retirada',nfcRetirada)];
+      const e=await N.estado();
+      if(!e.disponible)NFC.estado='no';else if(!e.habilitado)NFC.estado='apagado';else{await N.iniciar();NFC.estado='listo';}
+    }else if('NDEFReader' in window){NFC.modo='web';
+      if(NFC.lector){NFC.estado='listo';}
+      else{let perm='prompt';try{perm=(await navigator.permissions.query({name:'nfc'})).state;}catch(e){}
+        if(!gesto&&perm!=='granted'){NFC.estado='activar';}   // Chrome pide permiso: solo desde un toque del operario
+        else{const r=new NDEFReader();await r.scan();NFC.lector=r;
+          r.onreading=ev=>{let texto='';for(const rec of ev.message.records){try{
+              if(rec.recordType==='text'){texto=new TextDecoder(rec.encoding||'utf-8').decode(rec.data);}
+              else if(rec.recordType==='url'||rec.recordType==='absolute-url'||(rec.mediaType||'').startsWith('text/')){texto=new TextDecoder().decode(rec.data);}}catch(e){}
+              if(texto.trim())break;}
+            nfcLeido({texto,id:ev.serialNumber||''});};
+          r.onreadingerror=()=>toast('No se pudo leer la tarjeta NFC. Acérquela de nuevo.',2500);
+          NFC.estado='listo';}}
+    }else NFC.estado=EN_APK?'viejo':'no';
+  }catch(e){NFC.estado=/NotAllowed/i.test(String(e&&e.name||e))?'activar':'error';if(gesto)toast('NFC: '+String(e&&e.message||e),5000);}
+  pintarNfc();}
+async function tocarNfc(){if(NFC.estado==='apagado'&&NFC.modo==='nativo'){try{await NAT_N().abrirAjustes();}catch(e){}return;}await iniciarNfc(true);}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&NFC.modo==='nativo')iniciarNfc(false);});
+iniciarPolBar();iniciarNfc(false);{const _aju=actualizarJornadaUI;actualizarJornadaUI=function(){_aju.apply(this,arguments);pintarPolBar();};}
 if(motorVoz()||EN_APK)$('#btDxVoz').hidden=false;
 $('#guia').onclick=e=>{
   if(e.target.closest('#guiaRepetir')){e.stopPropagation();const id=$('#guia').dataset.id;const f=id&&S.idx.get(id);hablar(f?frasePalma(f):(VOZ.ultimaFrase||'Sin palma cercana.'));return;}
@@ -3165,7 +3079,7 @@ async function panelApk(){
       <div class="stats"><div class="stat"><b style="font-size:20px">${esc(textoApkInst())}</b><span>Instalada</span></div><div class="stat"><b style="font-size:20px">${esc(APK.ultima||'…')}</b><span>Última publicada</span></div></div>
       ${nueva?`<div class="aviso">📲 Hay una APK nueva (${esc(APK.ultima)}). Descárguela e instálela <b>encima de la actual, sin desinstalar</b>: sus datos y jornadas no se pierden.</div>`
         :al?`<p style="color:var(--acento)">✅ Tiene la última APK.</p>`
-        :!EN_APK?`<p class="tenue">Está usando la app desde el navegador. Para registrar el recorrido con la pantalla bloqueada y usar el diagnóstico por voz sin internet, instale la APK.</p>`:''}
+        :!EN_APK?`<p class="tenue">Está usando la app desde el navegador. Para registrar el recorrido con la pantalla bloqueada y usar el registro por voz sin internet y las tarjetas NFC, instale la APK.</p>`:''}
       <button class="btn ${nueva||!EN_APK?'prim':''} ancho grande" id="apkDl">${IC.descarga} ${nueva?'DESCARGAR APK '+esc(APK.ultima):'Descargar la APK'+(APK.ultima?' '+esc(APK.ultima):'')}</button>
       <p class="tenue" style="margin-top:10px">La versión de la app web (${esc(VERSION)}) se actualiza aparte con «Actualizar versión»; la APK solo hay que reinstalarla cuando se publica una nueva.</p>`);
     $('#apkDl').onclick=descargarApk;};
