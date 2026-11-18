@@ -463,7 +463,7 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
     <div class="tit"><b>BASE DE DATOS</b><small id="bdSub"></small></div>
   </div>
   <div class="tabs" id="bdTabs">
-    <button data-t="diag" class="on">Diagnósticos</button><button data-t="jor">Jornadas y recorridos</button><button data-t="res">Resumen por lote</button>
+    <button data-t="diag" class="on">Registros</button><button data-t="jor">Jornadas y recorridos</button><button data-t="res">Resumen por lote</button>
   </div>
   <div id="bdCuerpo"></div>
 </section>
@@ -480,7 +480,7 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
     <input type="range" id="plRango" min="0" max="1000" value="0">
     <select id="plVel"><option value="10">×10</option><option value="30">×30</option><option value="60" selected>×60</option><option value="120">×120</option><option value="300">×300</option></select>
   </div>
-  <div class="play-pie"><span>Transcurrido <b id="plTrans">00:00:00</b></span><span>Distancia <b id="plDist">0.00 km</b></span><span>Palmas visitadas <b id="plVis">0</b></span><span>Ha <b id="plHa">0.00</b></span><span>Diagnósticos <b id="plDiag">0</b></span><label><input type="checkbox" id="plSeguir" checked> Seguir</label><label><input type="checkbox" id="plDiagAuto" checked> Ver diagnósticos</label></div>
+  <div class="play-pie"><span>Transcurrido <b id="plTrans">00:00:00</b></span><span>Distancia <b id="plDist">0.00 km</b></span><span>Palmas visitadas <b id="plVis">0</b></span><span>Ha <b id="plHa">0.00</b></span><span>Registros <b id="plDiag">0</b></span><label><input type="checkbox" id="plSeguir" checked> Seguir</label><label><input type="checkbox" id="plDiagAuto" checked> Ver registros</label></div>
 </section>
 <div id="plCard" class="glass" hidden role="status" aria-live="polite"></div>
 
@@ -526,7 +526,7 @@ if(/\/(visor|admin)\.html$/.test(location.pathname)){try{if(!sessionStorage.getI
   (navigator.serviceWorker?navigator.serviceWorker.getRegistrations().then(rs=>Promise.all(rs.map(r=>r.update()))):Promise.resolve()).catch(()=>{}).finally(()=>setTimeout(()=>location.reload(),1200));}}catch(e){}}
 
 /* ---------- Catálogos del formulario ---------- */
-/* Estado de la palma: se deriva automáticamente del diagnóstico (sirve para colores del mapa y resúmenes). */
+/* Estado de la palma: se deriva automáticamente del registro (sirve para colores del mapa y resúmenes). */
 const ESTADOS=[
   {id:'inflorescencias',n:'Con inflorescencias',c:'#00c853'},
   {id:'no_aplica',n:'No se aplica (R / V)',c:'#e53935'},
@@ -569,7 +569,7 @@ function ramaDe(c,n2,palmaId,regId){
     :u?`la hoja de vida de la palma tiene ${hv.length} registro${hv.length>1?'s':''} de ${c} (último: ${new Date(u.t).toLocaleDateString('es-CO')}${u.q?' · '+u.q:''})`
     :'la palma no tiene registros previos de '+c+' (ni en este dispositivo ni en la hoja de vida)'};
 }
-/* Formulario de diagnóstico editable: la administración publica config/ramas.json en el repositorio de datos.
+/* Formulario de registro editable: la administración publica config/ramas.json en el repositorio de datos.
    Se aplica sobre la tabla incorporada (RAMAS, N1S, PROBLEMAS y colores) y se guarda para uso sin conexión. */
 const TIPO_N1={}; // código → 'enferma' | 'novedad' | 'faltante' | 'sana'
 function aplicarRamas(cfg){
@@ -749,7 +749,7 @@ const D_PALMA=(()=>{let d='';for(let i=0;i<9;i++){const a=i*Math.PI*2/9,c=Math.c
 const icoPalma=(c,vacio)=>`<svg class="ico-palma" width="16" height="16" viewBox="-14 -14 28 28" aria-hidden="true"><path d="${D_PALMA}" fill="${vacio?'none':c}" stroke="${vacio?c:'#13240f'}" stroke-width="1.1" stroke-linejoin="round"/>${vacio?'':'<circle r="2.4" fill="#5a3d1e" stroke="#13240f" stroke-width=".8"/>'}</svg>`;
 const SVG_FLECHA=(c,t)=>`<svg width="${t}" height="${t}" viewBox="-45 -45 90 90" aria-hidden="true"><path d="M0 0 L-15 -38 A41 41 0 0 1 15 -38 Z" fill="${c}" fill-opacity=".3"/><path d="M0 -15 L10.5 11 L0 5.5 L-10.5 11 Z" fill="${c}" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/></svg>`;
 function iconoFlecha(c){return L.divIcon({className:'flecha-ic',iconSize:[90,90],iconAnchor:[45,45],html:`<div class="flecha-op">${SVG_FLECHA(c,90)}</div>`});}
-/* Parada: etiqueta con símbolo de pausa y minutos (naranja sin actividad, azul con diagnóstico, gris sin señal GPS). */
+/* Parada: etiqueta con símbolo de pausa y minutos (naranja sin actividad, azul con registro, gris sin señal GPS). */
 function paneParadas(){if(!mapa.getPane('paradas')){const pn=mapa.createPane('paradas');pn.style.zIndex=660;}return 'paradas';} // encima de las etiquetas de palmas
 function iconoParada(min,col){const txt=col==='#ff9f1c'?'#1a1200':'#fff';
   return L.divIcon({className:'parada-ic',iconSize:[0,0],html:`<div class="parada-pill" style="background:${col};color:${txt}"><i></i><i></i><b>${Math.round(Number(min)||0)} min</b></div>`});}
@@ -899,14 +899,14 @@ function dibujarEtiquetasPalmas(grupos){
     const mk=L.marker([lat,lng],{icon:L.divIcon({className:'etq-palma-ic',iconSize:[0,0],iconAnchor:[0,off],html:`<div class="${cls}">${esc(textoEtqPalma(p))}</div>`}),keyboard:false,zIndexOffset:500});
     mk.on('click',e=>{if(e.originalEvent)L.DomEvent.stopPropagation(e.originalEvent);if(!PLAY.on)abrirPalma(p._id);});mk.addTo(capaEtqPalmas);}
 }
-/* Regla para diagnosticar: jornada activa, GPS disponible y palma a radioSel (20 m) o menos del operario. */
+/* Regla para registrar: jornada activa, GPS disponible y palma a radioSel (20 m) o menos del operario. */
 function reglaDiagnostico(f){
   const R=Number(S.cfg.radioSel)||10;
-  if(!S.jornada)return {ok:false,R,motivo:'Inicie una jornada para registrar diagnósticos.'};
-  if(!S.gps)return {ok:false,R,motivo:'Esperando señal GPS. Para diagnosticar, la palma debe estar a '+R+' m o menos de usted.'};
+  if(!S.jornada)return {ok:false,R,motivo:'Inicie una jornada para registrar registros.'};
+  if(!S.gps)return {ok:false,R,motivo:'Esperando señal GPS. Para registrar, la palma debe estar a '+R+' m o menos de usted.'};
   if(f.properties._existe===false)return {ok:false,R,motivo:'Sitio sin palma (existencia 0): solo se registran palmas con existencia 1.'};
   const [x,y]=f.geometry.coordinates;const d=dist(S.gps.lat,S.gps.lng,y,x);
-  if(d>R)return {ok:false,R,d,motivo:`Esta palma está a <b>${Math.round(d)} m</b> de usted. Solo puede diagnosticar palmas a <b>${R} m o menos</b>; acérquese o elija una dentro del círculo.`};
+  if(d>R)return {ok:false,R,d,motivo:`Esta palma está a <b>${Math.round(d)} m</b> de usted. Solo puede registrar palmas a <b>${R} m o menos</b>; acérquese o elija una dentro del círculo.`};
   return {ok:true,R,d};
 }
 function repintarPalma(id){const m=S.marcadores.get(id),f=S.idx.get(id);if(m&&f)m.setStyle(estiloPalma(f));}
@@ -918,7 +918,7 @@ function pintarLeyenda(){
   $('#leyenda').innerHTML='<div style="font-weight:700;margin-bottom:2px">Registro de polinización</div>'+N1S.map(x=>`<div><span class="punto" style="background:${COLOR_N1[x.c]||'#999'}"></span><b>${esc(x.c)}:</b> ${esc(nombreCod(x.c))}</div>`).join('')+
   `<div><span class="punto" style="background:${COLOR_ALTA}"></span>De alta</div>`+
   `<div><span class="punto" style="background:${SIN_EVALUAR}"></span>Pendiente por registrar</div>
-   <div><span class="punto" style="background:#4dd0e1"></span>Visitada por el recorrido (sin diagnóstico)</div>
+   <div><span class="punto" style="background:#4dd0e1"></span>Visitada por el recorrido (sin registro)</div>
    <div><span style="display:inline-block;vertical-align:-5px;margin-right:4px">${SVG_FLECHA('#2f93d5',22)}</span>Operario (su ubicación y rumbo)</div>
    <div>${pillParada('#ff9f1c','min')}Parada sin actividad</div>
    <div>${pillParada('#2f93d5','min')}Parada con registro</div>
@@ -1191,7 +1191,7 @@ $('#btCercana').onclick=()=>{
     $('#pcIr').onclick=()=>{const [x,y]=mejor.geometry.coordinates;mapa.setView([y,x],19);abrirPalma(mejor.properties._id,dm);};return;}
   const lineas=[...new Set(lista.map(x=>x.f.properties._linea))].sort(ordenNat);
   abrirHoja(`Palmas a ${R} m o menos`,`
-    <p class="tenue">GPS ±${Math.round(S.gps.acc)} m · ${num(lista.length)} palmas de la jornada en el círculo naranja. Toque la palma que va a diagnosticar.</p>
+    <p class="tenue">GPS ±${Math.round(S.gps.acc)} m · ${num(lista.length)} palmas de la jornada en el círculo naranja. Toque la palma que va a registrar.</p>
     <div class="fila"><select id="pcLinea"><option value="">Todas las líneas</option>${lineas.map(l=>`<option value="${esc(l)}">Línea ${esc(l)}</option>`).join('')}</select>
       <label class="chip-op" style="flex:none"><input type="checkbox" id="pcPend"><span>Solo pendientes</span></label></div>
     <div id="pcLista"></div>`,{alCerrar:()=>capaRadio.clearLayers()});
@@ -1362,13 +1362,13 @@ function panelJornada(){
       <div class="stat"><b>${(j.km||0).toFixed(2)}</b><span>Km recorridos</span></div>
       <div class="stat"><b>${res.ha_recorridas.toFixed(2)}</b><span>Ha recorridas</span></div>
       <div class="stat"><b>${num(res.palmas_visitadas)}</b><span>Palmas visitadas</span></div>
-      <div class="stat"><b>${num(regs.length)}</b><span>Diagnósticos</span></div>
+      <div class="stat"><b>${num(regs.length)}</b><span>Registros</span></div>
     </div>
     <p class="tenue">Evaluador: <b>${esc(j.evaluador)}</b> · ${num(TRACK.n)} puntos de recorrido</p>
     <h3>Secuencias por lote</h3>${tablaSecuencias(secuenciasEnCurso())}
     <h3>Recorrido por lote</h3>${tablaLotes(res,j)}
     <h3>Paradas</h3>${tablaParadas(PAR.lista,resumenParadas(PAR.lista,j))}
-    <h3>Avance del censo (diagnósticos)</h3>${filas}
+    <h3>Avance del censo (registros)</h3>${filas}
     <button class="btn ancho" id="jAgregar">${IC.mas} Agregar lotes</button>
     <button class="btn ancho" id="jVer">${IC.play} Ver recorrido hasta ahora</button>
     <button class="btn peligro ancho mantener" id="jFin" style="margin-top:14px;flex-direction:column">${IC.stop} FINALIZAR JORNADA<small class="subMant">Mantenga presionado 2 segundos</small></button>`);
@@ -1384,7 +1384,7 @@ async function finalizarJornada(){
   await cerrarRecorrido(j);
   j.fin=new Date().toISOString();j.fin_real=new Date(ahoraReal()).toISOString();j.hora_fin=estadoHora();j.estado='finalizada';j.sync='pendiente';j.cierre={modo:'boton',usuario:SES?SES.u:'',fecha:j.fin};
   const regs=S.registros.filter(r=>r.jornada_id===j.id);const pts=await puntosTrack(j.id);
-  const E=await calcularVisita(pts,j.densidad,j.buffer,j.metodoVisita||'buffer',true,true,j.seleccion,j.bufferTerraza);const par=detectarParadas(pts,j.paradaRadio,j.paradaMin,regs);
+  const E=await calcularVisita(pts,j.densidad,j.buffer,j.metodoVisita||'buffer',true,true,j.seleccion,j.bufferTerraza,regs);const par=detectarParadas(pts,j.paradaRadio,j.paradaMin,regs);
   j.paradas=par;j.resumen_paradas=resumenParadas(par,j);j.visita=paradasEnLotes(resumenVisita(E,regs,true),par);
   j.secuencias=secuenciasDe(pts,{inicio:Date.parse(j.inicio),fin:Date.parse(j.fin),paradas:par,regs,densidad:j.densidad,visitas:E.conf});
   j.tiempos=tiemposJornada(j.secuencias,j);
@@ -1403,7 +1403,7 @@ async function finalizarJornada(){
       <div class="stat"><b>${fmtDur(Date.parse(j.fin)-Date.parse(j.inicio)).slice(0,5)}</b><span>Duración</span></div>
       <div class="stat"><b>${(j.km||0).toFixed(2)}</b><span>Km</span></div>
       <div class="stat"><b>${res.ha_recorridas.toFixed(2)}</b><span>Ha recorridas</span></div>
-      <div class="stat"><b>${num(regs.length)}</b><span>Diagnósticos</span></div>
+      <div class="stat"><b>${num(regs.length)}</b><span>Registros</span></div>
       <div class="stat"><b>${j.tiempos.hora_inicio_labor||'—'}</b><span>Inicio de labor</span></div>
       <div class="stat"><b>${j.tiempos.hora_fin_labor||'—'}</b><span>Fin de labor</span></div>
       <div class="stat"><b>${j.tiempos.velocidad_kmh==null?'—':j.tiempos.velocidad_kmh.toFixed(1)}</b><span>Vel. caminata km/h</span></div>
@@ -1626,9 +1626,17 @@ async function visitarTramo(E,p){
   return nuevos;
 }
 /* conT: guarda el segundo de la primera visita confirmada de cada palma (secuencias y reproducción). final: descarta las calles sin confirmar (desplazamiento final). */
-async function calcularVisita(pts,densidad,buffer,metodo,conT,final,sel,bufTer){const E=nuevoEstadoVisita(densidad,buffer,metodo,bufTer);E.sel=sel||null;const t0=pts.length?pts[0].t:0;
+/* Una palma con registro (A, P, B, R o V) cuenta como visitada aunque el recorrido no la haya marcado. */
+async function visitarRegistro(E,r){const nuevos=[];
+  if(!E||!r||r.palma_id==null||!r.lote||(r.labor&&r.labor!==LABOR_APP))return nuevos;const id=String(r.palma_id);if(E.set.has(id))return nuevos;
+  try{prepK();const grid=await indiceVisita(r.lote);if(!grid)return nuevos;E.grids.set(r.lote,grid);
+    for(const arr of grid.values()){if(!Array.isArray(arr))continue;const q=arr.find(z=>z.id===id);
+      if(q){if(E.prov)E.prov.delete(id);marcarVisita(E,r.lote,q,nuevos,Date.parse(r.creado_telefono||r.creado)||Date.now());break;}}}catch(e){}
+  return nuevos;}
+async function calcularVisita(pts,densidad,buffer,metodo,conT,final,sel,bufTer,regs){const E=nuevoEstadoVisita(densidad,buffer,metodo,bufTer);E.sel=sel||null;const t0=pts.length?pts[0].t:0;
   for(const p of pts)await visitarTramo(E,p);
   if(final)cerrarVisita(E);
+  for(const r of regs||[])await visitarRegistro(E,r); // toda palma registrada cuenta como visitada
   if(conT){E.t0=t0;E.tv=new Map(E.conf.map(v=>[String(v.id),Math.round((v.t-t0)/1000)]));}
   return E;}
 function resumenVisita(E,regs,conIds){
@@ -1686,7 +1694,7 @@ function resumenParadas(lista,j){
     minutos_paradas:min,minutos_movimiento:Math.max(0,dur-min)};
 }
 /* ---------- Secuencias por lote y desplazamientos ----------
-   La labor empieza con la primera palma confirmada (calle trabajada) o el primer diagnóstico, y termina con la última.
+   La labor empieza con la primera palma confirmada (calle trabajada) o el primer registro, y termina con la última.
    · Desplazamiento inicial: del inicio de la jornada al inicio de la labor (no es tiempo efectivo de un lote).
    · Desplazamiento entre lotes: de la última palma del lote anterior a la primera del lote siguiente; se suma a la secuencia
      del lote al que llega (su hora de inicio es la del final del lote anterior) y cuenta como tiempo efectivo.
@@ -1720,7 +1728,7 @@ function secuenciasDe(pts,o){
   for(const r of regs){const t=Date.parse(r.creado);if(t&&r.lote)marcas.push({t,l:String(r.lote),v:0});}
   marcas.sort((a,b)=>a.t-b.t);
   let bl=[];for(const m of marcas){const u=bl[bl.length-1];if(u&&u.l===m.l){u.t1=m.t;u.n++;u.pv+=m.v;}else bl.push({l:m.l,t0:m.t,t1:m.t,n:1,pv:m.v});}
-  let cambio=true;while(cambio&&bl.length>1){cambio=false; // bloques mínimos (un diagnóstico suelto en otro lote): se funden con el vecino
+  let cambio=true;while(cambio&&bl.length>1){cambio=false; // bloques mínimos (un registro suelto en otro lote): se funden con el vecino
     for(let k=0;k<bl.length;k++){const b=bl[k];if(b.n>=3||b.t1-b.t0>=SEQ_MIN)continue;const d=bl[k>0?k-1:1];
       d.t0=Math.min(d.t0,b.t0);d.t1=Math.max(d.t1,b.t1);d.n+=b.n;d.pv+=b.pv;bl.splice(k,1);cambio=true;break;}
     const m=[];for(const b of bl){const u=m[m.length-1];if(u&&u.l===b.l){u.t1=b.t1;u.n+=b.n;u.pv+=b.pv;}else m.push(b);}bl=m;}
@@ -1831,15 +1839,15 @@ function abrirPalma(id,dm){
       ${p._existe===false?'<div style="color:var(--ambar)"><b>Sitio sin palma según la cartografía</b></div>':''}
     </div>
     ${AUD.ids.has(String(id))?`<div class="aviso">🔎 Palma de la auditoría ${esc(AUD.m.id)}: regístrela sin consultar registros anteriores.</div>`:''}
-    ${S.jornada?(hoy?(hoy.sync==='sincronizado'?`<button class="btn ancho" id="btDiag">${IC.candado} Ver diagnóstico de hoy</button>`
-        :(dGps!=null&&dGps<=regla.R?`<button class="btn ancho prim" id="btDiag">✎ Editar diagnóstico de hoy</button>`
-        :`<button class="btn ancho" id="btDiag">Ver diagnóstico de hoy · para editar acérquese a ${regla.R} m</button>`))
-      :(regla.ok?`<button class="btn prim ancho grande" id="btDiag">${IC.mas} REGISTRAR DIAGNÓSTICO</button>`
+    ${S.jornada?(hoy?(hoy.sync==='sincronizado'?`<button class="btn ancho" id="btDiag">${IC.candado} Ver registro de hoy</button>`
+        :(dGps!=null&&dGps<=regla.R?`<button class="btn ancho prim" id="btDiag">✎ Editar registro de hoy</button>`
+        :`<button class="btn ancho" id="btDiag">Ver registro de hoy · para editar acérquese a ${regla.R} m</button>`))
+      :(regla.ok?`<button class="btn prim ancho grande" id="btDiag">${IC.mas} REGISTRAR PALMA</button>`
         :`<div class="aviso">${regla.motivo}</div>${S.gps?`<button class="btn ancho" id="btVerRadio">Ver palmas a ${regla.R} m o menos</button>`:''}`))
-      :'<div class="aviso">Inicie una jornada para registrar diagnósticos.</div>'}
+      :'<div class="aviso">Inicie una jornada para registrar registros.</div>'}
     ${lineaTiempoPalma(hist)}
     <h3>Historial (${hist.length})</h3>
-    ${hist.map(tarjetaRegistro).join('')||'<p class="tenue">Esta palma aún no tiene diagnósticos.</p>'}`);
+    ${hist.map(tarjetaRegistro).join('')||'<p class="tenue">Esta palma aún no tiene registros.</p>'}`);
   const b=$('#btDiag');if(b)b.onclick=()=>abrirFormulario(hoy||{palma_id:id});
   const vr=$('#btVerRadio');if(vr)vr.onclick=()=>{cerrarHoja();$('#btCercana').click();};
   enlazarTarjetas();
@@ -1957,6 +1965,7 @@ async function guardarPol(r,op={}){
   const i=S.registros.findIndex(x=>x.id===r.id);if(i>=0)S.registros[i]=r;else S.registros.push(r);
   recalcUltimo();if(S.jornada&&r.jornada_id===S.jornada.id)S.hechos.set(r.palma_id,r);
   repintarPalma(r.palma_id);actualizarCenso();estadoSync();refrescarBD();
+  if(VIS&&S.jornada&&r.jornada_id===S.jornada.id)visitarRegistro(VIS,r).then(nv=>{if(nv.length){nv.forEach(repintarPalma);actualizarVisitaUI();}}).catch(()=>{});
   if(!op.silencio)toast('✅ Registro guardado en el dispositivo.');return true;
 }
 
@@ -2131,7 +2140,7 @@ async function marcarJornadaPendiente(jid){
   if(S.jornada&&S.jornada.id===jid){S.jornada.sync='pendiente';await dbPut('jornadas',S.jornada);return;}
   const j=await dbGet('jornadas',jid);if(j){j.sync='pendiente';await dbPut('jornadas',j);}
 }
-/* ---------- Piloto: diagnóstico sugerido por IA a partir de la foto (config/servicios.json → ia.url) ----------
+/* ---------- Piloto: registro sugerido por IA a partir de la foto (config/servicios.json → ia.url) ----------
    La foto (reducida a 1024 px) y las opciones del formulario van al servicio intermedio, que comprueba el token de la App y consulta a Claude.
    Es solo una sugerencia: el operario la aplica o no, y siempre puede corregir. Se registra si la aceptó (r.ia). */
 const IA={cfg:null};
@@ -2169,7 +2178,7 @@ async function sugerirIA(){
       <div class="tenue">Confianza: <b style="color:${col}">${esc(d.confianza||'')}</b>${(d.sintomas||[]).length?' · '+esc(d.sintomas.join('; ')):''}</div>
       <div style="margin-top:4px">${esc(d.explicacion||'')}</div>
       <div class="fila" style="margin-top:8px"><button type="button" class="btn prim" id="iaUsar">Aplicar sugerencia</button><button type="button" class="btn" id="iaNo">Descartar</button></div>
-      <div class="tenue" style="font-size:12px;margin-top:4px">Revise siempre: usted decide el diagnóstico.</div></div>`;
+      <div class="tenue" style="font-size:12px;margin-top:4px">Revise siempre: usted decide el registro.</div></div>`;
     $('#iaNo').onclick=()=>{box.innerHTML='';};
     $('#iaUsar').onclick=()=>{const frm=$('#frm');const marcar=(name,v)=>{const i=[...frm.querySelectorAll(`input[name="${name}"]`)].find(x=>x.value===v);if(i&&!i.checked){i.checked=true;i.dispatchEvent(new Event('change',{bubbles:true}));}};
       marcar('n1',d.codigo);if(opc)marcar('n2',opc);for(const s of d.sintomas||[])marcar('sintomas',s);
@@ -2196,13 +2205,13 @@ async function guardarRegistro(frm){
 function liberarUrls(){if(F&&F.urls)F.urls.forEach(u=>URL.revokeObjectURL(u));}
 async function borrarRegistro(id){
   const r=S.registros.find(x=>x.id===id);if(!r)return;
-  if(r.sync==='sincronizado'){alert('Este diagnóstico ya fue sincronizado y no se puede eliminar.');return;}
+  if(r.sync==='sincronizado'){alert('Este registro ya fue sincronizado y no se puede eliminar.');return;}
   if(SYNC.activo){alert('Se está sincronizando. Intente de nuevo en unos segundos.');return;}
-  if(!confirm('¿Eliminar definitivamente este diagnóstico y sus fotos?'))return;
+  if(!confirm('¿Eliminar definitivamente este registro y sus fotos?'))return;
   for(const fid of (r.fotos||[]))await dbDel('fotos',fid);
   await dbDel('registros',id);S.registros=S.registros.filter(x=>x.id!==id);await marcarJornadaPendiente(r.jornada_id);
   recalcUltimo();if(S.hechos.get(r.palma_id)&&S.hechos.get(r.palma_id).id===id)S.hechos.delete(r.palma_id);
-  repintarPalma(r.palma_id);actualizarCenso();estadoSync();F=null;toast('Diagnóstico eliminado.');
+  repintarPalma(r.palma_id);actualizarCenso();estadoSync();F=null;toast('Registro eliminado.');
   if(S.idx.has(r.palma_id))abrirPalma(r.palma_id);else cerrarHoja();refrescarBD();
 }
 function recalcUltimo(){
@@ -2483,7 +2492,7 @@ $('#bdTabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;BD.tab=
 async function pintarBD(){
   $$('#bdTabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===BD.tab));
   const pend=S.registros.filter(r=>r.sync!=='sincronizado').length;
-  $('#bdSub').textContent=`${num(S.registros.length)} diagnósticos · ${num(pend)} pendientes · ${num(S.registros.length-pend)} sincronizados`;
+  $('#bdSub').textContent=`${num(S.registros.length)} registros · ${num(pend)} pendientes · ${num(S.registros.length-pend)} sincronizados`;
   if(BD.tab==='diag')pintarDiag();else if(BD.tab==='jor')await pintarJornadas();else pintarResumen();
 }
 const COLS=[
@@ -2520,7 +2529,7 @@ function pintarDiag(){
     <div class="resumen-bd"><span class="chip">${num(L2.length)} registros</span>
       <button class="chip" id="bdSyncAhora">${IC.sync} Sincronizar</button><button class="chip" id="bdExp">${IC.descarga} Exportar</button></div>
     <div class="tabla-cont"><table class="tabla"><thead><tr>${COLS.map(c=>`<th data-k="${c.k}" class="${BD.orden===c.k?'ord'+(BD.asc?' asc':''):''}">${esc(c.n)}</th>`).join('')}</tr></thead>
-    <tbody>${L2.slice(0,BD.limite).map(r=>`<tr data-id="${esc(r.id)}">${COLS.map(c=>`<td>${c.h?c.h(r):esc(c.v(r))}</td>`).join('')}</tr>`).join('')||`<tr><td colspan="${COLS.length}" class="tenue" style="padding:18px">No hay diagnósticos con estos filtros.</td></tr>`}</tbody></table></div>
+    <tbody>${L2.slice(0,BD.limite).map(r=>`<tr data-id="${esc(r.id)}">${COLS.map(c=>`<td>${c.h?c.h(r):esc(c.v(r))}</td>`).join('')}</tr>`).join('')||`<tr><td colspan="${COLS.length}" class="tenue" style="padding:18px">No hay registros con estos filtros.</td></tr>`}</tbody></table></div>
     ${L2.length>BD.limite?`<button class="btn ancho" id="bdMas">Mostrar más (${num(L2.length-BD.limite)} restantes)</button>`:''}`;
   const set=(id,k)=>{$(id).onchange=$(id).oninput=()=>{BD.f[k]=$(id).value;BD.limite=200;if(id==='#fQ'){clearTimeout(BD._t);BD._t=setTimeout(pintarDiag,300);}else pintarDiag();};};
   set('#fQ','q');set('#fJor','jornada');set('#fLote','lote');set('#fEst','estado');set('#fSync','sync');
@@ -2542,10 +2551,10 @@ async function pintarJornadas(){
     cards.push(`<div class="jor-card"><div class="cab"><b>${esc(fmtFecha(j.inicio).slice(0,10))} · ${hhmm(j.inicio)} – ${j.fin?hhmm(j.fin):'en curso'}</b>${est}</div>
       <div class="met"><span>Evaluador <b>${esc(j.evaluador)}</b></span><span>Duración <b>${fmtDur(dur).slice(0,5)}</b></span><span>Recorrido <b>${(j.km||0).toFixed(2)} km</b></span>
       ${res?`<span>Ha recorridas <b>${res.ha_recorridas.toFixed(2)}</b></span><span>Palmas visitadas <b>${num(res.palmas_visitadas)}</b></span>`:''}
-      <span>Diagnósticos <b>${num(regs.length)}</b></span><span>Puntos GPS <b>${num(n)}</b></span>
+      <span>Registros <b>${num(regs.length)}</b></span><span>Puntos GPS <b>${num(n)}</b></span>
       ${rp?`<span>Paradas <b>${rp.n_paradas} (${durHM(rp.minutos_paradas||0)})</b></span><span>En movimiento <b>${durHM(rp.minutos_movimiento||0)}</b></span>`:(S.jornada&&S.jornada.id===j.id?`<span>Paradas <b>${PAR.lista.length}</b></span>`:'')}</div>
       ${res&&res.por_lote.length?`<div class="met">${res.por_lote.map(x=>`<span><b>${esc(x.lote)}</b>: ${num(x.palmas_visitadas)} palmas · ${(Number(x.ha)||0).toFixed(2)} ha · ${num(x.diagnosticos||0)} diag.</span>`).join('')}</div>`:''}
-      <div class="fila"><button class="btn prim" data-play="${esc(j.id)}">${IC.play} Reproducir recorrido</button><button class="btn" data-ver="${esc(j.id)}">Ver diagnósticos</button></div>
+      <div class="fila"><button class="btn prim" data-play="${esc(j.id)}">${IC.play} Reproducir recorrido</button><button class="btn" data-ver="${esc(j.id)}">Ver registros</button></div>
       <div class="fila"><button class="btn" data-dl="${esc(j.id)}">${IC.descarga} Descargar recorrido (GeoJSON)</button><button class="btn" data-kml="${esc(j.id)}">${IC.descarga} KML (Google Earth)</button></div></div>`);
   }
   $('#bdCuerpo').innerHTML=cards.join('')||'<p class="tenue" style="padding:12px">Aún no hay jornadas registradas en este dispositivo.</p>';
@@ -2576,7 +2585,7 @@ function resumenLote(l){
   abrirHoja('Lote '+l,`
     <div class="stats"><div class="stat"><b>${m?num(m.n-(m.vacios||0)):'0'}</b><span>Palmas</span></div><div class="stat"><b>${m?num(m.vacios||0):'0'}</b><span>Sitios vacíos</span></div><div class="stat"><b>${m?`${m.linea_min??'?'}–${m.linea_max??'?'}`:'—'}</b><span>Líneas</span></div></div>
     <div class="ficha" style="margin-top:8px">${p.Programa?`<div><b>Programa:</b> ${esc(p.Programa)}</div>`:''}${p.ZonaCosecha?`<div><b>Zona de cosecha:</b> ${esc(p.ZonaCosecha)}</div>`:''}${p.Area_ha!=null?`<div><b>Área:</b> ${Number(p.Area_ha).toLocaleString("es-CO",{minimumFractionDigits:2,maximumFractionDigits:2})} ha</div>`:''}
-      <div><b>Palmas con diagnóstico:</b> ${num(ev.length)}</div>${c?`<div><b>Censo de esta jornada:</b> ${num(c.hec)} / ${num(c.tot)}</div>`:''}</div>
+      <div><b>Palmas con registro:</b> ${num(ev.length)}</div>${c?`<div><b>Censo de esta jornada:</b> ${num(c.hec)} / ${num(c.tot)}</div>`:''}</div>
     ${!m?'<div class="aviso">Este lote no tiene palmas en la cartografía.</div>':!S.jornada?`<button class="btn nar ancho grande" id="rlPlan">${IC.play} PLANIFICAR JORNADA CON ESTE LOTE</button>`
       :!enJornada(l)?`<button class="btn prim ancho" id="rlAgr">${IC.mas} Agregar a la jornada (todas las líneas)</button>`:'<p class="tenue">Acérquese (zoom) para seleccionar palmas.</p>'}`);
   const a=$('#rlPlan');if(a)a.onclick=()=>{S.plan=[itemPlan(l)];abrirPlanificador('nueva');};
@@ -2609,7 +2618,7 @@ async function abrirPlay(jid){
     $('#plRes').innerHTML=`<span>Inicio<b>${hhmm(j.inicio)}</b></span><span>Fin<b>${j.fin?hhmm(j.fin):'en curso'}</b></span><span>Hectáreas<b>${ha!=null?ha.toFixed(2):'—'}</b></span><span>T. efectivo<b>${ef?durHM(Math.round(ef)):'—'}</b></span>`;}
   PLAY.marca=L.marker([pts[0].lat,pts[0].lng],{icon:iconoFlecha('#ee7633'),interactive:false,keyboard:false,zIndexOffset:1000}).addTo(PLAY.capa);
   $('#plTit').textContent='Recorrido · '+fmtFecha(j.inicio).slice(0,10);
-  $('#plSub').textContent=`${j.evaluador} · ${fmtHora(PLAY.t0)} – ${fmtHora(PLAY.t1)} · ${(PLAY.acum[PLAY.acum.length-1]/1000).toFixed(2)} km · ${PLAY.regs.length} diagnósticos · ${(PLAY.paradas||[]).length} paradas`;
+  $('#plSub').textContent=`${j.evaluador} · ${fmtHora(PLAY.t0)} – ${fmtHora(PLAY.t1)} · ${(PLAY.acum[PLAY.acum.length-1]/1000).toFixed(2)} km · ${PLAY.regs.length} registros · ${(PLAY.paradas||[]).length} paradas`;
   $('#play').hidden=false;$('#dock').hidden=true;$('#superior').hidden=true;$('#flot').hidden=true;$('#btLeyenda').hidden=true;$('#leyenda').hidden=true;
   abrirCapa('play');
   mapa.fitBounds(L.latLngBounds(pts.map(p=>[p.lat,p.lng])),{padding:[40,40],maxZoom:18});
@@ -2619,7 +2628,7 @@ async function abrirPlay(jid){
 async function palmasVisitadasPlay(j,pts){
   let t0,porLote=null;
   if(j.visita&&j.visita.t0_visita&&j.visita.por_lote.some(x=>x.t_visita)){t0=Date.parse(j.visita.t0_visita);porLote=j.visita.por_lote.map(x=>({lote:x.lote,ids:x.ids_palmas_visitadas||[],t:x.t_visita||[]}));}
-  else{const E=await calcularVisita(pts.map(p=>({...p})),j.densidad,j.buffer,j.metodoVisita||'buffer',true,j.estado!=='activa',j.seleccion,j.bufferTerraza);t0=E.t0;porLote=[...E.lotes].map(([l,r])=>({lote:l,ids:r.ids,t:r.ids.map(id=>E.tv.get(String(id)))}));}
+  else{const E=await calcularVisita(pts.map(p=>({...p})),j.densidad,j.buffer,j.metodoVisita||'buffer',true,j.estado!=='activa',j.seleccion,j.bufferTerraza,S.registros.filter(r=>r.jornada_id===j.id));t0=E.t0;porLote=[...E.lotes].map(([l,r])=>({lote:l,ids:r.ids,t:r.ids.map(id=>E.tv.get(String(id)))}));}
   const out=[];
   for(const x of porLote){if(!x.ids.length)continue;let pos=new Map();
     try{for(const a of await leerChunk(x.lote))pos.set(String(a[0]),[a[5],a[4]]);}catch(e){}
@@ -2639,7 +2648,7 @@ function pintarPlay(){
   if(PLAY.vis){let k=PLAY.visN;const rv=Math.max(2.5,radioPalma()-1);
     while(k<PLAY.vis.length&&PLAY.vis[k].t<=PLAY.t){const q=PLAY.vis[k];q.m=L.circleMarker(q.ll,{renderer:rend,radius:rv,color:'#0b3d44',weight:1,fillColor:'#4dd0e1',fillOpacity:.95,interactive:false}).addTo(PLAY.capaVis);k++;}
     while(k>0&&PLAY.vis[k-1].t>PLAY.t){k--;const q=PLAY.vis[k];if(q.m){PLAY.capaVis.removeLayer(q.m);q.m=null;}}
-    if(k>PLAY.visN){for(const r of PLAY.regs)if(r.on)r.m.bringToFront();} // diagnósticos por encima de las palmas visitadas
+    if(k>PLAY.visN){for(const r of PLAY.regs)if(r.on)r.m.bringToFront();} // registros por encima de las palmas visitadas
     PLAY.visN=k;$('#plVis').textContent=num(k);$('#plHa').textContent=(k/(PLAY.dens||115)).toFixed(2);}
   let n=0,nuevo=null;for(const r of PLAY.regs){const v=r.t<=PLAY.t;if(v)n++;if(v&&!r.on){r.m.addTo(PLAY.capa);r.on=true;nuevo=r;}else if(!v&&r.on){PLAY.capa.removeLayer(r.m);r.on=false;}}
   const dkm=(PLAY.acum[i]+(i+1<P.length?dist(a.lat,a.lng,lat,lng):0))/1000;
@@ -2648,7 +2657,7 @@ function pintarPlay(){
   if($('#plSeguir').checked&&PLAY.run&&!mapa.getBounds().pad(-.2).contains([lat,lng]))mapa.panTo([lat,lng],{animate:true});
   if(nuevo&&PLAY.run&&$('#plDiagAuto').checked)mostrarDiagPlay(nuevo,true);
 }
-/* Al pasar por un diagnóstico en la reproducción: pausa 5 s, centra la palma, la resalta y muestra la ficha del diagnóstico. */
+/* Al pasar por un registro en la reproducción: pausa 5 s, centra la palma, la resalta y muestra la ficha del registro. */
 async function mostrarDiagPlay(x,auto){
   const r=x.r;if(!r)return;if(auto)PLAY.espera=Date.now()+5000;
   if(mapa.getZoom()<19)mapa.setView([r.lat,r.lng],19,{animate:true});else mapa.panTo([r.lat,r.lng],{animate:true});
@@ -2657,7 +2666,7 @@ async function mostrarDiagPlay(x,auto){
   const e=estadoDe(r.estado)||{n:r.estado||''};const sint=(r.sintomas||[]).join(' / ');
   const c=$('#plCard');c.dataset.id=r.id;
   c.innerHTML=`<img class="foto" alt="" hidden><div class="txt"><b class="et">${esc(etiquetaReg(r))}</b>
-    <div class="diag"><span class="dot" style="background:${colorReg(r)}"></span>${esc(textoDiag(r)||e.n||'Diagnóstico')}</div>
+    <div class="diag"><span class="dot" style="background:${colorReg(r)}"></span>${esc(textoDiag(r)||e.n||'Registro')}</div>
     ${sint?`<div><b>Síntomas:</b> ${esc(sint)}</div>`:''}${r.observaciones?`<div class="tenue">${esc(r.observaciones)}</div>`:''}
     <div class="tenue">${esc(fmtHora(x.t).slice(0,5))} · ${esc(r.evaluador||'')}${(r.fotos||[]).length?` · 📷 ${r.fotos.length}`:''}</div></div>`;
   c.hidden=false;clearTimeout(c._t);c._t=setTimeout(()=>{if(c.dataset.id===r.id)c.hidden=true;},auto?6000:8000);
@@ -2667,7 +2676,7 @@ async function mostrarDiagPlay(x,auto){
 $('#plCard').onclick=()=>{$('#plCard').hidden=true;};
 function bucle(ts){
   if(!PLAY.run)return;const dt=PLAY.ult?ts-PLAY.ult:0;PLAY.ult=ts;
-  if(Date.now()<PLAY.espera){PLAY.raf=requestAnimationFrame(bucle);return;} // pausa mientras se muestra un diagnóstico
+  if(Date.now()<PLAY.espera){PLAY.raf=requestAnimationFrame(bucle);return;} // pausa mientras se muestra un registro
   PLAY.t=Math.min(PLAY.t1,PLAY.t+dt*Number($('#plVel').value||60));pintarPlay();
   if(PLAY.t>=PLAY.t1){PLAY.run=false;$('#plBtn').innerHTML=IC.play;return;}
   PLAY.raf=requestAnimationFrame(bucle);
@@ -2751,8 +2760,8 @@ function programarSync(ms){clearTimeout(SYNC.t);SYNC.t=setTimeout(()=>sincroniza
 /* Solo se envía una jornada FINALIZADA con hora de fin, no sincronizada y que no sea la jornada en curso. */
 function jornadaLista(j){return !!j&&j.estado==='finalizada'&&!!j.fin&&j.sync!=='sincronizado'&&j.id!==S.cfg.jornadaActiva&&!(S.jornada&&j.id===S.jornada.id);}
 async function jornadasPorSincronizar(){return (await dbAll('jornadas')).filter(jornadaLista).sort((a,b)=>String(a.inicio).localeCompare(String(b.inicio)));}
-/* Un solo archivo GeoJSON por jornada: diagnósticos (puntos) + recorrido (línea) + datos de la jornada. */
-/* Descarga de recorridos del usuario: GeoJSON (recorrido + paradas + diagnósticos + resumen de la jornada), KML o puntos GPS en CSV. */
+/* Un solo archivo GeoJSON por jornada: registros (puntos) + recorrido (línea) + datos de la jornada. */
+/* Descarga de recorridos del usuario: GeoJSON (recorrido + paradas + registros + resumen de la jornada), KML o puntos GPS en CSV. */
 async function descargarRecorridos(ids,fmt){
   const js=(await dbAll('jornadas')).filter(j=>ids.includes(j.id)).sort((a,b)=>String(a.inicio).localeCompare(String(b.inicio)));
   if(!js.length){toast('No hay recorridos registrados en este celular.');return;}
@@ -2802,7 +2811,7 @@ async function sincronizar(manual){
       const j=await dbGet('jornadas',j0.id);if(!jornadaLista(j))continue; // se vuelve a leer: pudo reabrirse o enviarse mientras tanto
       const regs=S.registros.filter(r=>r.jornada_id===j.id);const pts=await puntosTrack(j.id);
       if(!j.paradas){j.paradas=detectarParadas(pts,j.paradaRadio,j.paradaMin,regs);j.resumen_paradas=resumenParadas(j.paradas,j);}
-      if(!j.visita||!j.secuencias||!j.tiempos){const E=await calcularVisita(pts,j.densidad,j.buffer,j.metodoVisita||'buffer',true,true,j.seleccion,j.bufferTerraza);if(!j.visita||!j.tiempos)j.visita=paradasEnLotes(resumenVisita(E,regs,true),j.paradas);
+      if(!j.visita||!j.secuencias||!j.tiempos){const E=await calcularVisita(pts,j.densidad,j.buffer,j.metodoVisita||'buffer',true,true,j.seleccion,j.bufferTerraza,regs);if(!j.visita||!j.tiempos)j.visita=paradasEnLotes(resumenVisita(E,regs,true),j.paradas);
         j.secuencias=secuenciasDe(pts,{inicio:Date.parse(j.inicio),fin:Date.parse(j.fin||new Date().toISOString()),paradas:j.paradas||[],regs,densidad:j.densidad,visitas:E.conf});j.tiempos=tiemposJornada(j.secuencias,j);}
       const ahora=new Date().toISOString();const base=`jornadas/${fechaLocal(j.inicio)}/${j.id}`;
       const archivos=[];let nombreZip=null;
@@ -2824,7 +2833,7 @@ async function sincronizar(manual){
     if(manual)alert('No se pudo completar la sincronización:\n'+e.message+(n?`\n\nSe alcanzaron a enviar ${n} jornada(s).`:''));
   }finally{
     SYNC.activo=false;
-    if(n){S.registros=await dbAll('registros');recalcUltimo();toast(`✅ ${n} jornada(s) sincronizada(s) con GitHub: ${nd} diagnóstico(s) bloqueados.`,4500);}
+    if(n){S.registros=await dbAll('registros');recalcUltimo();toast(`✅ ${n} jornada(s) sincronizada(s) con GitHub: ${nd} registro(s) bloqueados.`,4500);}
     estadoSync();refrescarBD();
   }
 }
@@ -2852,7 +2861,7 @@ function panelSync(){
       ${Date.now()<SYNC.pausaHasta?`<div style="color:var(--ambar)"><b>Reintento:</b> ${fmtHora(SYNC.pausaHasta).slice(0,5)}</div>`:''}
       ${SYNC.error?`<div style="color:var(--rojo)"><b>Último error:</b> ${esc(SYNC.error)}</div>`:''}
     </div>
-    <div class="candado">🔒 Al sincronizar, la jornada completa queda bloqueada: no se puede editar ni eliminar. En GitHub se guarda un solo archivo por jornada (<b>.geojson</b> con diagnósticos y recorrido) y un solo <b>_fotos.zip</b>.</div>
+    <div class="candado">🔒 Al sincronizar, la jornada completa queda bloqueada: no se puede editar ni eliminar. En GitHub se guarda un solo archivo por jornada (<b>.geojson</b> con registros y recorrido) y un solo <b>_fotos.zip</b>.</div>
     <button class="btn prim ancho grande" id="sAhora">${IC.sync} SINCRONIZAR AHORA</button>
     `);
   $('#sAhora').onclick=async()=>{await sincronizar(true);panelSync();};
@@ -2982,13 +2991,13 @@ async function importarJornadaGeo(g,zip){
 function menuExportar(){
   const n=fechaLocal();
   abrirHoja('Exportar datos',`
-    <p class="tenue">${num(S.registros.length)} diagnósticos en este dispositivo. La copia oficial queda en GitHub al sincronizar; esto es un respaldo local.</p>
+    <p class="tenue">${num(S.registros.length)} registros en este dispositivo. La copia oficial queda en GitHub al sincronizar; esto es un respaldo local.</p>
     <button class="btn prim ancho" id="eZip">${IC.descarga} Paquete completo (.zip con fotos y recorridos)</button>
     <button class="btn ancho" id="eZipC">📤 Compartir paquete (WhatsApp, correo, Drive…)</button>
     <button class="btn ancho" id="eCsv">📄 Tabla CSV (Excel)</button>
-    <button class="btn ancho" id="eGeo">🗺️ GeoJSON de diagnósticos (QGIS)</button>
+    <button class="btn ancho" id="eGeo">🗺️ GeoJSON de registros (QGIS)</button>
     <h3 style="margin-top:14px">Mis recorridos</h3>
-    <p class="tenue">Recorridos registrados en este celular por <b>${esc(SES?SES.nombre||SES.u:'')}</b>: trazado, paradas, diagnósticos y resumen (palmas, ha, secuencias y desplazamientos).</p>
+    <p class="tenue">Recorridos registrados en este celular por <b>${esc(SES?SES.nombre||SES.u:'')}</b>: trazado, paradas, registros y resumen (palmas, ha, secuencias y desplazamientos).</p>
     <button class="btn ancho" id="eRecGeo">🛣️ Mis recorridos · GeoJSON (QGIS)</button>
     <button class="btn ancho" id="eRecKml">🌍 Mis recorridos · KML (Google Earth)</button>
     <button class="btn ancho" id="eRecCsv">📄 Mis recorridos · puntos GPS (CSV)</button>`);
@@ -3229,8 +3238,8 @@ async function avisoApk(){if(!EN_APK)return;await ultimaApk();if(!apkNueva()){$(
 $('#bkOk').onclick=()=>{$('#bannerApk').hidden=true;descargarApk();};
 $('#bkNo').onclick=()=>{$('#bannerApk').hidden=true;try{localStorage.setItem('sv_apk_cerrado_'+APK.ultima,String(Date.now()));}catch(e){}};
 /* ---------- Auditoría por muestreo (supervisores y administradores) ----------
-   El visor guarda la muestra en el repositorio de datos (auditoria/AUD-*.json). Aquí se lista sin el diagnóstico original
-   (auditoría a ciegas) y los diagnósticos que el supervisor registre en esas palmas quedan marcados con «auditoria». */
+   El visor guarda la muestra en el repositorio de datos (auditoria/AUD-*.json). Aquí se lista sin el registro original
+   (auditoría a ciegas) y los registros que el supervisor registre en esas palmas quedan marcados con «auditoria». */
 const AUD={m:null,ids:new Set(),capa:null};
 const esAdminSES=()=>!!SES&&['admin','analista','superadmin'].includes(SES.rol);   // analista de datos y super administrador tienen los permisos de administrador
 const puedeAuditar=()=>!!SES&&(esAdminSES()||SES.rol==='supervisor');
@@ -3283,12 +3292,12 @@ async function panelDia(){
   const R=res&&res.resumen||{},al=res&&res.alertas||[],esHoy=fechaRes===hoy;
   const stat=(v,t,c)=>`<div class="stat"><b style="${c?'color:'+c:''}">${esc(v??'—')}</b><span>${esc(t)}</span></div>`;
   abrirHoja('Panel del día',`
-    <div class="stats">${stat(num(recibidas.length),'Jornadas recibidas hoy')}${stat(R['Ha recorridas']!=null?String(R['Ha recorridas']).replace('.',','):'—','Ha (último reporte)')}${stat(R['Diagnósticos']!=null?num(R['Diagnósticos']):'—','Diagnósticos')}
+    <div class="stats">${stat(num(recibidas.length),'Jornadas recibidas hoy')}${stat(R['Ha recorridas']!=null?String(R['Ha recorridas']).replace('.',','):'—','Ha (último reporte)')}${stat(R['Registros']!=null?num(R['Registros']):'—','Registros')}
       ${stat(R['Casos de PC (palmas)']!=null?num(R['Casos de PC (palmas)']):'—','Casos de PC',R['Casos de PC (palmas)']?'var(--rojo)':'')}${stat(num(al.length),'Alertas',al.length?'var(--ambar)':'')}</div>
     <p class="tenue">${fechaRes?`Reporte diario del <b>${esc(fechaRes)}</b>${esHoy?' (hoy, corte 3:00 p. m.)':' (el de hoy se genera a las 3:00 p. m.)'}.`:'Aún no hay reportes diarios.'} Las jornadas aparecen cuando el operario las finaliza y se sincronizan.</p>
     <h3>Alertas</h3>${al.length?al.map(a=>`<div class="aviso" style="${a.nivel==='alta'?'border-color:var(--rojo)':''}">${a.nivel==='alta'?'🔴':'🟠'} ${esc(a.texto)}</div>`).join(''):'<p class="tenue">✅ Sin alertas.</p>'}
     <h3>Operarios${fechaRes?' ('+esc(fechaRes)+')':''}</h3>${(res&&res.operarios||[]).length?`<div style="overflow-x:auto"><table class="tabla"><tr><th>Operario</th><th>Inicio</th><th>Fin</th><th>Ha</th><th>Diag.</th></tr>${
-      res.operarios.map(o=>`<tr><td>${esc(o.Operario)}</td><td>${esc(o.Inicio||'')}</td><td>${esc(o.Fin||'')}</td><td>${esc(String(o.Ha).replace('.',','))}</td><td>${num(o['Diagnósticos'])}</td></tr>`).join('')}</table></div>`:'<p class="tenue">Sin datos.</p>'}
+      res.operarios.map(o=>`<tr><td>${esc(o.Operario)}</td><td>${esc(o.Inicio||'')}</td><td>${esc(o.Fin||'')}</td><td>${esc(String(o.Ha).replace('.',','))}</td><td>${num(o['Registros'])}</td></tr>`).join('')}</table></div>`:'<p class="tenue">Sin datos.</p>'}
     ${(res&&res.lotes_pc||[]).length?`<h3>Lotes con casos de PC</h3><div class="chips">${res.lotes_pc.map(x=>`<span class="chip-op"><span><b>${esc(x.Lote)}</b> · ${num(x['Casos PC'])} casos${x['Incidencia PC %']!=null?' · '+String(x['Incidencia PC %']).replace('.',',')+' %':''}</span></span>`).join('')}</div>`:''}
     ${fechaRes?`<h3>Exportar el reporte del ${esc(fechaRes)}</h3><div class="fila"><button class="btn" data-pdx="pdf">📄 PDF</button><button class="btn" data-pdx="xlsx">📊 Excel</button><button class="btn" data-pdx="html">🗺 Interactivo</button></div>`:''}
     <button class="btn nar ancho" id="pdEnviar" style="margin-top:12px">📤 Generar y enviar el reporte de hoy ahora</button>
@@ -3364,7 +3373,7 @@ function menu(){
     <div class="logo-menu"><img src="__APPLOGO__" alt="Polinización" style="height:54px;width:54px"><img src="__LOGO__" alt="Palmas de Tumaco"></div>
     <div class="menu-grid">
       ${S.jornada?mos('mJor','ruta','Jornada en curso','Avance, agregar lotes, finalizar'):mos('mJor','play','Nueva jornada','Elegir lotes y palmas')}
-      ${mos('mBD','bd','Base de datos','Diagnósticos registrados')}
+      ${mos('mBD','bd','Base de datos','Registros registrados')}
       ${mos('mRec','ruta','Recorridos','Reproducir el track del día')}
       ${mos('mRes','grafico','Resumen','Incidencia por lote')}
       ${mos('mSync','sync','Sincronizar','Enviar a GitHub')}
@@ -3409,7 +3418,7 @@ async function abrirConfig(){
     <div class="fila"><div><label class="campo">Buffer: método buffer y comparativo (m)</label><input type="number" id="cBuf" min="2" max="30" step="0.5" value="${esc(S.cfg.bufferVisita)}"></div><div></div></div>
     <label class="campo">Método de cálculo de palmas visitadas</label>
     <select id="cMet"><option value="calle" ${S.cfg.metodoVisita!=='buffer'?'selected':''}>Por calle (dos líneas a la altura del operario) — recomendado</option><option value="buffer" ${S.cfg.metodoVisita==='buffer'?'selected':''}>Buffer alrededor del recorrido</option></select>
-    <label class="campo">Radio para elegir la palma a diagnosticar (m)</label><input type="number" id="cRad" min="10" max="200" value="${esc(S.cfg.radioSel)}">
+    <label class="campo">Radio para elegir la palma a registrar (m)</label><input type="number" id="cRad" min="10" max="200" value="${esc(S.cfg.radioSel)}">
     <h3>Paradas</h3>
     <div class="fila"><div><label class="campo">Radio de parada (m)</label><input type="number" id="cPRad" min="5" max="100" value="${esc(S.cfg.paradaRadio)}"></div>
       <div><label class="campo">Tiempo mínimo de parada (min)</label><input type="number" id="cPMin" min="1" max="60" value="${esc(S.cfg.paradaMin)}"></div></div>
@@ -3442,9 +3451,9 @@ async function abrirConfig(){
   on('#cProbarVoz',()=>{S.cfg.velocidadVoz=Number($('#cVel').value)||1;elegirVoz();hablar('Lote '+paraVoz('IT43')+', línea 3, palma 14.');});
   on('#cBorrar',async()=>{
     const pend=S.registros.filter(r=>r.sync!=='sincronizado').length;
-    if(pend){alert(`Hay ${pend} diagnósticos sin sincronizar. Sincronice antes de borrar los datos.`);return;}
+    if(pend){alert(`Hay ${pend} registros sin sincronizar. Sincronice antes de borrar los datos.`);return;}
     if(S.jornada){alert('Finalice la jornada en curso antes de borrar los datos.');return;}
-    if(prompt('Se borrarán diagnósticos, fotos y recorridos ya sincronizados de este dispositivo (la cartografía se conserva). Escriba BORRAR para confirmar')!=='BORRAR')return;
+    if(prompt('Se borrarán registros, fotos y recorridos ya sincronizados de este dispositivo (la cartografía se conserva). Escriba BORRAR para confirmar')!=='BORRAR')return;
     for(const s of ['registros','fotos','jornadas','track'])await dbClear(s);S.registros=[];recalcUltimo();estadoSync();cerrarHoja();toast('Datos borrados del dispositivo.');});
 }
 async function infoAlmacen(){
@@ -3524,7 +3533,7 @@ $('#frmLogin').onsubmit=async e=>{
 async function cerrarSesion(){
   if(S.jornada){alert('Finalice la jornada en curso antes de cerrar la sesión.');return;}
   const pend=S.registros.filter(r=>r.sync!=='sincronizado').length;
-  if(!confirm(`¿Cerrar la sesión de ${SES.nombre}?`+(pend?`\n\nHay ${pend} diagnóstico(s) pendientes: se sincronizarán cuando ingrese cualquier usuario con WiFi.`:'')))return;
+  if(!confirm(`¿Cerrar la sesión de ${SES.nombre}?`+(pend?`\n\nHay ${pend} registro(s) pendientes: se sincronizarán cuando ingrese cualquier usuario con WiFi.`:'')))return;
   await dbDel('config','sesion');SES=null;S.cfg.gh={...S.cfg.gh,token:''};estadoSync();cerrarHoja();pintarUsuario();
   await mostrarLogin();await despuesDeIngresar();
 }
@@ -3647,7 +3656,7 @@ async function despuesDeIngresar(){
           await dbPut('jornadas',j);S.cfg.jornadaActiva=null;await guardarCfg();toast(`Jornada de ${j.evaluador} cerrada por el administrador.`,4000);mostrarSplash();}
         else{await dbDel('config','sesion');SES=null;S.cfg.gh={...S.cfg.gh,token:''};await mostrarLogin('Ingrese con el usuario '+j.usuario+' para continuar o finalizar su jornada.');return despuesDeIngresar();}
       }else{S.jornada=j;const pts=await puntosTrack(j.id);TRACK.ultimo=pts[pts.length-1]||null;TRACK.n=pts.length;prepararTrack(pts.map(p=>[p.lat,p.lng]));
-        VIS=await calcularVisita(pts,j.densidad,j.buffer,j.metodoVisita||'buffer',true,false,j.seleccion,j.bufferTerraza);VIS.sel=null;TRACK.pts=pts;
+        VIS=await calcularVisita(pts,j.densidad,j.buffer,j.metodoVisita||'buffer',true,false,j.seleccion,j.bufferTerraza,S.registros.filter(r=>r.jornada_id===j.id));VIS.sel=null;TRACK.pts=pts;
         await cargarPalmasJornada();pantallaEncendida(true);toast('Jornada en curso recuperada. El recorrido continúa.',4000);}}
     else{S.cfg.jornadaActiva=null;await guardarCfg();}}
   actualizarJornadaUI();estadoSync();dibujarLotes();
