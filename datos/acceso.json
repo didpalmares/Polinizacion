@@ -1,0 +1,36 @@
+{
+ "formato": "polinizacion-acceso-1",
+ "id": "bcf7d83f-76ca-4244-9dd2-2cbf3345d27f",
+ "creado": "2026-11-18T02:34:07.381Z",
+ "repo": {
+  "owner": "didpalmares",
+  "repo": "PolinizacionData",
+  "rama": "main"
+ },
+ "kdf": {
+  "alg": "PBKDF2-SHA256",
+  "iter": 600000
+ },
+ "token": {
+  "iv": "niQJtr1VJ8GkKwWW",
+  "ct": "K/Wm6B4spzBR+QizJkJ0nwWapt2BsEcBgBnw7RMLAVxkZgZE51XewhdRDa3jZTbuaMVRkJimAd7W9H1xGnaqd1gqy+Q3F86TSCUtN23bmGvgw4zbK/JFrkKqfhL6LhBcrnVt0VxJTT3j+n7Anw=="
+ },
+ "carto": {
+  "archivo": "carto.enc",
+  "version": "20261117-2134",
+  "tam": 4499392,
+  "lotes": 291
+ },
+ "usuarios": [
+  {
+   "u": "jjbuila",
+   "salt": "V1tc/uXWg/rsmrthL+PdEA==",
+   "iv": "2Jq6nev2deSqdrkG",
+   "ct": "iYKsJCnp9Zxj95QQp1maimlnPf29a6Ws0Aken3GZXon/hxQP0kFaCn47rfL1csOJ",
+   "meta": {
+    "iv": "78jC90hoabizIkWY",
+    "ct": "AvAmX/WW7wHu7m3dm0eIjY2gUppxMxOiJyUepN07FCzUMPPEb2lQ/BAK1hVelHyJh1XDHcbOoqWISRQ3YbjJQPM8Ra5LpLk="
+   }
+  }
+ ]
+}
