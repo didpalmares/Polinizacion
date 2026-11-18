@@ -1,7 +1,7 @@
-"""Visor · GERENCIA: tablero, cirugía, sincronización, calidad, auditoría (y App), reportes. GitHub simulado."""
+"""Visor · GERENCIA con registros de polinización: tablero, módulos, sincronización, calidad, auditoría (y App), reportes. GitHub simulado."""
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from comun import CANAL, INIT_VOZ, PLANTACION, TMP
+from comun import CANAL, INIT_VOZ, PLANTACION, TMP, BASE
 import sys, time, json, re
 sys.stdout.reconfigure(encoding='utf-8')
 from playwright.sync_api import sync_playwright
@@ -13,7 +13,7 @@ from datetime import datetime, timedelta, timezone
 AHORA = datetime.now(timezone.utc)
 iso = lambda d: d.strftime('%Y-%m-%dT%H:%M:%SZ')
 COMMITS = [
-    {'commit': {'message': 'Polinización · GOMEZ PEREZ ANDRES · jornada 2026-11-14 · 3 diagnóstico(s) · u:1000000001', 'committer': {'date': iso(AHORA - timedelta(hours=3))}}},
+    {'commit': {'message': 'Polinización · GOMEZ PEREZ ANDRES · jornada 2026-11-14 · 3 registro(s) · u:1000000001', 'committer': {'date': iso(AHORA - timedelta(hours=3))}}},
     {'commit': {'message': 'Polinización · LOPEZ DIAZ CARLOS · jornada 2026-11-08 · 2 diagnóstico(s)', 'committer': {'date': iso(AHORA - timedelta(days=6))}}},
     {'commit': {'message': 'Pruebas fuera del visor', 'committer': {'date': iso(AHORA - timedelta(days=1))}}}]
 EST = {'guardado': None, 'puts': []}
@@ -33,88 +33,65 @@ def gh(route):
     if u.endswith('/git/blobs/gsup'):
         g = EST['guardado']; feats = []
         for k, x in enumerate(g['palmas'][:2]):  # el auditor registra 2 palmas: una coincide y otra no
-            n1 = x['original']['n1_codigo'] if k == 0 else 'ML'
-            feats.append({'type': 'Feature', 'geometry': {'type': 'Point', 'coordinates': [x['lng'], x['lat']]}, 'properties': {'tipo': 'diagnostico', 'palma_id': x['palma_id'], 'n1_codigo': n1,
-                'nivel1': 'X', 'nivel2': x['original']['nivel2'] if k == 0 else '', 'creado': iso(AHORA), 'auditoria': g['id']}})
+            o = x['original']
+            pr = {'a': o['a'], 'p': o['p'], 'b': o['b'], 'cond': o['cond'], 'n1_codigo': o['codigo'], 'nivel1': o['resumen']} if k == 0 else {'a': 0, 'p': 0, 'b': 0, 'cond': 'V', 'n1_codigo': 'V', 'nivel1': 'V: Palma con Avispas'}
+            feats.append({'type': 'Feature', 'geometry': {'type': 'Point', 'coordinates': [x['lng'], x['lat']]}, 'properties': {'tipo': 'diagnostico', 'palma_id': x['palma_id'], **pr, 'creado': iso(AHORA), 'auditoria': g['id']}})
         return route.fulfill(status=200, content_type='application/json', body=json.dumps({'type': 'FeatureCollection', 'jornada': {'usuario': 'sup1', 'evaluador': 'Sara Supervisora'}, 'features': feats}))
     if '/contents/reportes?' in u: return route.fulfill(status=200, content_type='application/json', body=json.dumps([{'type': 'dir', 'name': '2026-S45', 'sha': 'rep45'}]))
     if u.endswith('/git/trees/rep45'): return route.fulfill(status=200, content_type='application/json', body=json.dumps({'tree': [{'path': 'reporte_2026-S45.pdf', 'type': 'blob', 'sha': 'p1'}, {'path': 'reporte_2026-S45.xlsx', 'type': 'blob', 'sha': 'x1'}]}))
     route.fulfill(status=404, content_type='application/json', body='{"message":"Not Found"}')
 DATOS = """()=>{document.querySelector('#login').hidden=true;document.querySelector('#app').hidden=false;mapa.invalidateSize();window.chunkLote=async()=>[];
   SES={u:'admin1',nombre:'Admin',rol:'admin',token:'tok',repo:{owner:'didpalmares',repo:'PolinizacionData',rama:'main'}};
-  CIR.usuarios=[{u:'1000000001',nombre:'GOMEZ PEREZ ANDRES',rol:'operario',labores:['censo']},{u:'1000000002',nombre:'LOPEZ DIAZ CARLOS',rol:'operario',labores:['censo']},
-    {u:'1000000003',nombre:'MORA RUIZ JAVIER',rol:'operario',labores:['censo','cirugia'],rol_cirugia:'cirujano'},{u:'sup1',nombre:'Sara Supervisora',rol:'supervisor'},{u:'x9',nombre:'Suspendido',rol:'operario',inactivo:true}];
-  const hoy=hoyISO();const mk=(id,u,nom,fecha,diags)=>{const t0=Date.parse(fecha+'T07:00:00-05:00');const c=[],t=[];for(let i=0;i<=60;i++){c.push([-78.70,1.50+i*0.0001]);t.push(t0+i*60000);}
-    const ds=diags.map((x,k)=>({tipo:'diagnostico',id:id+'d'+k,palma_id:id+'P'+k,lote:x.lote||'IT01',linea:3,palma:k+1,nivel1:x.n1n||'PUDRICIÓN DE COGOLLO (PC)',n1_codigo:x.n1||'PC',nivel2:x.n2||'PC INICIAL',
-      estado:x.est||'enferma',evaluador:nom,creado:new Date(t0+(x.min??(5+k*3))*60000+(x.s||0)*1000).toISOString(),lat:1.50+k*0.0002,lng:-78.70,n_fotos:x.sinFoto?0:1,fotos:'f.jpg',dist_gps_palma_m:x.dist||3,gps_precision_m:x.prec||5}));
+  USUARIOS_PAQ=[{u:'1000000001',nombre:'GOMEZ PEREZ ANDRES',rol:'operario',labores:['polinizacion']},{u:'1000000002',nombre:'LOPEZ DIAZ CARLOS',rol:'operario',labores:['polinizacion']},
+    {u:'1000000003',nombre:'MORA RUIZ JAVIER',rol:'operario',labores:['polinizacion']},{u:'sup1',nombre:'Sara Supervisora',rol:'supervisor'},{u:'x9',nombre:'Suspendido',rol:'operario',inactivo:true}];
+  const hoy=hoyISO();const mk=(id,u,nom,fecha,regs)=>{const t0=Date.parse(fecha+'T07:00:00-05:00');const c=[],t=[];for(let i=0;i<=60;i++){c.push([-78.70,1.50+i*0.0001]);t.push(t0+i*60000);}
+    const ds=regs.map((x,k)=>normPol({tipo:'diagnostico',id:id+'d'+k,palma_id:id+'P'+k,lote:x.lote||'IT01',linea:3,palma:k+1,labor:'polinizacion',a:x.a??2,p:x.p??1,b:x.b??0,cond:x.cond||'',fuente:'boton',
+      transitabilidad:'Transitable',evaluador:nom,creado:new Date(t0+(x.min??(5+k*3))*60000+(x.s||0)*1000).toISOString(),lat:1.50+k*0.0002,lng:-78.70,n_fotos:0,fotos:'',dist_gps_palma_m:x.dist||3,gps_precision_m:x.prec||5}));
     const j={id,fecha,evaluador:nom,usuario:u,inicio:new Date(t0).toISOString(),fin:new Date(t0+60*60000).toISOString(),hora_inicio:'07:00',hora_fin:'08:00',duracion_min:60,km:1.2,ha:2.5,palmas:280,metodo:'calle',
-      n_paradas:1,min_paradas:10,min_mov:50,por_lote:[{lote:'IT01',palmas_visitadas:280,ha:2.5}],densidad:115,app:'',lotes:new Set(['IT01']),paradas:[],track:{c,t,acc:c.map(()=>4)},header:{},secuencias:null,tiempos:{min_efectivo_labor:50},vel:2,diags:ds};
+      n_paradas:1,min_paradas:10,min_mov:50,por_lote:[{lote:'IT01',palmas_visitadas:280,ha:2.5}],densidad:115,app:'',lotes:new Set(['IT01']),paradas:[],track:{c,t,acc:c.map(()=>4)},header:{},secuencias:null,tiempos:{min_efectivo_labor:50},vel:2,
+      transito:[{lote:'IT01',entrada:'Transitable',t_entrada:new Date(t0+60000).toISOString(),salida:'Poco transitable',t_salida:new Date(t0+59*60000).toISOString()}],diags:ds};
     ds.forEach(d=>d._j=j);return j;};
   const lejos={dist:40},imp={prec:30};
-  JOR=[mk('J1','1000000001','GOMEZ PEREZ ANDRES',hoy,[{},{...lejos},{...imp},{sinFoto:true},{min:20},{min:20,s:5}]),
-       mk('J2','1000000002','LOPEZ DIAZ CARLOS',hoy,[...Array(9)].map((_,k)=>({n1:'SN',n1n:'SANA',n2:'',est:'sana',min:5+k*2}))),
+  JOR=[mk('J1','1000000001','GOMEZ PEREZ ANDRES',hoy,[{},{...lejos,a:1},{...imp,b:2},{cond:'R'},{min:20,a:3},{min:20,s:2,p:2}]),
+       mk('J2','1000000002','LOPEZ DIAZ CARLOS',hoy,[...Array(16)].map((_,k)=>({a:1,p:0,b:0,min:5+k*2}))),
        mk('J3','1000000003','MORA RUIZ JAVIER',hoyISO(new Date(Date.now()-40*86400000)),[{lote:'IT05'}])];
-  JOR[2].por_lote=[{lote:'IT05',palmas_visitadas:100,ha:1}];JOR[2].lotes=new Set(['IT05']);
+  JOR[2].por_lote=[{lote:'IT05',palmas_visitadas:100,ha:1}];JOR[2].lotes=new Set(['IT05']);JOR[2].transito=[];
   LOTES={type:'FeatureCollection',features:['IT01','IT05','IT09'].map((l,k)=>({type:'Feature',properties:{_lote:l},geometry:{type:'Polygon',coordinates:[[[-78.701+k*0.01,1.499],[-78.699+k*0.01,1.499],[-78.699+k*0.01,1.512],[-78.701+k*0.01,1.512],[-78.701+k*0.01,1.499]]]}}))};IND_LOTES={IT01:{n:1000},IT05:{n:800},IT09:{n:500}};
   document.querySelector('#fDesde').value=hoyISO(new Date(Date.now()-45*86400000));document.querySelector('#fHasta').value=hoy;
-  aplicarFiltros(false);
-  // Cirugía: 3 casos (uno operado a tiempo, uno vencido sin operar, uno de hoy pendiente)
-  const t=(d)=>new Date(Date.now()-d*86400000).toISOString();
-  CIR.diags=[{palma_id:'C1',lote:'IT01',linea:1,palma:1,n1_codigo:'PC',nivel1:'PUDRICIÓN DE COGOLLO (PC)',nivel2:'PC INICIAL',creado:t(10),evaluador:'X'},
-             {palma_id:'C2',lote:'IT01',linea:1,palma:2,n1_codigo:'PC',nivel1:'PUDRICIÓN DE COGOLLO (PC)',nivel2:'PC AVANZADA',creado:t(8),evaluador:'X'},
-             {palma_id:'C3',lote:'IT05',linea:1,palma:3,n1_codigo:'PC',nivel1:'PUDRICIÓN DE COGOLLO (PC)',nivel2:'PC INICIAL',creado:t(0),evaluador:'X'}];
-  const jc={pareja:{cirujano:{nombre:'MORA RUIZ JAVIER'},auxiliar:{nombre:'VEGA SOTO LUIS'}}};
-  CIR.cirugias=[{palma_id:'C1',tipo:'cirugia',creado:new Date(Date.parse(t(10))+20*3600000).toISOString(),_j:jc}];CIR.correcciones=[];calcularPendientes();CIR.cargado=true;}"""
+  aplicarFiltros(false);}"""
 errores = []
 with sync_playwright() as p:
     nav = p.chromium.launch(**CANAL, headless=True)
     ctx = nav.new_context(service_workers='block', viewport={'width': 1400, 'height': 950}, accept_downloads=True)
     ctx.route('https://api.github.com/**', gh)
     vz = ctx.new_page(); vz.on('pageerror', lambda e: errores.append('visor: ' + str(e)[:200] + ' ' + (e.stack or '')[:200]))
-    vz.goto('http://127.0.0.1:8765/visor.html'); vz.wait_for_function("typeof alternarGerencia==='function'", timeout=30000); time.sleep(1)
+    vz.goto(BASE + '/visor.html'); vz.wait_for_function("typeof alternarGerencia==='function'", timeout=30000); time.sleep(1)
     vz.evaluate(DATOS)
     vz.click('#btGer'); time.sleep(.6)
     txt = lambda: vz.inner_text('#gerPanel')
     T = txt()
     check('Gerencia abre con el Tablero', 'GERENCIA' in T and 'PRODUCTIVIDAD POR OPERARIO' in T.upper(), T[:80])
-    check('Tablero: KPIs', 'Jornadas' in T and 'Casos de PC' in T and 'Incidencia PC' in T)
+    check('Tablero: KPIs de la polinización (sin enfermedades)', 'Jornadas' in T and 'Palmas registradas' in T and 'Inflorescencias (A + P + B)' in T and 'PC' not in T and 'Diagnósticos' not in T)
     check('Tablero: productividad por operario (ha/hora)', vz.evaluate("[...document.querySelectorAll('#gerPanel table')][0].innerText").count('\n') >= 3)
-    check('Tablero: casos de PC por lote y semana', 'IT01' in vz.evaluate("[...document.querySelectorAll('#gerPanel .ger-calor')].map(e=>e.innerText).join('')"))
-    time.sleep(1.2)
-    LEY = """()=>{const kpiPC=[...document.querySelectorAll('#gerPanel .ger-kpi')].find(k=>k.innerText.includes('Casos de PC'));
-      const filas=[...document.querySelectorAll('#mcLeyenda tbody tr')].map(t=>[...t.cells].map(c=>c.innerText.trim()));
-      return {mapa:!!GER.mc,teselas:document.querySelectorAll('#gerMapaCalor .leaflet-tile').length,img:document.querySelectorAll('#gerMapaCalor img.leaflet-image-layer').length,
-        casos:GER.mcCasos,kpi:kpiPC?Number(kpiPC.querySelector('b').innerText.replace(/\\D/g,'')):null,ha:GER.mcHa,filas,ley:document.querySelector('#mcLeyenda').innerText,
-        resumen:document.querySelector('#mcResumen').innerText,top:document.querySelector('#mcTop').innerText}}"""
-    mc = vz.evaluate(LEY)
-    check('Tablero: mapa de incidencia actual PC por clases, sin ortofoto', mc['mapa'] and mc['teselas'] == 0 and mc['img'] == 1 and mc['casos'] == mc['kpi'] and mc['casos'] > 0 and 'IT01' in mc['top'] and 'INCIDENCIA ACTUAL PC' in mc['ley'], mc)
-    check('Tablero: convenciones de incidencia solo con color y rango', len(mc['filas']) == 5 and all(len(f) == 1 for f in mc['filas']) and mc['filas'][0][0].startswith('≤ 1,0') and mc['filas'][4][0] == '> 4,0 %' and 'Área' not in mc['ley'], mc['filas'])
-    vz.click('[data-mcm=nuevos]'); time.sleep(1.2)
-    mn = vz.evaluate(LEY)
-    check('Tablero: casos nuevos con color, rango y número de casos', 'CASOS NUEVOS PC' in mn['ley'] and 'casos nuevos' in mn['resumen'] and len(mn['filas']) == 5 and mn['filas'][4][0] == '> 12' and mn['img'] == 1
-          and sum(int(f[1].replace('.', '')) for f in mn['filas']) == mn['casos'] and 'Área' not in mn['ley'], mn['filas'])
-    vz.click('[data-mcm=incid]'); time.sleep(.6)
     ciclo = vz.evaluate("[...document.querySelectorAll('#gerPanel table')].pop().innerText")
-    check('Ciclo de censo: IT05 con 40 días (alerta) e IT09 sin censo', '40 días' in ciclo and 'Sin censo en el periodo' in ciclo, ciclo.replace('\n', ' | ')[:200])
-    check('Ciclo de censo: aviso de lotes atrasados', 'más de 30 días sin censo' in T)
-    vz.click('#gerCalor'); time.sleep(.6)
-    check('Mapa de calor de PC sobre el mapa', vz.evaluate("!!GER.calor&&document.querySelector('#gerPanel').hidden&&!!document.querySelector('#chCalor')"))
-    vz.click('#chCalor'); vz.click('#btGer'); time.sleep(.3)
+    check('Ciclo de polinización: IT05 con 40 días (alerta) e IT09 sin polinización', '40 días' in ciclo and 'Sin polinización en el periodo' in ciclo, ciclo.replace('\n', ' | ')[:200])
+    check('Ciclo de polinización: aviso de lotes atrasados', 'más de 30 días sin polinización' in T)
+    check('Tablero: sin textos de censo ni enfermedades', 'censo' not in T.lower() and 'enfermedad' not in T.lower())
+    vz.click('[data-tsub=pol]'); time.sleep(.8)
+    K = vz.inner_text('#polKpis')
+    check('Sección 🐝 Polinización: KPIs', 'Palmas registradas' in K and 'Total A: Inflorescencia en Antesis' in K and '% Balón' in K and 'Palmas R: Palma Rancho / Tapada' in K, re.sub(r'\s+', ' ', K)[:200])
+    vz.click('[data-tsub=resumen]'); time.sleep(.3)
     check('Módulos: Gerencia con Tablero, Reportes y Sincronización', [b.inner_text() for b in vz.query_selector_all('#gerPanel [data-gt]')] == ['TABLERO', 'REPORTES', 'SINCRONIZACIÓN'])
-    vz.click('#btCoord'); time.sleep(.3)
-    check('Módulos: Coordinación y supervisión con Planificación, Cirugía, Calidad, Auditoría y Reportes', 'COORDINACIÓN Y SUPERVISIÓN DE LA LABOR' in txt().upper() and [b.inner_text() for b in vz.query_selector_all('#gerPanel [data-gt]')] == ['PROGRAMADOR DE CENSO DE ENFERMEDADES', 'PROGRAMADOR DE CIRUGÍAS', 'PROGRAMADOR DE ERRADICACIÓN', 'MONITOREO DE PLAGAS', 'CIRUGÍA', 'CALIDAD', 'AUDITORÍA', 'REPORTES'])
-    vz.click('[data-gt=progcir]'); time.sleep(.3); vz.click('#gerAbrirCir'); time.sleep(.6)
-    check('Coordinación: el programador de cirugías abre el modo de cirugías del mapa', vz.evaluate("CIR.on&&document.body.classList.contains('modo-cir')&&document.querySelector('#gerPanel').hidden"))
-    vz.evaluate('alternarCirugia(false)'); vz.click('#btCoord'); time.sleep(.3)
-    # Cirugía
-    vz.click('[data-gt=cirugia]'); time.sleep(.5); T = txt()
-    check('Cirugía: casos, operados, vencidos y a tiempo', 'Casos de cirugía' in T and 'Vencidos sin operar' in T and 'Operados a tiempo' in T, re.sub(r'\s+', ' ', T)[:260])
-    check('Cirugía: pareja y caso vencido listados', 'Javier Mora' in T or 'MORA' in T.upper(), '')
-    check('Cirugía: tiempo caso → cirugía ≈ 0,8 días', '0,8 d' in T, re.findall(r'[\d,]+ d', T)[:3])
+    vz.click('#btCoord'); time.sleep(.5)
+    check('Módulos: Coordinación y supervisión con Programador, Transitabilidad, Calidad, Auditoría y Reportes',
+          'COORDINACIÓN Y SUPERVISIÓN DE LA LABOR' in txt().upper() and [b.inner_text() for b in vz.query_selector_all('#gerPanel [data-gt]')] == ['PROGRAMADOR DE POLINIZACIÓN', 'TRANSITABILIDAD', 'CALIDAD', 'AUDITORÍA', 'REPORTES'],
+          [b.inner_text() for b in vz.query_selector_all('#gerPanel [data-gt]')])
+    vz.click('[data-gt=transito]'); time.sleep(.4); T = txt()
+    check('Transitabilidad por lote: entradas y salidas', 'TRANSITABILIDAD POR LOTE' in T.upper() and 'Poco transitable' in T and vz.evaluate("document.querySelectorAll('#trTabla tbody tr').length") == 2, re.sub(r'\s+', ' ', T)[:200])
     # Sincronización (módulo de análisis de datos)
     vz.click('#btDatos'); time.sleep(.3)
-    check('Módulos: Análisis de datos con Sincronización', 'ANÁLISIS DE DATOS' in txt().upper() and [b.inner_text() for b in vz.query_selector_all('#gerPanel [data-gt]')] == ['SINCRONIZACIÓN', 'PALMAS PENDIENTES POR MARCAR INEXISTENTES'])
-    vz.click('[data-gt=sync]'); vz.wait_for_function("!!GER.sync", timeout=15000); time.sleep(.4); T = txt()
+    check('Módulos: Análisis de datos con Sincronización', 'ANÁLISIS DE DATOS' in txt().upper() and [b.inner_text() for b in vz.query_selector_all('#gerPanel [data-gt]')] == ['SINCRONIZACIÓN'])
+    vz.wait_for_function("!!GER.sync", timeout=15000); time.sleep(.4); T = txt()
     check('Sincronización: solo operarios activos (3)', vz.evaluate("GER.sync.filas.length") == 3, vz.evaluate("GER.sync.filas.map(x=>x.u)"))
     check('Sincronización: estados hoy / 6 días / sin envíos', 'Hoy' in T and '6 días sin sincronizar' in T and 'Sin envíos en 30 días' in T, re.sub(r'\s+', ' ', T)[:200])
     check('Sincronización: reconoce envíos antiguos por nombre (sin u:)', any(f['u'] == '1000000002' and f['n30'] == 1 for f in vz.evaluate("GER.sync.filas")))
@@ -122,11 +99,12 @@ with sync_playwright() as p:
     # Calidad
     vz.click('#btCoord'); time.sleep(.3); vz.click('[data-gt=calidad]'); time.sleep(.4); T = txt()
     al = vz.evaluate("(()=>{const a=alertasCalidad();const c={};a.forEach(x=>c[x.m]=(c[x.m]||0)+1);return c})()")
-    check('Calidad: detecta lejos, GPS, sin foto, rápido y racha', al.get('lejos') == 1 and al.get('gps') == 1 and al.get('foto') == 1 and al.get('rapido', 0) >= 1 and al.get('racha') == 9, al)
-    check('Calidad: % de alertas por operario', '% con alerta' in T)
+    check('Calidad: detecta lejos, GPS, rápido y racha (sin «sin foto»)', al.get('lejos') == 1 and al.get('gps') == 1 and al.get('rapido', 0) >= 1 and al.get('racha') == 16 and 'foto' not in al, al)
+    check('Calidad: % de alertas por operario y textos de registro', '% con alerta' in T and 'Registros de polinización' in T and 'iagnóstico' not in T)
     vz.select_option('#calTipo', 'lejos'); time.sleep(.3)
     n = vz.evaluate("[...document.querySelectorAll('#gerPanel [data-rev]')].length")
     check('Calidad: filtro por motivo', n == 1, n)
+    check('Calidad: la alerta muestra el registro (1A + 1P)', '1A + 1P' in txt())
     vz.evaluate("document.querySelector('#gerPanel [data-rev]').click()"); time.sleep(.3)
     check('Calidad: marcar como revisada la oculta', vz.evaluate("[...document.querySelectorAll('#gerPanel [data-rev]')].length") == 0)
     # Auditoría
@@ -135,46 +113,49 @@ with sync_playwright() as p:
     vz.click('#audGen'); time.sleep(.6)
     m = vz.evaluate("GER.aud.muestra")
     ops = {x['original']['usuario'] for x in m['palmas']}
-    check('Auditoría: muestra solo de censadores, por operario', len(m['palmas']) >= 4 and ops <= {'1000000001', '1000000002', '1000000003'} and len(ops) >= 2, (len(m['palmas']), ops))
+    check('Auditoría: muestra solo de operarios, por operario', len(m['palmas']) >= 4 and ops <= {'1000000001', '1000000002', '1000000003'} and len(ops) >= 2, (len(m['palmas']), ops))
     check('Auditoría: sin palmas repetidas', len({x['palma_id'] for x in m['palmas']}) == len(m['palmas']))
+    check('Auditoría: el original lleva código, resumen y conteos', all(x['original'].get('codigo') and x['original'].get('resumen') and 'a' in x['original'] for x in m['palmas']), m['palmas'][0]['original'])
     vz.click('#audGuardar'); vz.wait_for_function("GER.aud.guardada", timeout=10000)
     check('Auditoría: se guarda en auditoria/ del repositorio de datos', EST['guardado'] and EST['guardado']['id'] == m['id'] and '/contents/auditoria/' + m['id'] in EST['puts'][0], EST['puts'][:1])
     vz.wait_for_function("GER.aud.lista&&GER.aud.lista.length", timeout=10000); time.sleep(.3)
     vz.click('#audVer'); vz.wait_for_function("!!GER.aud.res", timeout=15000); time.sleep(.3); T = txt()
-    check('Auditoría: avance (2 auditadas) y concordancia 50 %', vz.evaluate("GER.aud.res.filas.filter(x=>x.hecha).length") == 2 and '50 %' in T, re.sub(r'\s+', ' ', T)[-300:])
-    check('Auditoría: lista la diferencia', 'DIFERENCIAS (1)' in T.upper())
+    check('Auditoría: avance (2 auditadas) y concordancia 50 %', vz.evaluate("GER.aud.res.filas.filter(x=>x.hecha).length") == 2 and '50 %' in T and 'Concordancia en el código' in T, re.sub(r'\s+', ' ', T)[-300:])
+    check('Auditoría: lista la diferencia', 'DIFERENCIAS (1)' in T.upper() and 'V: Palma con Avispas' in T)
     # Reportes
     vz.click('[data-gt=reportes]'); vz.wait_for_function("GER.reportes&&GER.reportes.semanales.length", timeout=10000); time.sleep(.3); T = txt()
     check('Reportes: lista semanas con PDF y Excel', '2026-S45' in T and 'PDF' in T and 'Excel' in T and 'Generar y enviar' in T)
     vz.click('#gerX'); check('Cerrar vuelve al mapa', vz.evaluate("document.querySelector('#gerPanel').hidden"))
-    # ---- App: auditoría para supervisores ----
+    # ---- App: auditoría para supervisores (registro de polinización) ----
     pg = ctx.new_page(); pg.on('pageerror', lambda e: errores.append('app: ' + str(e)[:200])); pg.on('dialog', lambda d: (print('     ALERTA:', d.message), d.dismiss()))
-    pg.goto('http://127.0.0.1:8765/index.html'); pg.wait_for_function("typeof panelAuditoria==='function'", timeout=30000); time.sleep(2)
+    pg.goto(BASE + '/index.html'); pg.wait_for_function("typeof panelAuditoria==='function'", timeout=30000); time.sleep(2)
     pal = EST['guardado']['palmas'][0]
     r = pg.evaluate("""async(pal)=>{try{ return await (async()=>{document.querySelector('#login').hidden=true;SES={u:'sup1',nombre:'Sara',rol:'supervisor'};S.cfg.gh={...S.cfg.gh,token:'tok',owner:'didpalmares',repo:'PolinizacionData',rama:'main'};
       await cargarAuditoria();menu();const tile=!!document.querySelector('#mAud');
-      const j={id:'JA',estado:'activa',evaluador:'Sara',usuario:'sup1',inicio:new Date().toISOString(),seleccion:[{lote:pal.lote}],densidad:115,buffer:5,km:0,sync:'pendiente'};await dbPut('jornadas',j);S.jornada=j;
+      const j={id:'JA',labor:'polinizacion',estado:'activa',evaluador:'Sara',usuario:'sup1',inicio:new Date().toISOString(),seleccion:[{lote:pal.lote}],densidad:115,buffer:5,km:0,sync:'pendiente',
+        transito:[{lote:String(pal.lote),entrada:'Transitable',t_entrada:new Date().toISOString(),salida:'',t_salida:''}]};await dbPut('jornadas',j);S.jornada=j;
       S.idx.set(pal.palma_id,{type:'Feature',geometry:{type:'Point',coordinates:[pal.lng,pal.lat]},properties:{_id:pal.palma_id,_lote:pal.lote,_linea:pal.linea,_num:pal.palma}});
       S.gps={lat:pal.lat+0.00003,lng:pal.lng,acc:4,t:Date.now()};
       await panelAuditoria();const txt=document.querySelector('#hojaCuerpo').innerText;
       abrirPalma(pal.palma_id);const ficha=document.querySelector('#hojaCuerpo').innerText;
-      await abrirFormulario({palma_id:pal.palma_id});const frm=document.querySelector('#frm');if(!frm)return {err:'sin formulario',h:document.querySelector('#hojaCuerpo').innerText.slice(0,200),toast:document.querySelector('#toast').textContent};const i=frm.querySelector('input[name=n1][value=EV]');if(!i)return {err:'sin n1',n1:[...frm.querySelectorAll('input')].map(x=>x.name+'='+x.value).slice(0,8)};i.checked=true;i.dispatchEvent(new Event('change',{bubbles:true}));
-      for(const n of ['produccion','transitabilidad']){const x=frm.querySelector(`input[name=${n}]`);if(x){x.checked=true;x.dispatchEvent(new Event('change',{bubbles:true}));}}
-      F.fotosNuevas.push({id:'FX',buf:new ArrayBuffer(4),type:'image/jpeg'});await guardarRegistro(frm);
+      await abrirFormulario({palma_id:pal.palma_id});const frm=document.querySelector('#frm');if(!frm)return {err:'sin formulario',h:document.querySelector('#hojaCuerpo').innerText.slice(0,200),toast:document.querySelector('#toast').textContent};
+      const mas=frm.querySelector('[data-mas=a]');if(!mas)return {err:'sin botón A'};mas.click();mas.click();
+      await guardarRegistro(frm);
       const reg=S.registros.find(x=>x.palma_id===pal.palma_id);
-      return {tile,ciega:!txt.includes(pal.original.nivel2||'@@')&&!txt.includes(pal.original.evaluador),cuenta:txt.toUpperCase().includes('PALMAS'),ficha:ficha.includes('Palma de la auditoría'),tag:reg&&reg.auditoria,plano:planos(reg).auditoria};})();}catch(e){return {err:e.message,stack:String(e.stack).slice(0,600)};}}""", pal)
-    print('     app:', {k:v for k,v in r.items() if k in ('err','h','toast','n1','stack')})
+      return {tile,ciega:!txt.includes(pal.original.resumen||'@@')&&!txt.includes(pal.original.evaluador),cuenta:txt.toUpperCase().includes('PALMAS'),ficha:ficha.includes('Palma de la auditoría'),
+        tag:reg&&reg.auditoria,plano:planos(reg).auditoria,a:reg&&reg.a,fuente:reg&&reg.fuente};})();}catch(e){return {err:e.message,stack:String(e.stack).slice(0,600)};}}""", pal)
+    print('     app:', {k: v for k, v in r.items() if k in ('err', 'h', 'toast', 'stack')})
     check('App: menú «Auditoría» para supervisor', r.get('tile'))
-    check('App: lista a ciegas (sin diagnóstico ni censador original)', r['ciega'] and r['cuenta'])
-    check('App: ficha de la palma avisa que es de auditoría', r['ficha'])
-    check('App: el diagnóstico queda marcado con la muestra (también al sincronizar)', r['tag'] == EST['guardado']['id'] and r['plano'] == EST['guardado']['id'], r)
+    check('App: lista a ciegas (sin registro ni operario original)', r.get('ciega') and r.get('cuenta'))
+    check('App: ficha de la palma avisa que es de auditoría', r.get('ficha'))
+    check('App: el registro (2A, formulario) queda marcado con la muestra (también al sincronizar)', r.get('tag') == EST['guardado']['id'] and r.get('plano') == EST['guardado']['id'] and r.get('a') == 2 and r.get('fuente') == 'formulario', r)
     op = pg.evaluate("async()=>{SES={u:'op',nombre:'Op',rol:'operario'};AUD.m=null;await cargarAuditoria();menu();return !!document.querySelector('#mAud')}")
     check('App: un operario no ve la auditoría', not op)
-    # Rol analista de datos: tiene los permisos de administrador (ve todos los módulos y Cirugías)
-    rv = vz.evaluate("""()=>{SES={...SES,rol:'analista'};aplicarPermisosGer();const vis=['btGer','btCoord','btDatos','btCir'].filter(i=>!document.getElementById(i).hidden);
+    # Rol analista de datos: tiene los permisos de administrador (ve todos los módulos)
+    rv = vz.evaluate("""()=>{SES={...SES,rol:'analista'};aplicarPermisosGer();const vis=['btGer','btCoord','btDatos'].filter(i=>!document.getElementById(i).hidden);
       alternarGerencia(true,'coord');const ab=GER.on&&GER.mod;alternarGerencia(false);SES={...SES,rol:'admin'};aplicarPermisosGer();
-      return {vis,ab,vis2:['btGer','btCoord','btDatos','btCir'].filter(i=>!document.getElementById(i).hidden)};}""")
-    check('Rol analista: ve todo, como administrador', rv['vis'] == ['btGer', 'btCoord', 'btDatos', 'btCir'] and rv['ab'] == 'coord' and rv['vis2'] == ['btGer', 'btCoord', 'btDatos', 'btCir'], rv)
+      return {vis,ab,vis2:['btGer','btCoord','btDatos'].filter(i=>!document.getElementById(i).hidden)};}""")
+    check('Rol analista: ve todo, como administrador', rv['vis'] == ['btGer', 'btCoord', 'btDatos'] and rv['ab'] == 'coord' and rv['vis2'] == ['btGer', 'btCoord', 'btDatos'], rv)
     check('Sin errores de JavaScript', not errores, errores[:4])
     nav.close()
 print('\nRESULTADO:', 'TODO OK' if ok else 'HAY FALLAS'); sys.exit(0 if ok else 1)

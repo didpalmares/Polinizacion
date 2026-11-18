@@ -1,6 +1,7 @@
 """Ejecuta todas las pruebas (cada una se reintenta una vez si falla, por la cámara y la voz simuladas).
 
-Requisitos: la app compilada y servida en http://127.0.0.1:8765 (python -m http.server 8765 desde la raíz),
+Requisitos: la app compilada y servida en http://127.0.0.1:8765 (python -m http.server 8765 desde la raíz;
+otra dirección con la variable PRUEBAS_URL, p. ej. PRUEBAS_URL=http://127.0.0.1:8799),
 pip install playwright pillow && python -m playwright install chromium
 Uso: python tests/run_all.py [nombre ...]
 """
@@ -14,7 +15,11 @@ fallas, t0 = [], time.time()
 for p in pruebas:
     n = os.path.basename(p)[:-3]
     for intento in (1, 2):
-        r = subprocess.run([sys.executable, p], capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=600)
+        try:
+            r = subprocess.run([sys.executable, p], capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=600)
+        except subprocess.TimeoutExpired as e:  # una prueba colgada cuenta como falla y no detiene las demás
+            out = e.stdout.decode('utf-8', 'replace') if isinstance(e.stdout, bytes) else (e.stdout or '')
+            r = subprocess.CompletedProcess(e.cmd, 1, out, 'FALLA: la prueba superó 600 s (tiempo agotado)')
         oks = r.stdout.count('\nOK') + r.stdout.startswith('OK')
         if r.returncode == 0:
             print(f'✅ {n}: {oks} verificaciones' + (' (al 2.º intento)' if intento == 2 else ''), flush=True); break

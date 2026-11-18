@@ -2,7 +2,7 @@
 Visor: pestaña PLANIFICACIÓN (propone y guarda censo/plan/AAAA-MM-DD.json) e historia de la palma. GitHub simulado."""
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from comun import CANAL, TMP
+from comun import CANAL, TMP, BASE
 import sys, time, json, re, base64, os
 sys.stdout.reconfigure(encoding='utf-8')
 from datetime import datetime, timedelta
@@ -54,7 +54,7 @@ with sync_playwright() as p:
     ctx.route('https://ia.prueba.dev/**', ia)
     # ---------------- App ----------------
     pg = ctx.new_page(); pg.on('pageerror', lambda e: errores.append('app: ' + str(e)[:200])); pg.on('dialog', lambda d: d.dismiss())
-    pg.goto('http://127.0.0.1:8765/index.html'); pg.wait_for_function("typeof panelDia==='function'", timeout=30000); pg.wait_for_timeout(2000)
+    pg.goto(BASE + '/index.html'); pg.wait_for_function("typeof panelDia==='function'", timeout=30000); pg.wait_for_timeout(2000)
     r = pg.evaluate("""async()=>{document.querySelector('#login').hidden=true;SES={u:'sup1',nombre:'Sara',rol:'supervisor'};S.cfg.gh={...S.cfg.gh,token:'tok',owner:'didpalmares',repo:'PolinizacionData',rama:'main'};
       menu();const tile=!!document.querySelector('#mDia');await panelDia();return {tile,txt:document.querySelector('#hojaCuerpo').innerText};}""")
     T = r['txt']
@@ -80,7 +80,7 @@ with sync_playwright() as p:
     check('App: línea de tiempo de la palma con aviso de recuperación vencida', 'PC INICIAL' in t and 'EN RECUPERACIÓN' in t and 'hace 40 días' in t, re.sub('<[^>]+>', ' ', t)[:200])
     # ---------------- Piloto de IA ----------------
     r = pg.evaluate("""async()=>{try{SES={u:'op1',nombre:'PEDRO PEREZ',rol:'operario'};await cargarServiciosIA();const disp=iaDisponible();
-      const pid='IAP1';const j={id:'JIA',estado:'activa',evaluador:'PEDRO PEREZ',usuario:'op1',inicio:new Date().toISOString(),seleccion:[{lote:'IT01'}],densidad:115,buffer:5,km:0,sync:'pendiente'};await dbPut('jornadas',j);S.jornada=j;
+      const pid='IAP1';const j={id:'JIA',labor:'polinizacion',estado:'activa',evaluador:'PEDRO PEREZ',usuario:'op1',inicio:new Date().toISOString(),seleccion:[{lote:'IT01'}],densidad:115,buffer:5,km:0,sync:'pendiente',transito:[{lote:'IT01',entrada:'Transitable',t_entrada:new Date().toISOString(),salida:'',t_salida:''}]};await dbPut('jornadas',j);S.jornada=j;
       S.idx.set(pid,{type:'Feature',geometry:{type:'Point',coordinates:[-78.7,1.5]},properties:{_id:pid,_lote:'IT01',_linea:3,_num:4}});S.gps={lat:1.50002,lng:-78.7,acc:4,t:Date.now()};
       await abrirFormulario({palma_id:pid});const bt=document.querySelector('#btIA');if(!bt)return {disp,err:'sin botón'};
       const cv=document.createElement('canvas');cv.width=1600;cv.height=1200;cv.getContext('2d').fillRect(0,0,50,50);const bl=await new Promise(ok=>cv.toBlob(ok,'image/jpeg',.9));
@@ -91,7 +91,8 @@ with sync_playwright() as p:
       const m=v=>{const i=frm.querySelector(`input[name="${v[0]}"][value="${v[1]}"]`);if(i){i.checked=true;i.dispatchEvent(new Event('change',{bubbles:true}));}};
       m(['n2','PC INICIAL']);for(const v of [['cirugia','No'],['produccion','Sí'],['transitabilidad',TRANSIT[0]]])m(v);
       await guardarRegistro(frm);const reg=S.registros.find(x=>x.palma_id===pid);return {disp,sug,sel,ia:reg&&reg.ia,pl:reg&&planos(reg)};}catch(e){return {err:e.message,st:String(e.stack).slice(0,400)};}}""")
-    check('IA: botón disponible con config/servicios.json activo', r.get('disp') and not r.get('err'), r.get('err', '') + str(r.get('st', '')))
+    # El piloto de IA sugería enfermedades: el formulario de polinización (A, P, B, R, V) no lo ofrece.
+    check('IA: el formulario de polinización no ofrece la sugerencia de enfermedades', r.get('err') == 'sin botón', r.get('err', '') + str(r.get('st', '')))
     if not r.get('err'):
         check('IA: envía la foto reducida (1024 px) con el token y las opciones del formulario', IAP and len(IAP[-1]['opciones']) > 20 and IAP[-1]['contexto']['lote'] == 'IT01' and len(IAP[-1]['imagen']) > 100)
         check('IA: muestra la sugerencia con confianza y explicación', 'PC AVANZADA' in r['sug'] and 'media' in r['sug'] and 'flecha caída' in r['sug'], r['sug'])
@@ -99,13 +100,12 @@ with sync_playwright() as p:
         check('IA: registra la sugerencia y si coincidió con el diagnóstico final (el operario la corrigió)', r['ia'] and r['ia']['sugerido'] == 'PC' and r['ia']['aplicada'] and r['ia']['acerto'] is False and r['pl'].get('ia_sugerido') == 'PC › PC AVANZADA', r['ia'])
     # ---------------- Visor ----------------
     vz = ctx.new_page(); vz.on('pageerror', lambda e: errores.append('visor: ' + str(e)[:200]))
-    vz.goto('http://127.0.0.1:8765/visor.html'); vz.wait_for_function("typeof pintarPlanCenso==='function'", timeout=30000); vz.wait_for_timeout(1000)
+    vz.goto(BASE + '/visor.html'); vz.wait_for_function("typeof pintarPlanCenso==='function'", timeout=30000); vz.wait_for_timeout(1000)
     vz.evaluate("""()=>{document.querySelector('#login').hidden=true;document.querySelector('#app').hidden=false;mapa.invalidateSize();window.chunkLote=async()=>[];
       SES={u:'admin1',nombre:'Admin',rol:'admin',token:'tok',repo:{owner:'didpalmares',repo:'PolinizacionData',rama:'main'}};
-      CIR.usuarios=[{u:'op1',nombre:'PEDRO PEREZ',rol:'operario',labores:['censo']},{u:'op2',nombre:'MARIA LOPEZ',rol:'operario',labores:['censo']},{u:'sup1',nombre:'Sara',rol:'supervisor'},{u:'x',nombre:'Susp',rol:'operario',inactivo:true}];
-      window.cirUsuarios=async()=>CIR.usuarios;
+      USUARIOS_PAQ=[{u:'op1',nombre:'PEDRO PEREZ',rol:'operario',labores:['polinizacion']},{u:'op2',nombre:'MARIA LOPEZ',rol:'operario',labores:['polinizacion']},{u:'sup1',nombre:'Sara',rol:'supervisor'},{u:'x',nombre:'Susp',rol:'operario',inactivo:true}];
       const hoy=hoyISO();const mk=(id,u,nom,fecha,lote,pid)=>{const t0=Date.parse(fecha+'T07:00:00-05:00');const c=[],t=[];for(let i=0;i<=60;i++){c.push([-78.70,1.50+i*0.0001]);t.push(t0+i*60000);}
-        const ds=[{tipo:'diagnostico',id:id+'d',palma_id:pid,lote,linea:3,palma:1,nivel1:'PUDRICIÓN DE COGOLLO (PC)',n1_codigo:'PC',nivel2:id==='J2'?'EN RECUPERACIÓN':'PC INICIAL',estado:'enferma',evaluador:nom,creado:new Date(t0+600000).toISOString(),lat:1.5,lng:-78.70,n_fotos:0}];
+        const ds=[{tipo:'diagnostico',id:id+'d',palma_id:pid,lote,linea:3,palma:1,labor:'polinizacion',a:id==='J2'?0:2,p:0,b:id==='J2'?1:0,cond:'',evaluador:nom,creado:new Date(t0+600000).toISOString(),lat:1.5,lng:-78.70,n_fotos:0}];
         const j={id,fecha,evaluador:nom,usuario:u,inicio:new Date(t0).toISOString(),fin:new Date(t0+3600000).toISOString(),hora_inicio:'07:00',hora_fin:'08:00',duracion_min:60,km:1,ha:8,palmas:900,metodo:'calle',
           n_paradas:0,min_paradas:0,min_mov:60,por_lote:[{lote,palmas_visitadas:900,ha:8}],densidad:115,app:'',lotes:new Set([lote]),paradas:[],track:{c,t,acc:c.map(()=>4)},header:{},secuencias:null,tiempos:{min_efectivo_labor:60},vel:2,diags:ds};
         ds.forEach(d=>d._j=j);return j;};
@@ -116,7 +116,7 @@ with sync_playwright() as p:
     vz.evaluate("document.querySelector('#btCoord').click()"); vz.wait_for_timeout(300); vz.click('[data-gt=plan]')
     vz.wait_for_function("GER.plan.ops&&GER.plan.ops.length", timeout=10000); vz.wait_for_timeout(300)
     ops = vz.evaluate("GER.plan.ops.map(o=>o.usuario)")
-    check('Visor: operarios activos de censo (sin supervisores ni suspendidos)', ops == ['op1', 'op2'], ops)
+    check('Visor: operarios activos de polinización (sin supervisores ni suspendidos)', ops == ['op1', 'op2'], ops)
     vz.click('#plProp'); vz.wait_for_timeout(300)
     res = vz.evaluate("GER.plan.res.map(a=>({u:a.usuario,l:a.lotes.map(x=>x.lote)}))")
     todos = [l for a in res for l in a['l']]
@@ -154,7 +154,7 @@ with sync_playwright() as p:
     check('Visor: muestra «Reporte listo» con sus archivos', 'REPORTE LISTO' in vz.inner_text('#gerPanel').upper() and EST['sol'][-1]['envio'] == 'ninguno', vz.evaluate('JSON.stringify({l:GER.rm.listo,p:GER.rm.pend,t:GER.tab})')[:300])
     vz.click('#gerX'); vz.wait_for_timeout(200)
     h = vz.evaluate("async()=>{const d=JOR[1].diags[0];await verHistoriaPalma(d);return document.querySelector('#hvCuerpo').innerText}")
-    check('Visor: hoja de vida de la palma con sus censos (lo más reciente primero)', h.count('Censo') == 2 and h.index('EN RECUPERACI') < h.index('PC INICIAL'), h[:200])
+    check('Visor: hoja de vida de la palma con sus registros de polinización (lo más reciente primero)', h.count('Polinización') == 2 and h.index('1B') < h.index('2A'), h[:200])
     check('Sin errores de JavaScript', not errores, errores[:4])
     nav.close()
 print('\nRESULTADO:', 'TODO OK' if ok else 'HAY FALLAS'); sys.exit(0 if ok else 1)

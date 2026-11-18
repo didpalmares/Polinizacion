@@ -1,7 +1,7 @@
 """Nuevas opciones del censo: Espacio vacío, Deficiencia de boro (Enfermedad principal) y Yarumo en palma."""
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from comun import CANAL, INIT_VOZ, PLANTACION, TMP
+from comun import CANAL, INIT_VOZ, PLANTACION, TMP, BASE
 import sys, time
 sys.stdout.reconfigure(encoding='utf-8')
 from playwright.sync_api import sync_playwright
@@ -15,7 +15,7 @@ with sync_playwright() as p:
     ctx = nav.new_context(service_workers='block', viewport={'width': 412, 'height': 900})
     ctx.route('https://api.github.com/**', lambda r: r.fulfill(status=404, body='{}'))
     pg = ctx.new_page(); pg.on('pageerror', lambda e: errores.append(str(e)[:200])); pg.on('dialog', lambda d: (errores.append('ALERTA: ' + d.message), d.dismiss()))
-    pg.goto('http://127.0.0.1:8765/index.html'); pg.wait_for_function("typeof abrirFormulario==='function'", timeout=30000); time.sleep(2)
+    pg.goto(BASE + '/index.html'); pg.wait_for_function("typeof abrirFormulario==='function'", timeout=30000); time.sleep(2)
     pg.evaluate("""async()=>{document.querySelector('#login').hidden=true;SES={u:'op1',nombre:'Operario Uno',rol:'operario'};
       const j={id:'JR',estado:'activa',evaluador:'Operario Uno',usuario:'op1',inicio:new Date().toISOString(),seleccion:[{lote:'IT01'}],densidad:115,buffer:5,km:0,sync:'pendiente'};
       await dbPut('jornadas',j);S.jornada=j;S.cfg.jornadaActiva='JR';S.gps={lat:1.70002,lng:-78.70,acc:4,t:Date.now()};
@@ -55,7 +55,7 @@ with sync_playwright() as p:
     check('Dictado: «yarumo en palma»', v[2]['n1'] == ['YARUMO'] and v[2]['n2'] == ['YARUMO EN PALMA'], v[2])
     check('Sin errores ni alertas', not errores, errores[:3])
     # Visor: nombre y color
-    vz = ctx.new_page(); vz.goto('http://127.0.0.1:8765/visor.html'); vz.wait_for_function("typeof PROBLEMAS!=='undefined'", timeout=20000)
+    vz = ctx.new_page(); vz.goto(BASE + '/visor.html'); vz.wait_for_function("typeof PROBLEMAS!=='undefined'", timeout=20000)
     check('Visor: nombres y colores nuevos', vz.evaluate("PROBLEMAS.BORO==='Deficiencia de boro'&&PROBLEMAS.EV==='Espacio vacío'&&COLOR_N1.BORO&&COLOR_N1.EV"))
     nav.close()
 print('\nRESULTADO:', 'TODO OK' if ok else 'HAY FALLAS'); sys.exit(0 if ok else 1)

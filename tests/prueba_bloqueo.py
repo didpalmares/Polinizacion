@@ -1,7 +1,7 @@
 """Pantalla bloqueada: todas las opciones visibles siempre (APK simulada) y cada botón llama al plugin nativo correcto."""
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from comun import CANAL, INIT_VOZ, PLANTACION, TMP
+from comun import CANAL, INIT_VOZ, PLANTACION, TMP, BASE
 import sys, time
 sys.stdout.reconfigure(encoding='utf-8')
 from playwright.sync_api import sync_playwright
@@ -25,7 +25,7 @@ with sync_playwright() as p:
         ctx.add_init_script(stub(fab, modelo, sin))
         ctx.route('https://api.github.com/**', lambda r: r.fulfill(status=404, body='{}'))
         pg = ctx.new_page(); pg.on('pageerror', lambda e: errores.append(str(e)[:160])); pg.on('dialog', lambda d: d.dismiss())
-        pg.goto('http://127.0.0.1:8765/index.html'); pg.wait_for_function("typeof revisarSegundoPlano==='function'", timeout=30000); time.sleep(2)
+        pg.goto(BASE + '/index.html'); pg.wait_for_function("typeof revisarSegundoPlano==='function'", timeout=30000); time.sleep(2)
         pg.evaluate("document.querySelector('#login').hidden=true;menu();document.querySelector('#mBg').click()"); time.sleep(1)
         txt = pg.evaluate("document.querySelector('#hojaCuerpo').innerText")
         fichas = pg.evaluate("document.querySelectorAll('#hojaCuerpo .ficha').length")

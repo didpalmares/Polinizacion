@@ -1,7 +1,7 @@
 """Límite leído desde el repositorio privado de datos (cartografia/plantacion.geojson) y su copia sin conexión."""
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from comun import CANAL, INIT_VOZ, PLANTACION, TMP
+from comun import CANAL, INIT_VOZ, PLANTACION, TMP, BASE
 import sys, time
 sys.stdout.reconfigure(encoding='utf-8')
 from playwright.sync_api import sync_playwright
@@ -22,7 +22,7 @@ with sync_playwright() as p:
     ctx = nav.new_context(service_workers='block', viewport={'width': 412, 'height': 900})
     ctx.route('https://api.github.com/**', gh)
     pg = ctx.new_page(); pg.on('pageerror', lambda e: errores.append(str(e))); pg.on('dialog', lambda d: d.dismiss())
-    pg.goto('http://127.0.0.1:8765/index.html'); pg.wait_for_function("typeof cargarPlantacion==='function'", timeout=30000); time.sleep(2)
+    pg.goto(BASE + '/index.html'); pg.wait_for_function("typeof cargarPlantacion==='function'", timeout=30000); time.sleep(2)
     r = pg.evaluate("""async()=>{document.querySelector('#login').hidden=true;SES={u:'op1',nombre:'Operario Uno',rol:'operario'};
       S.cfg.gh={...S.cfg.gh,token:'tok-prueba'};if(ACCESO)delete ACCESO.plantacion;
       const ok=await cargarPlantacion();return {ok,n:S.plantacion&&S.plantacion.features.length,capa:!!capaPlantacion};}""")

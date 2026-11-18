@@ -2,7 +2,7 @@
 visor: lectura del índice diario y lista de reportes diarios/semanales. GitHub simulado."""
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from comun import CANAL, TMP
+from comun import CANAL, TMP, BASE
 import sys, time, json, os, base64, re
 sys.stdout.reconfigure(encoding='utf-8')
 from playwright.sync_api import sync_playwright
@@ -49,7 +49,7 @@ with sync_playwright() as p:
     ctx.route('https://api.github.com/**', gh)
     ad = ctx.new_page(); ad.on('pageerror', lambda e: errores.append('admin: ' + str(e)[:200])); dl = []
     ad.on('dialog', lambda d: (dl.append(d.message), d.accept()))
-    ad.goto('http://127.0.0.1:8765/admin.html'); ad.wait_for_function("typeof entradaUsuario==='function'", timeout=20000)
+    ad.goto(BASE + '/admin.html'); ad.wait_for_function("typeof entradaUsuario==='function'", timeout=20000)
     paq = ad.evaluate("""async()=>{const dkRaw=rnd(32),dk=await llaveDatos(dkRaw);const U=[];
       for(const [u,n,r] of [['admin1','ANA ADMIN','admin'],['op1','PEDRO PEREZ','operario']])U.push(await entradaUsuario(dk,dkRaw,u,n,r,'Clave1234',{}));
       return {formato:FORMATO,id:'p',creado:'',repo:{owner:'didpalmares',repo:'PolinizacionData',rama:'main'},kdf:{alg:'PBKDF2-SHA256',iter:ITER},token:await cifrar(dk,enc.encode('github_pat_prueba')),carto:{archivo:'carto.enc',version:'v1'},usuarios:U};}""")
@@ -100,7 +100,7 @@ with sync_playwright() as p:
     # --- Visor: índice diario y reportes ---
     vz = ctx.new_page(); vz.on('pageerror', lambda e: errores.append('visor: ' + str(e)[:200]))
     pedidos = []; vz.on('request', lambda r: pedidos.append(r.url))
-    vz.goto('http://127.0.0.1:8765/visor.html'); vz.wait_for_function("typeof cargar==='function'", timeout=30000); time.sleep(1)
+    vz.goto(BASE + '/visor.html'); vz.wait_for_function("typeof cargar==='function'", timeout=30000); time.sleep(1)
     vz.evaluate("""async()=>{document.querySelector('#login').hidden=true;document.querySelector('#app').hidden=false;window.chunkLote=async()=>[];
       SES={u:'a',nombre:'A',rol:'admin',token:'t',repo:{owner:'didpalmares',repo:'PolinizacionData',rama:'main'}};
       document.querySelector('#fDesde').value='2026-11-13';document.querySelector('#fHasta').value='2026-11-14';await cargar();}""")

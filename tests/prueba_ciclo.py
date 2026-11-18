@@ -3,7 +3,7 @@ avance real (palmas visitadas en las calles del bloque), permite dar un bloque a
 envía el plan; la App muestra «Sus bloques de hoy» y selecciona sus calles. GitHub simulado, datos ficticios."""
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from comun import CANAL
+from comun import CANAL, BASE
 import sys, json, re, base64
 sys.stdout.reconfigure(encoding='utf-8')
 from datetime import datetime
@@ -48,13 +48,13 @@ with sync_playwright() as p:
     ctx.route('https://api.github.com/**', gh)
     # ---------------- Visor ----------------
     vz = ctx.new_page(); vz.on('pageerror', lambda e: errores.append('visor: ' + str(e)[:200])); vz.on('dialog', lambda d: d.accept())
-    vz.goto('http://127.0.0.1:8765/visor.html'); vz.wait_for_function("typeof pintarCiclo==='function'", timeout=30000); vz.wait_for_timeout(800)
+    vz.goto(BASE + '/visor.html'); vz.wait_for_function("typeof pintarCiclo==='function'", timeout=30000); vz.wait_for_timeout(800)
     # IT01: L1–L100, una palma por línea (id = 'a'+línea). Jornada del 13-nov: L1–L50 completas (D1·P1 ejecutado) y L51–L75 (D1·P2 al 50 %).
     vz.evaluate("""()=>{document.querySelector('#login').hidden=true;document.querySelector('#app').hidden=false;
       window.chunkLote=async l=>l==='IT01'?Array.from({length:100},(_,i)=>['a'+(i+1),i+1,1,1,0,0]):[];
       JOR=[{id:'j1',fecha:'2026-11-13',usuario:'op2',por_lote:[{lote:'IT01',ids_palmas_visitadas:Array.from({length:75},(_,i)=>'a'+(i+1))}]}];
       SES={u:'admin1',nombre:'Admin',rol:'admin',token:'tok',repo:{owner:'didpalmares',repo:'PolinizacionData',rama:'main'}};
-      window.cirUsuarios=async()=>[{u:'op1',nombre:'PEDRO PEREZ',rol:'operario',labores:['censo']},{u:'op2',nombre:'MARIA LOPEZ',rol:'operario',labores:['censo']},{u:'op3',nombre:'JUAN RUIZ',rol:'operario',labores:['censo']}];}""")
+      USUARIOS_PAQ=[{u:'op1',nombre:'PEDRO PEREZ',rol:'operario',labores:['polinizacion']},{u:'op2',nombre:'MARIA LOPEZ',rol:'operario',labores:['polinizacion']},{u:'op3',nombre:'JUAN RUIZ',rol:'operario',labores:['polinizacion']}];}""")
     EST['asig'] = {'formato': 'polinizacion-asignacion-censo-1', 'ciclo_version': 'v1', 'vuelta': 1, 'inicio': '2026-11-13', 'titulares': {}, 'manual': {}}
     vz.evaluate("document.querySelector('#btCoord').click()"); vz.wait_for_timeout(300); vz.click('[data-gt=plan]')
     vz.wait_for_function("GER.cic.av&&GER.plan.ops&&document.querySelector('[data-fu]')", timeout=15000); vz.wait_for_timeout(300)
@@ -90,7 +90,7 @@ with sync_playwright() as p:
     check('Visor: guardar titulares', EST['asig']['titulares'].get('2') == 'op3' and EST['asig']['titulares'].get('1') == 'op2', EST['asig']['titulares'])
     # ---------------- App ----------------
     pg = ctx.new_page(); pg.on('pageerror', lambda e: errores.append('app: ' + str(e)[:200])); pg.on('dialog', lambda d: d.dismiss())
-    pg.goto('http://127.0.0.1:8765/index.html'); pg.wait_for_function("typeof bannerPlan==='function'", timeout=30000); pg.wait_for_timeout(1500)
+    pg.goto(BASE + '/index.html'); pg.wait_for_function("typeof bannerPlan==='function'", timeout=30000); pg.wait_for_timeout(1500)
     r = pg.evaluate("""async()=>{document.querySelector('#login').hidden=true;SES={u:'op2',nombre:'MARIA LOPEZ',rol:'operario'};S.cfg.gh={...S.cfg.gh,token:'tok',owner:'didpalmares',repo:'PolinizacionData',rama:'main'};
       await cargarPlanCenso();abrirHoja('Planificar jornada','<div id="plLista"></div>');
       CARTO.lotes={IT05:{linea_min:1,linea_max:80},IT06:{linea_min:1,linea_max:30},RI03:{linea_min:0,linea_max:0}};S.plan=[];window.dibujarLotes=()=>{};window.pintarPlanLista=()=>{};window.pintarPlanSel=()=>{};

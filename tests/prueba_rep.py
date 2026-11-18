@@ -1,7 +1,7 @@
 """Visor: reproducir todas las jornadas filtradas (a la vez y una a una)."""
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from comun import CANAL, INIT_VOZ, PLANTACION, TMP
+from comun import CANAL, INIT_VOZ, PLANTACION, TMP, BASE
 import sys, time
 sys.stdout.reconfigure(encoding='utf-8')
 from playwright.sync_api import sync_playwright
@@ -15,7 +15,7 @@ with sync_playwright() as p:
     ctx = nav.new_context(service_workers='block', viewport={'width': 1400, 'height': 900})
     ctx.route('https://api.github.com/**', lambda r: r.fulfill(status=404, body='{}'))
     pg = ctx.new_page(); pg.on('pageerror', lambda e: errores.append(str(e)[:200] + ' ' + (e.stack or '')[:200])); pg.on('dialog', lambda d: d.dismiss())
-    pg.goto('http://127.0.0.1:8765/visor.html'); pg.wait_for_function("typeof abrirRep==='function'&&typeof mapa!=='undefined'", timeout=30000); time.sleep(1)
+    pg.goto(BASE + '/visor.html'); pg.wait_for_function("typeof abrirRep==='function'&&typeof mapa!=='undefined'", timeout=30000); time.sleep(1)
     pg.evaluate("""()=>{document.querySelector('#login').hidden=true;document.querySelector('#app').hidden=false;mapa.invalidateSize();window.chunkLote=async()=>[];
       const mk=(id,u,nom,fecha,h0,dlng,ndiag)=>{const t0=Date.parse(fecha+'T'+h0+':00-05:00');const c=[],t=[];for(let i=0;i<=40;i++){c.push([-78.70+dlng,1.50+i*0.0001]);t.push(t0+i*60000);}
         const diags=[...Array(ndiag)].map((_,k)=>({tipo:'diagnostico',id:id+'d'+k,palma_id:'P'+k,lote:'IT01',linea:3,palma:k+1,nivel1:'PUDRICIÓN DE COGOLLO (PC)',n1_codigo:'PC',estado:'enferma',evaluador:nom,creado:new Date(t0+(10+k*10)*60000).toISOString(),lat:1.50+(10+k*10)*0.0001,lng:-78.70+dlng,n_fotos:0}));

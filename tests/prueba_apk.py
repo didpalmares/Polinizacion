@@ -1,7 +1,7 @@
 """Menú «App Android (APK)»: versión instalada vs. última publicada, descarga y aviso; «Nueva jornada» del menú respeta el límite."""
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from comun import CANAL, INIT_VOZ, PLANTACION, TMP
+from comun import CANAL, INIT_VOZ, PLANTACION, TMP, BASE
 import sys, time, json
 sys.stdout.reconfigure(encoding='utf-8')
 from playwright.sync_api import sync_playwright
@@ -22,7 +22,7 @@ def escenario(nav, ua, ultima):
     ctx.route('https://api.github.com/**', gh)
     ctx.route('https://github.com/**', lambda r: (descargas.append(r.request.url), r.fulfill(status=200, body='APK', content_type='application/vnd.android.package-archive')))
     pg = ctx.new_page(); pg.on('pageerror', lambda e: errores.append(str(e)[:200])); pg.on('dialog', lambda d: d.dismiss())
-    pg.goto('http://127.0.0.1:8765/index.html')
+    pg.goto(BASE + '/index.html')
     pg.wait_for_function("typeof menu==='function'&&typeof S!=='undefined'", timeout=30000); time.sleep(3)
     pg.evaluate("document.querySelector('#login').hidden=true;try{localStorage.removeItem('sv_apk_ultima')}catch(e){};APK.ultima=null;menu()")
     pg.wait_for_function("!(document.querySelector('#mApkTxt')||{textContent:'…'}).textContent.includes('…')", timeout=10000); time.sleep(.3)
@@ -53,7 +53,7 @@ with sync_playwright() as p:
     check('APK antigua: aviso y botón de descarga', 'Hay una APK nueva (1.0.8)' in panel and 'DESCARGAR APK 1.0.8' in panel, panel[:160])
     abre = pg.evaluate("(()=>{let u=null;window.abrirExterno=x=>{u=x};document.querySelector('#apkDl').click();return u})()")
     check('El botón abre la descarga de la APK publicada', abre == 'https://github.com/didpalmares/Polinizacion/releases/latest/download/Polinizacion.apk', abre)
-    pg.goto('http://127.0.0.1:8765/index.html'); pg.wait_for_function("typeof avisoApk==='function'", timeout=30000); time.sleep(2)
+    pg.goto(BASE + '/index.html'); pg.wait_for_function("typeof avisoApk==='function'", timeout=30000); time.sleep(2)
     pg.evaluate("try{localStorage.clear()}catch(e){};APK.ultima=null")
     pg.evaluate("avisoApk()"); time.sleep(1.5)
     check('Aviso al abrir la app cuando hay APK nueva', 'Hay una APK nueva (1.0.8)' in pg.evaluate("document.querySelector('#toast').textContent"), pg.evaluate("document.querySelector('#toast').textContent"))

@@ -4,7 +4,7 @@ anota el equipo y los cortes del GPS con su causa al finalizar, los envía en la
 la hoja «Pantalla bloqueada» muestra la vigilancia y la vibración de confirmación; el visor dibuja los cortes punteados."""
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from comun import CANAL
+from comun import CANAL, BASE
 import sys, time
 sys.stdout.reconfigure(encoding='utf-8')
 from playwright.sync_api import sync_playwright
@@ -39,7 +39,7 @@ with sync_playwright() as p:
     ctx.add_init_script(STUB)
     ctx.route('https://api.github.com/**', lambda r: r.fulfill(status=404, body='{}'))
     pg = ctx.new_page(); pg.on('pageerror', lambda e: errores.append(str(e)[:200])); pg.on('dialog', lambda d: d.accept())
-    pg.goto('http://127.0.0.1:8765/index.html'); pg.wait_for_function("typeof gpsFondo==='function'&&typeof S!=='undefined'", timeout=30000); time.sleep(2)
+    pg.goto(BASE + '/index.html'); pg.wait_for_function("typeof gpsFondo==='function'&&typeof S!=='undefined'", timeout=30000); time.sleep(2)
     pg.evaluate("document.querySelector('#login').hidden=true;SES={u:'op1',nombre:'Operario Uno',rol:'operario'}")
     r = pg.evaluate("""async()=>{await iniciarJornada([{lote:'IT01'}],'Operario Uno');await new Promise(r=>setTimeout(r,800));
       const i=__rec.llam.find(x=>x[0]==='iniciar');return {jid:S.jornada&&S.jornada.id,ini:i&&i[1],bg:bgWatcher,on:REC.on,cb:!!__rec.cb,eq:S.jornada.equipo};}""")
@@ -90,7 +90,7 @@ with sync_playwright() as p:
 
     # Visor: el corte se dibuja punteado y el detalle lo lista con su causa
     vs = ctx.new_page(); ev = []; vs.on('pageerror', lambda e: ev.append(str(e)[:200]))
-    vs.goto('http://127.0.0.1:8765/visor.html'); vs.wait_for_function("typeof partesTrack==='function'&&typeof bloqueCortes==='function'", timeout=30000)
+    vs.goto(BASE + '/visor.html'); vs.wait_for_function("typeof partesTrack==='function'&&typeof bloqueCortes==='function'", timeout=30000)
     r = vs.evaluate("""()=>{const t0=Date.parse('2026-11-17T14:40:00Z');const c=[],t=[];
       for(let i=0;i<20;i++){c.push([-78.8,1.62+i*5/111320]);t.push(t0+i*4000);}
       const tc=t[19];for(let i=0;i<10;i++){c.push([-78.8,1.63+i*5/111320]);t.push(tc+35*60000+i*4000);}

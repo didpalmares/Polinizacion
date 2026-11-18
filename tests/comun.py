@@ -1,8 +1,10 @@
 """Utilidades comunes de las pruebas (Playwright + app servida en http://127.0.0.1:8765).
 
 PW_CANAL: canal del navegador (por ejemplo «msedge» en Windows). Vacío = Chromium de Playwright (CI).
+PRUEBAS_URL: dirección base donde se sirve la app (por omisión http://127.0.0.1:8765, la de CI).
 """
 import os, tempfile
+BASE = os.environ.get('PRUEBAS_URL', 'http://127.0.0.1:8765').rstrip('/')
 CANAL = {'channel': os.environ['PW_CANAL']} if os.environ.get('PW_CANAL') else {}
 PLANTACION = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fixtures', 'plantacion_prueba.geojson')
 TMP = tempfile.mkdtemp(prefix='polinizacion_pruebas_')

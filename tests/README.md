@@ -19,4 +19,11 @@ python tests/run_all.py gerencia   # solo las que contienen «gerencia»
 
 En Windows se puede usar Edge en lugar de Chromium: `set PW_CANAL=msedge`.
 
+Si la app se sirve en otra dirección, indíquela con `PRUEBAS_URL` (por ejemplo `PRUEBAS_URL=http://127.0.0.1:8799`);
+sin ella se usa `http://127.0.0.1:8765`, la de GitHub Actions.
+
+`prueba_visor_polinizacion.py` recorre la polinización de punta a punta: la App arma el GeoJSON de la jornada (A, P, B, R, V,
+fuente, pasadas y transitabilidad de cada lote), el visor lo lee y se verifican colores, leyenda, ficha, filtro por código,
+indicadores de Gerencia (🐝 Polinización), tabla por lote y transitabilidad por lote.
+
 Los datos de las pruebas son ficticios (nombres, cédulas y el polígono de `fixtures/` no son reales).

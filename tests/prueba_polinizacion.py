@@ -2,12 +2,12 @@
 R y V solas, existencia 0 excluida, transitabilidad de entrada y salida del lote y deshacer. GitHub simulado."""
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from comun import CANAL, INIT_VOZ
+from comun import CANAL, INIT_VOZ, BASE
 import json, sys, time
 sys.stdout.reconfigure(encoding="utf-8")
 from playwright.sync_api import sync_playwright
 
-URL = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:8765/index.html'
+URL = sys.argv[1] if len(sys.argv) > 1 else BASE + '/index.html'
 errores, dialogos = [], []
 ok = True
 

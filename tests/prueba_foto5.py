@@ -1,7 +1,7 @@
 """Reproducción: pausa de 5 s en cada diagnóstico y la foto visible directamente en la ficha (visor y app)."""
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from comun import CANAL, INIT_VOZ, PLANTACION, TMP
+from comun import CANAL, INIT_VOZ, PLANTACION, TMP, BASE
 import sys, time, io, zipfile, json
 sys.stdout.reconfigure(encoding='utf-8')
 from PIL import Image
@@ -31,7 +31,7 @@ with sync_playwright() as p:
     ctx = nav.new_context(service_workers='block', viewport={'width': 1300, 'height': 900})
     ctx.route('https://api.github.com/**', gh)
     vz = ctx.new_page(); vz.on('pageerror', lambda e: errores.append('visor: ' + str(e)[:200]))
-    vz.goto('http://127.0.0.1:8765/visor.html'); vz.wait_for_function("typeof abrirRep==='function'", timeout=30000); time.sleep(1)
+    vz.goto(BASE + '/visor.html'); vz.wait_for_function("typeof abrirRep==='function'", timeout=30000); time.sleep(1)
     vz.evaluate(JS_DATOS)
     def medir(arrancar):
         vz.evaluate("mapa.closePopup()"); vz.wait_for_function("!document.querySelector('.leaflet-popup-content')", timeout=5000)
@@ -52,7 +52,7 @@ with sync_playwright() as p:
     vz.evaluate("detenerRep()")
     # App
     pg = ctx.new_page(); pg.on('pageerror', lambda e: errores.append('app: ' + str(e)[:200])); pg.on('dialog', lambda d: d.dismiss())
-    pg.goto('http://127.0.0.1:8765/index.html'); pg.wait_for_function("typeof abrirPlay==='function'", timeout=30000); time.sleep(2)
+    pg.goto(BASE + '/index.html'); pg.wait_for_function("typeof abrirPlay==='function'", timeout=30000); time.sleep(2)
     pg.evaluate("""async(b64)=>{document.querySelector('#login').hidden=true;const buf=Uint8Array.from(atob(b64),c=>c.charCodeAt(0)).buffer;
       const t0=Date.parse('2026-11-13T12:00:00Z');const pts=[];for(let i=0;i<=40;i++)pts.push({j:'JA',t:t0+i*60000,lat:1.50+i*0.0001,lng:-78.70,acc:4,s:1});
       await dbPutVarios('track',pts);await dbPut('fotos',{id:'FA',registro_id:'RA',buf,type:'image/jpeg'});

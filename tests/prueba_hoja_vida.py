@@ -1,8 +1,8 @@
-"""Hoja de vida de la palma: App (en la ficha de la palma, sin internet, oculta en auditoría) y visor (ventana con el archivo central
-más lo cargado, sin duplicados, alertas y foto). GitHub simulado."""
+"""Hoja de vida de la palma con registros de polinización: App (en la ficha de la palma, sin internet, oculta en auditoría) y
+visor (ventana con el archivo central más lo cargado, sin duplicados, filtro R / V y foto). GitHub simulado."""
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from comun import CANAL
+from comun import CANAL, BASE
 import sys, json, time
 sys.stdout.reconfigure(encoding='utf-8')
 from playwright.sync_api import sync_playwright
@@ -12,12 +12,12 @@ def check(n, c, x=''):
     print(('OK   ' if c else 'FALLA') + ' ' + n + (' · ' + str(x) if x != '' else '')); ok = ok and bool(c)
 HV = {'formato': 'polinizacion-hoja-vida-1', 'lote': 'IT01', 'generado': '2026-11-16T10:00:00+00:00', 'palmas': {
   '501': {'lote': 'IT01', 'linea': '3', 'palma': '7', 'll': [1.5, -78.7], 'ev': [
-    {'t': '2026-09-01T13:00:00Z', 'l': 'censo', 'x': 'PUDRICIÓN DE COGOLLO (PC) › PC INICIAL › PC CASO NUEVO', 'e': 'enferma', 'n2': 'PC INICIAL', 'q': 'GOMEZ PEREZ ANDRES', 'id': 'd1'},
-    {'t': '2026-09-03T15:00:00Z', 'l': 'cirugia', 'x': 'Cirugía · Cicatrizante', 'q': 'RUIZ MORA JUAN + DIAZ LOPEZ PEDRO', 'id': 'c1'},
-    {'t': '2026-10-20T13:00:00Z', 'l': 'plagas', 'x': 'Daño por Sagalassa', 'q': 'TORRES ELVIS', 'id': 'p1'},
-    {'t': '2026-11-10T13:00:00Z', 'l': 'censo', 'x': 'PUDRICIÓN DE COGOLLO (PC) › CRATER › SEGUIMIENTO PC', 'e': 'enferma', 'n2': 'CRATER', 'q': 'LOPEZ DIAZ CARLOS', 'id': 'd2',
-     'f': 'jornadas/2026-11-10/J9_fotos.zip|f9.jpg'}]}}}
-IND = {'formato': 'polinizacion-hoja-vida-1', 'generado': 'x', 'lotes': {'IT01': {'archivo': 'IT01.json', 'palmas': 1, 'eventos': 4, 'generado': HV['generado']}}}
+    {'t': '2026-09-01T13:00:00Z', 'l': 'censo', 'x': '2A + 1P', 'n1': 'A', 'q': 'GOMEZ PEREZ ANDRES', 'id': 'd1'},
+    {'t': '2026-10-20T13:00:00Z', 'l': 'censo', 'x': '1P + 2B', 'n1': 'P', 'q': 'TORRES ELVIS', 'id': 'd0'},
+    {'t': '2026-11-10T13:00:00Z', 'l': 'censo', 'x': '3A', 'n1': 'A', 'q': 'LOPEZ DIAZ CARLOS', 'id': 'd2', 'f': 'jornadas/2026-11-10/J9_fotos.zip|f9.jpg'}]},
+  '502': {'lote': 'IT01', 'linea': '4', 'palma': '2', 'll': [1.5002, -78.7], 'ev': [
+    {'t': '2026-11-11T13:00:00Z', 'l': 'censo', 'x': 'R: Palma Rancho / Tapada', 'n1': 'R', 'q': 'LOPEZ DIAZ CARLOS', 'id': 'd5'}]}}}
+IND = {'formato': 'polinizacion-hoja-vida-1', 'generado': 'x', 'lotes': {'IT01': {'archivo': 'IT01.json', 'palmas': 2, 'eventos': 4, 'generado': HV['generado']}}}
 def gh(route):
     u = route.request.url
     if 'palmas/hoja_vida/IT01.json' in u: return route.fulfill(status=200, content_type='application/json', body=json.dumps(HV))
@@ -30,22 +30,23 @@ with sync_playwright() as p:
     ctx.route('https://api.github.com/**', gh)
     # ---------------- Visor ----------------
     vz = ctx.new_page(); vz.on('pageerror', lambda e: errores.append('visor: ' + str(e)[:200]))
-    vz.goto('http://127.0.0.1:8765/visor.html'); vz.wait_for_function("typeof hojaVidaVisor==='function'", timeout=30000); time.sleep(1)
+    vz.goto(BASE + '/visor.html'); vz.wait_for_function("typeof hojaVidaVisor==='function'", timeout=30000); time.sleep(1)
     vz.evaluate("""()=>{document.querySelector('#login').hidden=true;document.querySelector('#app').hidden=false;mapa.invalidateSize();
       SES={u:'an1',nombre:'ANALISTA',rol:'analista',token:'tok',repo:{owner:'didpalmares',repo:'PolinizacionData',rama:'main'}};
       const j={id:'J9',ruta:'2026-11-16/J10.geojson',fecha:'2026-11-16',evaluador:'MORA RUIZ JAVIER',usuario:'op3',inicio:'2026-11-16T12:00:00Z',fin:'2026-11-16T13:00:00Z',hora_inicio:'07:00',hora_fin:'08:00',duracion_min:60,km:1,ha:1,palmas:10,metodo:'calle',
-        n_paradas:0,min_paradas:0,min_mov:60,por_lote:[],densidad:115,app:'',lotes:new Set(['IT01']),paradas:[],track:null,header:{},secuencias:null,tiempos:{},vel:2,diags:[]};
-      const d=(id,h,n2)=>({tipo:'diagnostico',id,palma_id:'501',lote:'IT01',linea:3,palma:7,n1_codigo:'PC',nivel1:'PUDRICIÓN DE COGOLLO (PC)',nivel2:n2,estado:'enferma',creado:h,lat:1.5,lng:-78.7,evaluador:'MORA RUIZ JAVIER',n_fotos:0});
-      j.diags=[d('d2','2026-11-10T13:00:00Z','CRATER'),d('d3','2026-11-16T12:30:00Z','PC EN RECUPERACIÓN')];
+        n_paradas:0,min_paradas:0,min_mov:60,por_lote:[],densidad:115,app:'',lotes:new Set(['IT01']),paradas:[],track:null,header:{},secuencias:null,tiempos:{},vel:2,transito:[],diags:[]};
+      const d=(id,h,x)=>normPol({tipo:'diagnostico',id,palma_id:'501',lote:'IT01',linea:3,palma:7,labor:'polinizacion',...x,creado:h,lat:1.5,lng:-78.7,evaluador:'MORA RUIZ JAVIER',n_fotos:0,transitabilidad:'Transitable',fuente:'nfc'});
+      j.diags=[d('d2','2026-11-10T13:00:00Z',{a:3}),d('d3','2026-11-16T12:30:00Z',{a:1,b:2})];
       JOR=[j];document.querySelector('#fDesde').value='2026-11-16';document.querySelector('#fHasta').value='2026-11-16';aplicarFiltros(true);
       popupDiag({...j.diags[1],_j:j});}""")
     vz.wait_for_selector('.ppHist'); check('Visor: botón «📋 Hoja de vida» en la ficha', 'Hoja de vida' in vz.inner_text('.ppHist'))
     vz.click('.ppHist'); vz.wait_for_selector('#hvCuerpo .ev', timeout=8000)
     T = vz.inner_text('#hvCuerpo'); n = vz.evaluate("document.querySelectorAll('#hvCuerpo .ev').length")
-    check('Visor: une el archivo central con lo cargado sin duplicar (5 registros)', n == 5 and T.count('CRATER') == 1, n)
-    check('Visor: incluye cirugía y plagas de otras labores', 'Cirugía' in T and 'Daño por Sagalassa' in T)
+    check('Visor: une el archivo central con lo cargado sin duplicar (4 registros)', n == 4 and T.count('3A') == 1, n)
+    check('Visor: el registro cargado trae transitabilidad y fuente', 'Transitabilidad: Transitable' in T and 'Fuente: Tarjeta NFC' in T, T[:300])
     orden = vz.evaluate("[...document.querySelectorAll('#hvCuerpo .ev b')].map(b=>b.innerText)")
-    check('Visor: lo más reciente primero y el último diagnóstico manda', orden[0] == 'Censo' and 'RECUPERACI' in vz.inner_text('#hvCuerpo .est').upper(), orden)
+    check('Visor: lo más reciente primero y el último registro manda', orden[0] == 'Polinización' and '1A + 2B' in vz.inner_text('#hvCuerpo .est') and 'Último registro' in vz.inner_text('#hvCuerpo .est'), orden)
+    check('Visor: sin textos de diagnóstico', 'iagnóstico' not in T and 'Censo' not in T)
     check('Visor: registro con foto tiene «Ver foto»', vz.evaluate("document.querySelectorAll('#hvCuerpo [data-hvf]').length") == 1)
     check('Visor: la vista incluye el mapa con la palma marcada', vz.evaluate("!!HVP.mapa&&document.querySelector('#hvMapa .leaflet-container, #hvMapa.leaflet-container')!==null&&!!HVP.sel"))
     vz.click('#hvX'); check('Visor: se cierra', vz.evaluate("document.querySelector('#hvPanel').hidden"))
@@ -54,46 +55,41 @@ with sync_playwright() as p:
     check('Visor: botón 📋 HOJA DE VIDA en la cabecera', 'btHV' in orden and 'HOJA DE VIDA' in vz.inner_text('#btHV'), orden)
     vz.click('#btHV'); vz.wait_for_selector('#hvLista .it', timeout=8000)
     li = [x.splitlines()[0] for x in vz.evaluate("[...document.querySelectorAll('#hvLista .it')].map(e=>e.innerText)")]
-    check('Visor: lista las palmas con hoja de vida del lote', len(li) == 1 and 'L3' in li[0] and 'P7' in li[0], li)
-    check('Visor: el mapa muestra la palma con su alerta', vz.evaluate("HVP.capa.getLayers().length")>0)
-    vz.click('#hvFil [data-f=cir]'); vz.wait_for_timeout(300)
-    check('Visor: filtro «Con cirugía»', vz.evaluate("document.querySelectorAll('#hvLista .it').length") == 1)
-    vz.click('#hvFil [data-f=plg]'); vz.wait_for_timeout(300); vz.fill('#hvQ', '3 9'); vz.wait_for_timeout(300)
+    check('Visor: lista las palmas con hoja de vida del lote', len(li) == 2 and 'L3' in li[0] and 'P7' in li[0], li)
+    check('Visor: el mapa muestra las palmas', vz.evaluate("HVP.capa.getLayers().length") > 0)
+    check('Visor: filtros Todas y R / V (sin críticas ni recuperación)', vz.evaluate("[...document.querySelectorAll('#hvFil .chipf')].map(b=>b.innerText).join('|')") == 'Todas|R / V (no se aplica)')
+    vz.click('#hvFil [data-f=nap]'); vz.wait_for_timeout(300)
+    li = vz.evaluate("[...document.querySelectorAll('#hvLista .it')].map(e=>e.innerText)")
+    check('Visor: filtro R / V deja la palma rancho', len(li) == 1 and 'L4' in li[0] and 'R: Palma Rancho / Tapada' in li[0], li)
+    vz.click('#hvFil [data-f=todas]'); vz.wait_for_timeout(300); vz.fill('#hvQ', '3 9'); vz.wait_for_timeout(300)
     check('Visor: búsqueda por línea y palma', vz.evaluate("document.querySelectorAll('#hvLista .it').length") == 0)
-    vz.fill('#hvQ', ''); vz.click('#hvFil [data-f=todas]'); vz.wait_for_timeout(300); vz.click('#hvLista .it'); vz.wait_for_timeout(300)
-    check('Visor: al elegir la palma muestra su hoja de vida', vz.evaluate("document.querySelectorAll('#hvCuerpo .ev').length") == 5)
-    vz.click('#btEnf'); vz.wait_for_timeout(200)
+    vz.fill('#hvQ', '3 7'); vz.wait_for_timeout(300); vz.click('#hvLista .it'); vz.wait_for_timeout(300)
+    check('Visor: al elegir la palma muestra su hoja de vida', vz.evaluate("document.querySelectorAll('#hvCuerpo .ev').length") == 4)
+    vz.click('#btGer'); vz.wait_for_timeout(200)
     check('Visor: otro botón de la cabecera cierra la vista', vz.evaluate("document.querySelector('#hvPanel').hidden"))
+    vz.evaluate("alternarGerencia(false)")
     # Palma sin hoja de vida
     vz.evaluate("verHistoriaPalma({palma_id:'999',lote:'IT01',linea:1,palma:1,lat:1.5,lng:-78.7})"); vz.wait_for_timeout(500)
-    check('Visor: palma sin diagnósticos ni novedades no tiene hoja de vida', 'no tiene hoja de vida' in vz.inner_text('#hvCuerpo'))
+    check('Visor: palma sin registros ni novedades no tiene hoja de vida', 'no tiene hoja de vida' in vz.inner_text('#hvCuerpo'))
     # ---------------- App ----------------
     pg = ctx.new_page(); pg.on('pageerror', lambda e: errores.append('app: ' + str(e)[:200])); pg.on('dialog', lambda d: d.dismiss())
-    pg.goto('http://127.0.0.1:8765/index.html'); pg.wait_for_function("typeof mostrarHojaVida==='function'", timeout=30000); time.sleep(2)
+    pg.goto(BASE + '/index.html'); pg.wait_for_function("typeof mostrarHojaVida==='function'", timeout=30000); time.sleep(2)
     r = pg.evaluate("""async()=>{document.querySelector('#login').hidden=true;SES={u:'op1',nombre:'Operario',rol:'operario'};S.cfg.gh={...S.cfg.gh,token:'tok',owner:'didpalmares',repo:'PolinizacionData',rama:'main'};
       await cargarHojaVida();
-      for(const [id,lin,num] of [['501','3','7'],['502','3','8']])S.idx.set(id,{type:'Feature',geometry:{type:'Point',coordinates:[-78.7,1.5]},properties:{_id:id,_lote:'IT01',_linea:lin,_num:num}});
+      for(const [id,lin,num] of [['501','3','7'],['503','3','8']])S.idx.set(id,{type:'Feature',geometry:{type:'Point',coordinates:[-78.7,1.5]},properties:{_id:id,_lote:'IT01',_linea:lin,_num:num}});
       abrirPalma('501');await new Promise(r=>setTimeout(r,600));const c=document.querySelector('#hojaCuerpo');
-      const hv=c.querySelector('.hv');const res={hay:!!hv,txt:hv?hv.innerText:'',n:hv?hv.querySelectorAll('.ev').length:0,antesHist:!!(hv&&hv.nextElementSibling&&/Historial/.test(c.innerText.slice(c.innerText.indexOf('Hoja de vida'))))};
-      cerrarHoja&&cerrarHoja();abrirPalma('502');await new Promise(r=>setTimeout(r,500));res.sinHV=!document.querySelector('#hojaCuerpo .hv');
-      HV.mem.clear();const off=Object.getOwnPropertyDescriptor(Navigator.prototype,'onLine');Object.defineProperty(navigator,'onLine',{get:()=>false,configurable:true});
+      const hv=c.querySelector('.hv');const res={hay:!!hv,txt:hv?hv.innerText:'',n:hv?hv.querySelectorAll('.ev').length:0};
+      cerrarHoja&&cerrarHoja();abrirPalma('503');await new Promise(r=>setTimeout(r,500));res.sinHV=!document.querySelector('#hojaCuerpo .hv');
+      HV.mem.clear();Object.defineProperty(navigator,'onLine',{get:()=>false,configurable:true});
       cerrarHoja&&cerrarHoja();abrirPalma('501');await new Promise(r=>setTimeout(r,500));res.offline=!!document.querySelector('#hojaCuerpo .hv');
       Object.defineProperty(navigator,'onLine',{get:()=>true,configurable:true});
-      const j={id:'JN',estado:'activa',evaluador:'Nuevo Censador',usuario:'op9',inicio:new Date().toISOString(),seleccion:[{lote:'IT01'}],densidad:115,buffer:5,km:0,sync:'pendiente'};await dbPut('jornadas',j);S.jornada=j;
-      S.gps={lat:1.50002,lng:-78.7,acc:4,t:Date.now()};
-      const n3de=async pid=>{cerrarHoja();await abrirFormulario({palma_id:pid});const frm=document.querySelector('#frm');
-        const sel=(n,v)=>{const i=frm.querySelector(`input[name=${n}][value="${v}"]`);if(!i)return false;i.checked=true;i.dispatchEvent(new Event('change',{bubbles:true}));return true;};
-        sel('n1','PC');await new Promise(r=>setTimeout(r,50));sel('n2','CRATER');await new Promise(r=>setTimeout(r,50));return (document.querySelector('#secN3')||{}).innerText||'';};
-      res.n3hv=await n3de('501');res.n3nuevo=await n3de('502');
       AUD.ids=new Set(['501']);AUD.m={id:'A1',palmas:[]};cerrarHoja&&cerrarHoja();abrirPalma('501');await new Promise(r=>setTimeout(r,500));res.aud=!document.querySelector('#hojaCuerpo .hv');
       return res;}""")
-    check('App: la ficha de la palma muestra la hoja de vida con todos los registros', r['hay'] and r['n'] == 4 and 'GOMEZ' in r['txt'] and 'Cirugía' in r['txt'], r['txt'][:200])
-    check('App: alerta de cráter pendiente de erradicar', 'PC CRÁTER: pendiente de erradicar' in r['txt'])
+    check('App: la ficha de la palma muestra la hoja de vida con todos los registros', r['hay'] and r['n'] == 3 and 'GOMEZ' in r['txt'] and '3A' in r['txt'] and 'Polinización' in r['txt'], r['txt'][:200])
+    check('App: «Último registro» y número de registros', 'Último registro' in r['txt'] and 'Registros: 3' in r['txt'], r['txt'][:200])
     check('App: palma sin novedades no muestra hoja de vida', r['sinHV'])
     check('App: funciona sin internet (copia guardada)', r['offline'])
     check('App: oculta en palmas de auditoría', r['aud'])
-    check('App: cráter en palma con PC de otro operario (hoja de vida) → SEGUIMIENTO PC', 'SEGUIMIENTO PC' in r['n3hv'] and 'hoja de vida' in r['n3hv'], r['n3hv'])
-    check('App: cráter en palma sin registros → PC CASO NUEVO', 'CASO NUEVO' in r['n3nuevo'] and 'SEGUIMIENTO' not in r['n3nuevo'], r['n3nuevo'])
     check('Sin errores de JavaScript', not errores, errores[:4])
     nav.close()
 print('\nRESULTADO:', 'TODO OK' if ok else 'HAY FALLAS'); sys.exit(0 if ok else 1)

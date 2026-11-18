@@ -1,7 +1,7 @@
 """Límite de la plantación: admin cifra plantacion.enc → la app lo descifra → no deja iniciar jornada por fuera."""
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from comun import CANAL, INIT_VOZ, PLANTACION, TMP
+from comun import CANAL, INIT_VOZ, PLANTACION, TMP, BASE
 import sys, time, json, math
 sys.stdout.reconfigure(encoding='utf-8')
 from playwright.sync_api import sync_playwright
@@ -33,7 +33,7 @@ with sync_playwright() as p:
     ctx.route('https://api.github.com/**', lambda r: r.fulfill(status=404, body='{}'))
     # ---------- admin.html: cifrar el polígono ----------
     ad = ctx.new_page(); ad.on('pageerror', lambda e: errores.append('admin: ' + str(e)))
-    ad.goto('http://127.0.0.1:8765/admin.html'); ad.wait_for_function("typeof cifrarPlantacion==='function'", timeout=20000)
+    ad.goto(BASE + '/admin.html'); ad.wait_for_function("typeof cifrarPlantacion==='function'", timeout=20000)
     res = ad.evaluate("""async(gj)=>{const raw=crypto.getRandomValues(new Uint8Array(32));const dk=await llaveDatos(raw);
       const f=new File([gj],'plantacion.geojson',{type:'application/geo+json'});const r=await cifrarPlantacion(dk,f);
       const cabe=new TextDecoder().decode(r.bytes.slice(0,4));
@@ -50,7 +50,7 @@ with sync_playwright() as p:
     pg.on('pageerror', lambda e: errores.append('app: ' + str(e) + ' ' + (e.stack or '')[:200]))
     pg.on('dialog', lambda d: d.dismiss())
     pg.add_init_script("window.__dichos=[];Object.defineProperty(window,'speechSynthesis',{value:{speak(u){window.__dichos.push(u.text);setTimeout(()=>u.onend&&u.onend(),10);},cancel(){},getVoices(){return [];}},configurable:true});")
-    pg.goto('http://127.0.0.1:8765/index.html')
+    pg.goto(BASE + '/index.html')
     pg.wait_for_function("typeof S!=='undefined'&&typeof cargarPlantacion==='function'", timeout=30000); time.sleep(2)
     cargo = pg.evaluate("""async(raw)=>{document.querySelector('#login').hidden=true;
       const dk=await crypto.subtle.importKey('raw',new Uint8Array(raw),{name:'AES-GCM'},false,['decrypt']);

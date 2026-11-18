@@ -1,7 +1,7 @@
 """Reproducción: ficha automática del diagnóstico (pausa 3 s) y resumen Inicio/Fin/HA/T. efectivo, en app y visor."""
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from comun import CANAL, INIT_VOZ, PLANTACION, TMP
+from comun import CANAL, INIT_VOZ, PLANTACION, TMP, BASE
 import sys, time
 sys.stdout.reconfigure(encoding='utf-8')
 from playwright.sync_api import sync_playwright
@@ -19,7 +19,7 @@ with sync_playwright() as p:
     pg = ctx.new_page()
     pg.on('pageerror', lambda e: errores.append('app: ' + str(e) + ' ' + (e.stack or '')[:300]))
     pg.on('dialog', lambda d: d.dismiss())
-    pg.goto('http://127.0.0.1:8765/index.html')
+    pg.goto(BASE + '/index.html')
     pg.wait_for_function("typeof S!=='undefined'&&typeof dbPut==='function'", timeout=30000); time.sleep(2)
     pg.evaluate("""async()=>{document.querySelector('#login').hidden=true;
       const t0=Date.parse('2026-11-13T13:00:00Z');const pts=[];for(let i=0;i<=60;i++)pts.push({j:'JP',t:t0+i*60000,lat:1.70+i*0.00005,lng:-78.70,acc:4,s:1});
@@ -49,7 +49,7 @@ with sync_playwright() as p:
     vz = ctx.new_page()
     vz.on('pageerror', lambda e: errores.append('visor: ' + str(e) + ' ' + (e.stack or '')[:300]))
     vz.on('dialog', lambda d: d.dismiss())
-    vz.goto('http://127.0.0.1:8765/visor.html')
+    vz.goto(BASE + '/visor.html')
     vz.wait_for_function("typeof abrirDetalle==='function'&&typeof mapa!=='undefined'", timeout=30000); time.sleep(1.5)
     vz.evaluate("""()=>{document.querySelector('#login').hidden=true;document.querySelector('#app').hidden=false;mapa.invalidateSize();
       window.chunkLote=async()=>[];

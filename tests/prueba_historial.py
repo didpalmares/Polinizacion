@@ -1,7 +1,7 @@
 """Prueba de «Recuperar mi historial» con GitHub simulado."""
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from comun import CANAL, INIT_VOZ, PLANTACION, TMP
+from comun import CANAL, INIT_VOZ, PLANTACION, TMP, BASE
 import io, json, sys, time, zipfile, re
 sys.stdout.reconfigure(encoding='utf-8')
 from playwright.sync_api import sync_playwright
@@ -69,7 +69,7 @@ with sync_playwright() as p:
     pg.on('console', lambda m: m.type == 'error' and errores.append('console: ' + m.text))
     pg.on('dialog', lambda d: d.dismiss())
     ctx.route('https://api.github.com/**', gh)
-    pg.goto('http://127.0.0.1:8765/index.html')
+    pg.goto(BASE + '/index.html')
     pg.wait_for_function("typeof S!=='undefined'&&typeof dbPut==='function'", timeout=30000); time.sleep(2)
     pg.evaluate("""async()=>{document.querySelector('#login').hidden=true;
       SES={u:'op1',nombre:'Operario Uno',rol:'operario'};S.cfg.gh={...S.cfg.gh,token:'tok'};S.cfg.evaluador='Operario Uno';

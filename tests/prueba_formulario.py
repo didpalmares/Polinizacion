@@ -1,7 +1,7 @@
 """Formulario de diagnóstico editable: admin.html → config/ramas.json → App y visor. GitHub simulado."""
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from comun import CANAL, INIT_VOZ, PLANTACION, TMP
+from comun import CANAL, INIT_VOZ, PLANTACION, TMP, BASE
 import sys, time, json, os, base64
 sys.stdout.reconfigure(encoding='utf-8')
 from playwright.sync_api import sync_playwright
@@ -28,7 +28,7 @@ with sync_playwright() as p:
     ctx.route('https://api.github.com/**', gh)
     ad = ctx.new_page(); ad.on('pageerror', lambda e: errores.append('admin: ' + str(e)[:200])); dl = []
     ad.on('dialog', lambda d: (dl.append(d.message), d.accept()))
-    ad.goto('http://127.0.0.1:8765/admin.html'); ad.wait_for_function("typeof entradaUsuario==='function'", timeout=20000)
+    ad.goto(BASE + '/admin.html'); ad.wait_for_function("typeof entradaUsuario==='function'", timeout=20000)
     paq = ad.evaluate("""async()=>{const dkRaw=rnd(32),dk=await llaveDatos(dkRaw);
       return {formato:FORMATO,id:'p',creado:'',repo:{owner:'didpalmares',repo:'PolinizacionData',rama:'main'},kdf:{alg:'PBKDF2-SHA256',iter:ITER},token:await cifrar(dk,enc.encode('github_pat_prueba')),
         carto:{archivo:'carto.enc',version:'v1'},usuarios:[await entradaUsuario(dk,dkRaw,'admin1','Ana Admin','admin','Clave1234',{})]};}""")
@@ -70,7 +70,7 @@ with sync_playwright() as p:
     check('Versión publicada visible', c['version'] in ad.inner_text('#rVer'))
     # ---- App ----
     pg = ctx.new_page(); pg.on('pageerror', lambda e: errores.append('app: ' + str(e)[:200])); pg.on('dialog', lambda d: (errores.append('ALERTA app: ' + d.message), d.dismiss()))
-    pg.goto('http://127.0.0.1:8765/index.html'); pg.wait_for_function("typeof cargarRamas==='function'", timeout=30000); time.sleep(2)
+    pg.goto(BASE + '/index.html'); pg.wait_for_function("typeof cargarRamas==='function'", timeout=30000); time.sleep(2)
     r = pg.evaluate("""async()=>{document.querySelector('#login').hidden=true;SES={u:'op',nombre:'Op',rol:'operario'};S.cfg.gh={...S.cfg.gh,token:'tok',owner:'didpalmares',repo:'PolinizacionData',rama:'main'};
       const aplicado=await cargarRamas();
       const j={id:'JF',estado:'activa',evaluador:'Op',usuario:'op',inicio:new Date().toISOString(),seleccion:[{lote:'IT01'}],densidad:115,buffer:5,km:0,sync:'pendiente'};await dbPut('jornadas',j);S.jornada=j;
@@ -94,7 +94,7 @@ with sync_playwright() as p:
     EST['offline'] = False
     # ---- Visor ----
     vz = ctx.new_page(); vz.on('pageerror', lambda e: errores.append('visor: ' + str(e)[:200]))
-    vz.goto('http://127.0.0.1:8765/visor.html'); vz.wait_for_function("typeof cargarRamasVisor==='function'", timeout=30000)
+    vz.goto(BASE + '/visor.html'); vz.wait_for_function("typeof cargarRamasVisor==='function'", timeout=30000)
     v = vz.evaluate("async()=>{SES={token:'t',repo:{owner:'didpalmares',repo:'PolinizacionData',rama:'main'}};await cargarRamasVisor();return {n:PROBLEMAS.NEM,c:COLOR_N1.PC,dbp:PROBLEMAS.DBP};}")
     check('Visor: nombres y colores del formulario', v['n'] == 'Nematodos' and v['c'] == '#123456' and v['dbp'] == 'Desprendimiento de bases (DBP)', v)
     check('Sin errores de JavaScript ni alertas', not errores, errores[:4])
