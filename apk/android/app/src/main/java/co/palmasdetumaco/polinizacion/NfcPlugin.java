@@ -34,7 +34,7 @@ import java.util.Arrays;
 public class NfcPlugin extends Plugin implements NfcAdapter.ReaderCallback {
     private static final int BANDERAS = NfcAdapter.FLAG_READER_NFC_A | NfcAdapter.FLAG_READER_NFC_B
             | NfcAdapter.FLAG_READER_NFC_F | NfcAdapter.FLAG_READER_NFC_V | NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS;
-    private static final long VIGILAR_MAX_MS = 120000L;
+    private static final long VIGILAR_MAX_MS = 60000L;
     private volatile boolean activo = false;
 
     private NfcAdapter adaptador() {
@@ -58,6 +58,19 @@ public class NfcPlugin extends Plugin implements NfcAdapter.ReaderCallback {
         if (adaptador() == null) { call.reject("Este celular no tiene NFC."); return; }
         activo = true;
         encender();
+        call.resolve(estadoObj());
+    }
+
+    /** Apaga y vuelve a encender el modo lector (al iniciar la jornada, al volver a la app y cada cierto tiempo):
+     *  recupera el lector cuando Android lo dejó inactivo tras un permiso, un diálogo o la pantalla de ajustes. */
+    @PluginMethod
+    public void reiniciar(PluginCall call) {
+        if (adaptador() == null) { call.reject("Este celular no tiene NFC."); return; }
+        activo = true;
+        apagar();
+        final Activity act = getActivity();
+        if (act != null) act.getWindow().getDecorView().postDelayed(this::encender, 250);
+        else encender();
         call.resolve(estadoObj());
     }
 
@@ -93,7 +106,7 @@ public class NfcPlugin extends Plugin implements NfcAdapter.ReaderCallback {
         act.runOnUiThread(() -> {
             try {
                 Bundle extras = new Bundle();
-                extras.putInt(NfcAdapter.EXTRA_READER_PRESENCE_CHECK_DELAY, 250);
+                extras.putInt(NfcAdapter.EXTRA_READER_PRESENCE_CHECK_DELAY, 500);
                 a.enableReaderMode(act, yo, BANDERAS, extras);
             } catch (Exception ignored) { } // la actividad no está en primer plano: se activa en handleOnResume
         });
@@ -128,10 +141,16 @@ public class NfcPlugin extends Plugin implements NfcAdapter.ReaderCallback {
         String texto = "";
         if (ndef != null) {
             NdefMessage m = ndef.getCachedNdefMessage();
-            if (m == null) {
-                try { ndef.connect(); m = ndef.getNdefMessage(); } catch (Exception ignored) { }
-            }
             texto = leer(m);
+            // Si la tarjeta pasó rápido o quedó en el borde de la antena, se reintenta la lectura hasta 4 veces
+            for (int i = 0; texto.isEmpty() && i < 4; i++) {
+                try {
+                    if (!ndef.isConnected()) ndef.connect();
+                    texto = leer(ndef.getNdefMessage());
+                } catch (Exception e) {
+                    try { Thread.sleep(80); } catch (InterruptedException ignored) { }
+                }
+            }
         }
         JSObject r = new JSObject();
         r.put("texto", texto);
@@ -147,7 +166,7 @@ public class NfcPlugin extends Plugin implements NfcAdapter.ReaderCallback {
                 if (!ndef.isConnected()) ndef.connect();
                 long fin = System.currentTimeMillis() + VIGILAR_MAX_MS;
                 while (System.currentTimeMillis() < fin) {
-                    Thread.sleep(200);
+                    Thread.sleep(300);
                     ndef.getNdefMessage(); // lanza una excepción cuando la tarjeta ya no está
                 }
             } catch (Exception ignored) {

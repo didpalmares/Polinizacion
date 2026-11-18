@@ -1043,7 +1043,7 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
   <div class="tit">POLINIZACIÓN<small>REGISTRO DE POLINIZACIÓN GEORREFERENCIADO</small></div>
   <div class="carga"><i></i></div>
   <div id="splashMsg">Iniciando…</div>
-  <div id="splashVer">VERSIÓN 20261118:0657</div>
+  <div id="splashVer">VERSIÓN 20261118:0741</div>
 </div>
 
 <div id="login" hidden>
@@ -1058,7 +1058,7 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
     <p class="tenue" id="lgMsg"></p>
   </form>
   <p id="lgRed"></p>
-  <div id="lgVer2">VERSIÓN 20261118:0657</div>
+  <div id="lgVer2">VERSIÓN 20261118:0741</div>
   <button type="button" class="btn" id="lgAct" style="margin-top:4px;font-size:13px;padding:7px 12px">⟳ BUSCAR ACTUALIZACIÓN</button>
   <button type="button" class="btn" id="lgInstalar" hidden>📲 INSTALAR EN ESTE CELULAR</button>
 </div>
@@ -1185,7 +1185,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
    Registro de polinización georreferenciado sin conexión, con jornadas,
    registro del recorrido y sincronización con GitHub.
    ===================================================================== */
-const VERSION='20261118:0657';
+const VERSION='20261118:0741';
 /* Ejecutándose dentro de la APK de Android (Capacitor) o en el navegador. */
 const NATIVO=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
 /* APK sin puente nativo (copia guardada antigua): con internet se recarga una vez para recibirlo. */
@@ -2638,7 +2638,7 @@ function elegirTransito(lote,momento){if(typeof BLOQ!=='undefined'&&BLOQ.on){des
     <p>${momento==='entrada'?'Antes de registrar palmas en este lote':'Para cerrar este lote'}, elija cómo está la transitabilidad:</p>
     <div style="display:grid;gap:10px">${TRANSIT.map(t=>`<button type="button" class="btn ancho grande${t==='Transitable'?' prim':''}" data-t="${esc(t)}">${esc(t)}</button>`).join('')}</div>`,
     {alCerrar:()=>{if(!listo)res(null);}});
-  document.querySelectorAll('#hojaCuerpo [data-t]').forEach(b=>b.onclick=()=>{listo=true;const t=b.dataset.t;cerrarHoja();res(t);});});}
+  document.querySelectorAll('#hojaCuerpo [data-t]').forEach(b=>b.onclick=()=>{listo=true;const t=b.dataset.t;cerrarHoja();res(t);if(typeof asegurarNfc==='function')asegurarNfc('dialogo');});});}
 async function cerrarTramo(t,motivo){
   const v=await elegirTransito(t.lote,'salida');if(!v)return false;
   t.salida=v;t.t_salida=new Date().toISOString();t.cierre=motivo||'boton';
@@ -3180,7 +3180,7 @@ function nfcNativoDisponible(){try{return !!(NATIVO&&window.Capacitor&&typeof Ca
 /* «A», «a», «pol:A», «POL://B» → código; null si la tarjeta no es de polinización. */
 function codigoNfc(t){const m=String(t??'').trim().toUpperCase().match(/^(?:POL:(?:\/\/)?)?\s*([APBRV])\s*$/);return m?m[1]:null;}
 /* Lectura de una tarjeta (la llaman el plugin nativo y Web NFC). Devuelve 'ok', 'repetida' o 'desconocida'. */
-function nfcLeido(ev){ev=ev||{};const ahora=Date.now(),texto=String(ev.texto??''),clave=ev.id?'id:'+ev.id:'tx:'+texto;
+function nfcLeido(ev){ev=ev||{};NFC.ultLect=Date.now();const ahora=Date.now(),texto=String(ev.texto??''),clave=ev.id?'id:'+ev.id:'tx:'+texto;
   const u=NFC.ult;
   if(u&&u.clave===clave&&!u.retirada&&ahora-u.t<NFC_REPOSO){u.t=ahora;return 'repetida';} // sigue apoyada o rebotó: no cuenta otra vez
   NFC.ult={clave,t:ahora,retirada:false};
@@ -3214,7 +3214,19 @@ async function iniciarNfc(gesto){
   }catch(e){NFC.estado=/NotAllowed/i.test(String(e&&e.name||e))?'activar':'error';if(gesto)toast('NFC: '+String(e&&e.message||e),5000);}
   pintarNfc();}
 async function tocarNfc(){if(NFC.estado==='apagado'&&NFC.modo==='nativo'){try{await NAT_N().abrirAjustes();}catch(e){}return;}await iniciarNfc(true);}
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&NFC.modo==='nativo')iniciarNfc(false);});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&NFC.modo==='nativo')asegurarNfc('volver');});
+/* Mantiene el lector NFC activo durante la jornada: al iniciarla, al volver a la app, al cerrar los avisos de transitabilidad
+   y cada 20 s se revisa; si Android lo dejó inactivo (permisos, ajustes, diálogos) se reinicia. */
+async function asegurarNfc(motivo){
+  if(NFC.modo!=='nativo'){if(NFC.estado!=='listo')await iniciarNfc(false);return;}
+  try{const N=NAT_N();const e=await N.estado();
+    if(!e.disponible){NFC.estado='no';}else if(!e.habilitado){NFC.estado='apagado';}
+    else if(motivo!=='revisar'||!e.activo||Date.now()-(NFC.ultLect||0)>60000||Date.now()-(NFC.ultReinicio||0)>180000){NFC.ultReinicio=Date.now();try{await N.reiniciar();}catch(_){await N.iniciar();}NFC.estado='listo';}
+    else NFC.estado='listo';
+  }catch(e){NFC.estado='error';}
+  pintarNfc();}
+setInterval(()=>{if(S.jornada&&document.visibilityState==='visible')asegurarNfc('revisar');},20000);
+{let jAnt=null;const _pp=pintarPolBar;pintarPolBar=function(){_pp.apply(this,arguments);const j=S.jornada&&S.jornada.id;if(j&&j!==jAnt)asegurarNfc('jornada');jAnt=j||null;};}
 iniciarPolBar();iniciarBloqueo();iniciarNfc(false);{const _aju=actualizarJornadaUI;actualizarJornadaUI=function(){_aju.apply(this,arguments);pintarPolBar();};}
 if(motorVoz()||EN_APK)$('#btDxVoz').hidden=false;
 $('#guia').onclick=e=>{
