@@ -1101,7 +1101,17 @@
     "iv": "mTOo7QjFjFUGbgnM",
     "ct": "oYZQTldfzGFhGOgMvUn2V9O0plAmRg+ogO9nxlWpNosbybFZHvZLO4THMs3YxA/CuTjNZ95o3/B0GuH6pGAlRt5oWKvk/Qt5G60z55A7lNMPiPSkwU53jGgRqcUj/RGzs+ImKo6aJpWfm+LnH3L6tW+FBf0eIXyo6fUX2/CpGy0b6z4DzaqHcWKxcCu8hHjy1Dfuqv0WA6uCBBEufvY/YIVsSeHnLqmg7akOP4C+HKxvRO6AsA=="
    }
+  },
+  {
+   "u": "jmrodriguez",
+   "salt": "lu13L6znFUvqF7H75pPX5A==",
+   "iv": "0G4/3VsYCraiiOKy",
+   "ct": "mPT+PNoPeniFtJYXR+g0jTSZD4rK/zWV1p12J6jK9MD5ehfU17a0Th7VU56j1Cmm",
+   "meta": {
+    "iv": "IPtrcIhQMT1X3c+Q",
+    "ct": "oJpH4zP0j55uNT7qeYZopNaR3ggLW3bfFoEiWVvueG7CfcJpGmNEYtnJLVzxCUiPDvZMlQ9r16hEidkfa9LqYdNhML/wh7FLajo1UJpjMK4PVMzq6+9J+tjIleRDxqS9J6jYOn2uag11z5ncChEzHuXJdCFnXl7nqCmIC9piNdnBT7wpccCVyA=="
+   }
   }
  ],
- "modificado": "2026-11-18T03:13:01.778Z"
+ "modificado": "2026-11-18T13:03:32.471Z"
 }
