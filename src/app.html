@@ -1392,6 +1392,28 @@ function panelJornada(){
   $('#jVer').onclick=()=>abrirPlay(j.id);
   botonMantener($('#jFin'),finalizarJornada);
 }
+/* Acumulado por línea de cada lote (resumen al finalizar la jornada): cantidad de cada etiqueta (A, P, B, R, V),
+   palmas registradas y palmas visitadas de la línea. */
+function acumuladoLineas(regs,visita){
+  const m=new Map();const fila=(l,ln)=>{const k=l+'|'+ln;if(!m.has(k))m.set(k,{lote:l,linea:ln,A:0,P:0,B:0,R:0,V:0,palmas:0,visitadas:0,_v:new Set()});return m.get(k);};
+  for(const r of regs||[]){const x=fila(String(r.lote||'—'),String(r.linea||'—'));x.A+=r.a|0;x.P+=r.p|0;x.B+=r.b|0;if(r.cond==='R')x.R++;if(r.cond==='V')x.V++;x.palmas++;x._v.add(String(r.palma_id));}
+  for(const pl of (visita&&visita.por_lote)||[])for(const id of pl.ids_palmas_visitadas||[]){const f=S.idx&&S.idx.get(String(id));
+    if(f)fila(String(pl.lote),String(f.properties._linea||'—'))._v.add(String(id));}
+  return [...m.values()].map(x=>{x.visitadas=x._v.size;delete x._v;return x;}).sort((a,b)=>ordenNat(a.lote,b.lote)||ordenNat(a.linea,b.linea));
+}
+function tablaAcumuladoLineas(filas){
+  if(!filas||!filas.length)return '<p class="tenue">Sin registros en la jornada.</p>';
+  const C=['A','P','B','R','V'],sum=(arr,k)=>arr.reduce((a,x)=>a+(x[k]||0),0);
+  const celdas=x=>C.map(c=>`<td>${x[c]?'<b>'+num(x[c])+'</b>':'<span class="tenue">0</span>'}</td>`).join('')+`<td>${num(x.palmas)}</td><td>${num(x.visitadas)}</td>`;
+  const lotes=[...new Set(filas.map(x=>x.lote))];let h='';
+  for(const l of lotes){const fl=filas.filter(x=>x.lote===l);
+    h+=fl.map(x=>`<tr><td>${esc(l)}</td><td>${esc(x.linea)}</td>${celdas(x)}</tr>`).join('');
+    const t={};C.concat(['palmas','visitadas']).forEach(k=>t[k]=sum(fl,k));
+    h+=`<tr style="background:rgba(255,255,255,.05)"><td colspan="2"><b>Total lote ${esc(l)}</b></td>${celdas(t)}</tr>`;}
+  if(lotes.length>1){const t={};C.concat(['palmas','visitadas']).forEach(k=>t[k]=sum(filas,k));h+=`<tr><td colspan="2"><b>TOTAL JORNADA</b></td>${celdas(t)}</tr>`;}
+  return `<div style="overflow-x:auto"><table class="res" id="tabAcum"><thead><tr><th>Lote</th><th>Línea</th>${C.map(c=>`<th title="${esc(nombreCod(c))}">${c}</th>`).join('')}<th>Palmas reg.</th><th>Visitadas</th></tr></thead><tbody>${h}</tbody></table></div>
+    <p class="tenue">${C.map(c=>`<b>${c}</b> ${esc(nombreCod(c))}`).join(' · ')}.</p>`;
+}
 async function finalizarJornada(){
   const j=S.jornada;if(!j)return;
   const c=censoTotal();
@@ -1406,6 +1428,7 @@ async function finalizarJornada(){
   j.tiempos=tiemposJornada(j.secuencias,j);
   if(E.metodo==='calle'){const Eb=await calcularVisita(pts,j.densidad,j.buffer,'buffer',false,true,j.seleccion);const rb=resumenVisita(Eb,regs);
     j.visita.comparativo_buffer={buffer_m:Eb.buffer,palmas_visitadas:rb.palmas_visitadas,ha_recorridas:rb.ha_recorridas,por_lote:rb.por_lote.map(x=>({lote:x.lote,palmas_visitadas:x.palmas_visitadas,ha:x.ha}))};}
+  j.acumulado_lineas=acumuladoLineas(regs,j.visita);
   await dbPut('jornadas',j);
   S.jornada=null;S.cfg.jornadaActiva=null;await guardarCfg();VIS=null;
   S.palmas=null;S.hechos.clear();indexar();dibujarPalmas();capaTrack.clearLayers();TRACK.linea=null;TRACK.pts=[];PAR.lista=[];capaParadas.clearLayers();
@@ -1424,6 +1447,7 @@ async function finalizarJornada(){
       <div class="stat"><b>${j.tiempos.hora_fin_labor||'—'}</b><span>Fin de labor</span></div>
       <div class="stat"><b>${j.tiempos.velocidad_kmh==null?'—':j.tiempos.velocidad_kmh.toFixed(1)}</b><span>Vel. caminata km/h</span></div>
     </div>
+    <h3>Acumulado por línea de cada lote</h3>${tablaAcumuladoLineas(j.acumulado_lineas)}
     <h3>Secuencias por lote</h3>${tablaSecuencias(j.secuencias)}
     <h3>Recorrido por lote</h3>${tablaLotes(res,j)}
     <h3>Paradas</h3>${tablaParadas(par,j.resumen_paradas)}
@@ -2988,7 +3012,7 @@ function geoJornada(j,regs,pts,ahora,archivoFotos){
     jornada:{id:j.id,labor:j.labor||LABOR_APP,evaluador:j.evaluador,usuario:j.usuario||'',dispositivo:j.dispositivo||S.cfg.dispositivo,fecha:fechaLocal(j.inicio),transito:Array.isArray(j.transito)?j.transito:[],
       hora_inicio:hhmm(j.inicio),hora_fin:hhmm(j.fin),duracion_min:j.fin?Math.round((Date.parse(j.fin)-Date.parse(j.inicio))/60000):null,inicio:j.inicio,fin:j.fin,
       km:+(j.km||0).toFixed(3),...(j.visita||{}),...(j.resumen_paradas||{}),secuencias:j.secuencias||[],tiempos:j.tiempos||null,velocidad_kmh:j.tiempos?j.tiempos.velocidad_kmh:null,lotes_seleccionados:j.seleccion,diagnosticos:regs.length,puntos_recorrido:pts.length,fotos:regs.reduce((a,r)=>a+(r.fotos||[]).length,0),
-      archivo_fotos:archivoFotos||null,desfase_hora_s:j.desfase_hora_s??null,prueba:j.prueba||null,nfc:j.nfc||null,desbloqueos_supervisor:j.desbloqueos||[],pantalla_reencendida:j.pantalla_reencendida||[],hora_validacion_inicio:j.hora||null,hora_validacion_fin:j.hora_fin||null,cartografia:j.carto_version||'',equipo:j.equipo||null,cortes_gps:j.cortes_gps||[],eventos_gps:j.eventos_gps||[],app:'Polinización '+VERSION,sincronizado:ahora},
+      archivo_fotos:archivoFotos||null,desfase_hora_s:j.desfase_hora_s??null,prueba:j.prueba||null,nfc:j.nfc||null,desbloqueos_supervisor:j.desbloqueos||[],pantalla_reencendida:j.pantalla_reencendida||[],acumulado_lineas:j.acumulado_lineas||[],hora_validacion_inicio:j.hora||null,hora_validacion_fin:j.hora_fin||null,cartografia:j.carto_version||'',equipo:j.equipo||null,cortes_gps:j.cortes_gps||[],eventos_gps:j.eventos_gps||[],app:'Polinización '+VERSION,sincronizado:ahora},
     features:feats};
 }
 async function sincronizar(manual){
