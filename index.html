@@ -1048,7 +1048,7 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
   <div class="tit">POLINIZACIÓN<small>REGISTRO DE POLINIZACIÓN GEORREFERENCIADO</small></div>
   <div class="carga"><i></i></div>
   <div id="splashMsg">Iniciando…</div>
-  <div id="splashVer">VERSIÓN 20261118:1825</div>
+  <div id="splashVer">VERSIÓN 20261119:1449</div>
 </div>
 
 <div id="login" hidden>
@@ -1063,7 +1063,7 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
     <p class="tenue" id="lgMsg"></p>
   </form>
   <p id="lgRed"></p>
-  <div id="lgVer2">VERSIÓN 20261118:1825</div>
+  <div id="lgVer2">VERSIÓN 20261119:1449</div>
   <button type="button" class="btn" id="lgAct" style="margin-top:4px;font-size:13px;padding:7px 12px">⟳ BUSCAR ACTUALIZACIÓN</button>
   <button type="button" class="btn" id="lgInstalar" hidden>📲 INSTALAR EN ESTE CELULAR</button>
 </div>
@@ -1195,7 +1195,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
    Registro de polinización georreferenciado sin conexión, con jornadas,
    registro del recorrido y sincronización con GitHub.
    ===================================================================== */
-const VERSION='20261118:1825';
+const VERSION='20261119:1449';
 /* Ejecutándose dentro de la APK de Android (Capacitor) o en el navegador. */
 const NATIVO=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
 /* APK sin puente nativo (copia guardada antigua): con internet se recarga una vez para recibirlo. */
@@ -2857,7 +2857,23 @@ function iniciarBloqueo(){
 const MODO={libre:false,aplicado:null};
 const NAT_B=()=>{try{return window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.Botones||null;}catch(e){return null;}};
 function modoJornadaActivo(){return !!S.jornada&&!(typeof esLaborRuta==='function'&&esLaborRuta(S.jornada))&&!MODO.libre;}
+/* Guardia de pantalla: mientras haya jornada (aunque el supervisor la haya liberado) la app se muestra encima del bloqueo
+   y, si el operario apaga la pantalla con el botón de encendido, la app la vuelve a encender: el NFC sigue leyendo. */
+const GUARDIA={on:null,escucha:false};
+async function aplicarGuardia(){
+  const on=!!S.jornada&&!(typeof esLaborRuta==='function'&&esLaborRuta(S.jornada));
+  const B=NAT_B();if(!B||typeof B.guardia!=='function'||GUARDIA.on===on)return;GUARDIA.on=on;
+  if(!GUARDIA.escucha&&B.addListener){GUARDIA.escucha=true;try{B.addListener('pantallaReencendida',anotarReencendido);}catch(e){}}
+  try{await B.guardia({on});}catch(e){GUARDIA.on=null;}
+}
+function anotarReencendido(r){
+  const j=S.jornada;if(!j)return;
+  (j.pantalla_reencendida||(j.pantalla_reencendida=[])).push({fecha:new Date(ahoraReal()).toISOString(),ok:!!(r&&r.ok)});
+  try{dbPut('jornadas',j);}catch(_){}
+  if(r&&r.ok===false)toast('⚠ La pantalla no se pudo volver a encender sola. Revise el permiso «Encender la pantalla» de la app.',8000);
+}
 async function aplicarModoJornada(forzar){
+  aplicarGuardia();
   const on=modoJornadaActivo();document.body.classList.toggle('modo-jornada',on);
   const bm=$('#btModoJ');if(bm)bm.hidden=!(S.jornada&&MODO.libre);
   if(!forzar&&MODO.aplicado===on)return;MODO.aplicado=on;
@@ -3743,7 +3759,7 @@ function geoJornada(j,regs,pts,ahora,archivoFotos){
     jornada:{id:j.id,labor:j.labor||LABOR_APP,evaluador:j.evaluador,usuario:j.usuario||'',dispositivo:j.dispositivo||S.cfg.dispositivo,fecha:fechaLocal(j.inicio),transito:Array.isArray(j.transito)?j.transito:[],
       hora_inicio:hhmm(j.inicio),hora_fin:hhmm(j.fin),duracion_min:j.fin?Math.round((Date.parse(j.fin)-Date.parse(j.inicio))/60000):null,inicio:j.inicio,fin:j.fin,
       km:+(j.km||0).toFixed(3),...(j.visita||{}),...(j.resumen_paradas||{}),secuencias:j.secuencias||[],tiempos:j.tiempos||null,velocidad_kmh:j.tiempos?j.tiempos.velocidad_kmh:null,lotes_seleccionados:j.seleccion,diagnosticos:regs.length,puntos_recorrido:pts.length,fotos:regs.reduce((a,r)=>a+(r.fotos||[]).length,0),
-      archivo_fotos:archivoFotos||null,desfase_hora_s:j.desfase_hora_s??null,prueba:j.prueba||null,nfc:j.nfc||null,desbloqueos_supervisor:j.desbloqueos||[],hora_validacion_inicio:j.hora||null,hora_validacion_fin:j.hora_fin||null,cartografia:j.carto_version||'',equipo:j.equipo||null,cortes_gps:j.cortes_gps||[],eventos_gps:j.eventos_gps||[],app:'Polinización '+VERSION,sincronizado:ahora},
+      archivo_fotos:archivoFotos||null,desfase_hora_s:j.desfase_hora_s??null,prueba:j.prueba||null,nfc:j.nfc||null,desbloqueos_supervisor:j.desbloqueos||[],pantalla_reencendida:j.pantalla_reencendida||[],hora_validacion_inicio:j.hora||null,hora_validacion_fin:j.hora_fin||null,cartografia:j.carto_version||'',equipo:j.equipo||null,cortes_gps:j.cortes_gps||[],eventos_gps:j.eventos_gps||[],app:'Polinización '+VERSION,sincronizado:ahora},
     features:feats};
 }
 async function sincronizar(manual){

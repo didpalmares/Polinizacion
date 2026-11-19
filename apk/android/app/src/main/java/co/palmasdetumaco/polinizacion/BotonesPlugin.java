@@ -1,5 +1,9 @@
 package co.palmasdetumaco.polinizacion;
 
+import android.content.BroadcastReceiver;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.PowerManager;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.KeyEvent;
@@ -39,6 +43,74 @@ public class BotonesPlugin extends Plugin {
 
     @Override
     public void load() { instancia = this; }
+
+    /* ---------- Guardia de pantalla (jornada activa) ----------
+     * La app se muestra ENCIMA de la pantalla de bloqueo, y si el operario apaga la pantalla con el botón de encendido
+     * la app la vuelve a encender en menos de un segundo: aparece la app (no el bloqueo con PIN) y el NFC sigue leyendo.
+     * Al finalizar la jornada todo vuelve a la normalidad. */
+    private boolean guardia = false;
+    private BroadcastReceiver receptor;
+    private int reencendidos = 0;
+
+    @PluginMethod
+    public void guardia(PluginCall call) {
+        final boolean on = call.getBoolean("on", false);
+        getActivity().runOnUiThread(() -> {
+            try {
+                ponerGuardia(on);
+                JSObject r = new JSObject(); r.put("activa", guardia); r.put("reencendidos", reencendidos); call.resolve(r);
+            } catch (Exception e) { call.reject(e.getMessage()); }
+        });
+    }
+
+    @SuppressWarnings("deprecation")
+    private void ponerGuardia(boolean on) {
+        android.app.Activity a = getActivity();
+        if (Build.VERSION.SDK_INT >= 27) { a.setShowWhenLocked(on); a.setTurnScreenOn(on); }
+        else {
+            int f = WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON;
+            if (on) a.getWindow().addFlags(f); else a.getWindow().clearFlags(f);
+        }
+        if (on && receptor == null) {
+            receptor = new BroadcastReceiver() {
+                @Override public void onReceive(Context c, Intent i) {
+                    if (guardia && Intent.ACTION_SCREEN_OFF.equals(i.getAction())) h.postDelayed(BotonesPlugin.this::despertar, 350);
+                }
+            };
+            getContext().registerReceiver(receptor, new IntentFilter(Intent.ACTION_SCREEN_OFF));
+        } else if (!on && receptor != null) {
+            try { getContext().unregisterReceiver(receptor); } catch (Exception ignored) { }
+            receptor = null;
+        }
+        guardia = on;
+        if (on) reencendidos = 0;
+    }
+
+    @SuppressWarnings("deprecation")
+    private void despertar() {
+        if (!guardia) return;
+        try {
+            PowerManager pm = (PowerManager) getContext().getSystemService(Context.POWER_SERVICE);
+            if (pm.isInteractive()) return;
+            PowerManager.WakeLock wl = pm.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK
+                    | PowerManager.ACQUIRE_CAUSES_WAKEUP | PowerManager.ON_AFTER_RELEASE, "polinizacion:reencender");
+            wl.acquire(3000L);
+            reencendidos++;
+            h.postDelayed(() -> {
+                JSObject r = new JSObject();
+                r.put("ok", pm.isInteractive());
+                r.put("reencendidos", reencendidos);
+                notifyListeners("pantallaReencendida", r, true);
+            }, 1500);
+        } catch (Exception ignored) { }
+    }
+
+    @Override
+    protected void handleOnDestroy() {
+        if (receptor != null) { try { getContext().unregisterReceiver(receptor); } catch (Exception ignored) { } receptor = null; }
+        guardia = false;
+        super.handleOnDestroy();
+    }
 
     /** Llamado desde MainActivity.dispatchKeyEvent. Devuelve true si la tecla se consumió. */
     static boolean tecla(KeyEvent e) {
