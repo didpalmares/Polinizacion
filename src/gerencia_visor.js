@@ -804,7 +804,7 @@ function pintarPolGer(){
     {t:'Palmas/día',n:1,f:x=>num(x.pdia,1)},{t:'Km',n:1,f:x=>num(x.km,1)},{t:'Horas efectivas',n:1,f:x=>num(x.min_efe/60,1)},{t:'Ha',n:1,f:x=>num(x.ha,2)}],FO);
   return `${kp}
     <div class="ger-sec"><h3>Por lote</h3><p class="tenue">Transitabilidad predominante = la que más se registró al entrar y al salir del lote. Clic en un lote para filtrar todo por él.</p><div id="polLotes">${tL}</div>
-      <div class="ger-par"><button class="btn mini" id="xPolLote">⬇ CSV por lote</button><button class="btn mini" id="xPolReg">⬇ CSV registros (A, P, B, R, V, transitabilidad, fuente)</button></div></div>
+      <div class="ger-par"><button class="btn mini" id="xPolGeo">⬇ GeoJSON registros</button><button class="btn mini" id="xPolLote">⬇ CSV por lote</button><button class="btn mini" id="xPolReg">⬇ CSV registros (A, P, B, R, V, transitabilidad, fuente)</button></div></div>
     ${barrasLotePol(FL)}${columnasSemanaPol(ds)}
     <div class="ger-sec"><h3>Rendimiento por operario</h3><p class="tenue">Palmas/día = palmas registradas ÷ días trabajados. Horas efectivas sin paradas.</p><div id="polOps">${tO}</div></div>
     <div class="ger-sec"><h3>Mapa de palmas R y V (no se puede aplicar)</h3>
@@ -834,6 +834,7 @@ function enlazarPolGer(){
   const a=$('#xPolLote');if(a)a.onclick=()=>csv(`polinizacion_por_lote_${$('#fDesde').value}_${$('#fHasta').value}.csv`,['lote','prog','palmas','a','p','b','inf','balon','r','v','ent','sal','abiertos'],
     filasLotePol(DIAGF).map(x=>({...x,balon:x.balon==null?'':+x.balon.toFixed(1)})));
   const b=$('#xPolReg');if(b)b.onclick=()=>csvDiag();
+  const g=$('#xPolGeo');if(g)g.onclick=()=>geoRegistros();
   montarMapaRV();
 }
 

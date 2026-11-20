@@ -181,9 +181,21 @@ with sync_playwright() as p:
     check('Transitabilidad por lote: 3 entradas (lote, operario, transitabilidad, hora de entrada)',
           len(tr) == 3 and tr[0][1:] == ['IT01', 'GOMEZ PEREZ ANDRES', 'Transitable', '07:05'] and tr[1][1:] == ['IT05', 'LOPEZ DIAZ CARLOS', 'Poco transitable', '08:30'] and tr[2][1:] == ['IT01', 'LOPEZ DIAZ CARLOS', 'Transitable', '08:55'], tr)
     check('Transitabilidad: sin columnas ni avisos de salida', 'Sin salida' not in T and 'abiertos' not in T and 'salida' not in T.lower(), T[:200])
+    vz.evaluate("TAB='resumen';pintarPanel()"); time.sleep(.4)
+    bts = vz.evaluate("[...document.querySelectorAll('#panel button')].filter(b=>b.offsetParent).map(b=>b.textContent.trim())")
+    check('Resumen: GeoJSON, CSV y Excel visibles', vz.is_visible('#xGeo') and vz.is_visible('#xJor') and vz.is_visible('#xJorXl') and vz.is_visible('#xDiagXl'), bts)
+    import json as _json, openpyxl, tempfile
+    for tab, bt, nombre in [('resumen', '#xGeo', 'polinizacion_'), ('jornadas', '#xGeoJ', 'polinizacion_'), ('diag', '#xGeoR', 'polinizacion_registros_')]:
+        vz.evaluate(f"TAB='{tab}';pintarPanel()"); time.sleep(.3)
+        if not vz.is_visible(bt): check(f'GeoJSON visible en {tab}', False, bt); continue
+        with vz.expect_download() as d: vz.eval_on_selector(bt, 'b=>b.click()')
+        ruta = _os.path.join(tempfile.mkdtemp(), d.value.suggested_filename); d.value.save_as(ruta)
+        g = _json.load(open(ruta, encoding='utf-8'))
+        check(f'GeoJSON en {tab}: descarga FeatureCollection con puntos', d.value.suggested_filename.startswith(nombre) and d.value.suggested_filename.endswith('.geojson')
+              and g['type'] == 'FeatureCollection' and any(f['geometry']['type'] == 'Point' for f in g['features']), d.value.suggested_filename)
+    vz.evaluate("TAB='resumen';pintarPanel()")
     # Excel con formato de tabla: botón «⬇ Excel» junto a cada «⬇ CSV»
     check('Botón «⬇ Excel transitabilidad» junto al CSV', vz.is_visible('#xTransitoXl') and 'Excel' in vz.inner_text('#xTransitoXl'))
-    import openpyxl, tempfile
     def leer_xlsx(dl):
         ruta = _os.path.join(tempfile.mkdtemp(), dl.suggested_filename); dl.save_as(ruta)
         wb = openpyxl.load_workbook(ruta); ws = wb.active
