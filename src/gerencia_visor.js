@@ -3,7 +3,7 @@
    · Tablero: indicadores, productividad por operario y avance del ciclo de la labor.
    · Sincronización: último envío de cada operario y alerta si lleva más de N días sin sincronizar.
    · Calidad: registros de polinización sospechosos (lejos de la palma, GPS impreciso, muy rápidos, rachas iguales, fuera de la jornada).
-   · Transitabilidad: entrada y salida de cada lote (jornada.transito) y lotes que quedaron abiertos.
+   · Transitabilidad de cada lote (jornada.transito), elegida una sola vez al entrar por primera vez al lote.
    · Auditoría: muestra aleatoria de palmas para que el supervisor las verifique y concordancia por operario.
    · Reportes: reportes semanales generados automáticamente en el repositorio de datos (reportes/).
    Usa las jornadas cargadas en el visor (rango de fechas y filtros de la izquierda).
@@ -765,7 +765,7 @@ function filasLotePol(ds){
   const porL=new Map();for(const d of ds){const l=d.lote||'—';if(!porL.has(l))porL.set(l,[]);porL.get(l).push(d);}
   const TR=filasTransito(JORF,l=>loteSel(l)&&enProg(l));
   return [...porL.entries()].map(([lote,arr])=>{const t=totalesPol(arr),tr=TR.filter(x=>x.lote===lote);
-    return {lote,prog:PROG.get(lote)||'',...t,ent:modaTxt(tr.map(x=>x.entrada))||modaTxt(arr.map(d=>d.transitabilidad))||'',sal:modaTxt(tr.map(x=>x.salida))||'',abiertos:tr.filter(x=>x.abierto).length};})
+    return {lote,prog:PROG.get(lote)||'',...t,ent:modaTxt(tr.map(x=>x.entrada))||modaTxt(arr.map(d=>d.transitabilidad))||''};})
     .sort((a,b)=>ordenNat(a.lote,b.lote));
 }
 function barrasLotePol(fs){
@@ -795,7 +795,7 @@ function pintarPolGer(){
   const FL=filasLotePol(ds);
   const tL=tablaGer([{t:'Lote',f:x=>`<b>${esc(x.lote)}</b>`},{t:'Programa',f:x=>esc(x.prog||'—')},{t:'Palmas registradas',n:1,f:x=>num(x.palmas)},
     ...COD_INF_V.map(c=>({t:c.c,n:1,f:x=>num(x[c.k])})),{t:'% balón',n:1,f:x=>x.balon==null?'—':num(x.balon,1)+' %'},{t:'R',n:1,f:x=>num(x.r)},{t:'V',n:1,f:x=>num(x.v)},
-    {t:'Transitabilidad entrada',f:x=>esc(x.ent||'—')},{t:'Transitabilidad salida',f:x=>(x.sal?esc(x.sal):'—')+(x.abiertos?` <span class="ger-chip mal">${x.abiertos} sin salida</span>`:'')}],
+    {t:'Transitabilidad',f:x=>esc(x.ent||'—')}],
     FL,x=>`class="clic" data-polote="${esc(x.lote)}"`);
   // Rendimiento por operario (estadísticas de la jornada + registros)
   const reg=new Map();for(const d of ds){const u=d._j?d._j.usuario:'';if(!reg.has(u))reg.set(u,[]);reg.get(u).push(d);}
@@ -838,25 +838,22 @@ function enlazarPolGer(){
 }
 
 /* ---------------- TRANSITABILIDAD POR LOTE (Coordinación y supervisión) ----------------
-   Entrada y salida de cada lote que el operario registra en la App (jornada.transito). Un lote sin salida quedó abierto. */
+   Transitabilidad que el operario elige UNA sola vez, al entrar por primera vez a cada lote de la jornada (jornada.transito). */
 function pintarTransitoGer(){
   if(!JOR.length)return sinDatos();
-  const F=filasTransito(JORF,l=>loteSel(l)&&enProg(l)),ab=F.filter(x=>x.abierto);
-  const cuenta=(k,v)=>F.filter(x=>x[k]===v).length;
+  const F=filasTransito(JORF,l=>loteSel(l)&&enProg(l));
+  const cuenta=v=>F.filter(x=>x.entrada===v).length;
   const t=tablaGer([{t:'Fecha',f:x=>esc(x.fecha)},{t:'Lote',f:x=>`<b>${esc(x.lote)}</b>`},{t:'Operario',f:x=>esc(x.evaluador)},
-    {t:'Entrada',f:x=>`${esc(x.entrada||'—')} <span class="tenue">${esc(hhmm(x.t_entrada))}</span>`},
-    {t:'Salida',f:x=>x.abierto?'<span class="ger-chip mal">⚠ Sin salida (lote abierto)</span>':`${esc(x.salida)} <span class="tenue">${esc(hhmm(x.t_salida))}</span>`},
-    {t:'Duración',n:1,f:x=>x.min==null?'—':minHM(x.min)}],F,x=>`class="clic${x.abierto?' tr-abierto':''}" data-trj="${esc(x.j.id)}"`);
-  return `<p class="tenue">Transitabilidad que el operario elige al entrar y al salir de cada lote (${esc(rangoTxt())}). Clic en una fila para ver la jornada en el mapa.</p>
-    <div class="ger-kpis">${kpi(num(F.length),'Entradas a lotes')}${kpi(num(new Set(F.map(x=>x.lote)).size),'Lotes')}${kpi(num(ab.length),'Lotes sin salida (abiertos)',ab.length?'mal':'ok')}
-      ${['Transitable','Poco transitable','No transitable'].map(v=>kpi(`${num(cuenta('entrada',v))} / ${num(cuenta('salida',v))}`,v+' (entrada / salida)')).join('')}</div>
-    ${ab.length?`<div class="ger-aviso ger-mal">⚠ <b>${ab.length}</b> lote(s) quedaron abiertos: no se registró la transitabilidad de salida (${ab.map(x=>esc(x.lote)+' · '+esc(nombreCorto(x.evaluador))+' · '+esc(x.fecha)).join('; ')}).</div>`:''}
+    {t:'Transitabilidad',f:x=>esc(x.entrada||'—')},{t:'Hora de entrada',f:x=>esc(hhmm(x.t_entrada))}],F,x=>`class="clic" data-trj="${esc(x.j.id)}"`);
+  return `<p class="tenue">Transitabilidad que el operario elige una sola vez, al entrar por primera vez a cada lote (${esc(rangoTxt())}). Clic en una fila para ver la jornada en el mapa.</p>
+    <div class="ger-kpis">${kpi(num(F.length),'Entradas a lotes')}${kpi(num(new Set(F.map(x=>x.lote)).size),'Lotes')}
+      ${['Transitable','Poco transitable','No transitable'].map(v=>kpi(num(cuenta(v)),v)).join('')}</div>
     <div class="ger-sec"><h3>Transitabilidad por lote</h3><div id="trTabla">${t}</div><div class="ger-par"><button class="btn mini" id="xTransito">⬇ CSV transitabilidad</button></div></div>`;
 }
 ENLACES_GER.transito=()=>{enlazarRango();
   $$('#gerPanel [data-trj]').forEach(tr=>tr.onclick=()=>{const j=JOR.find(x=>x.id===tr.dataset.trj);if(!j)return;alternarGerencia(false);abrirDetalle(j);});
-  const b=$('#xTransito');if(b)b.onclick=()=>csv(`transitabilidad_${$('#fDesde').value}_${$('#fHasta').value}.csv`,['fecha','lote','usuario','evaluador','entrada','hora_entrada','salida','hora_salida','duracion_min','abierto'],
-    filasTransito(JORF,l=>loteSel(l)&&enProg(l)).map(x=>({...x,hora_entrada:hhmm(x.t_entrada),hora_salida:x.t_salida?hhmm(x.t_salida):'',duracion_min:x.min==null?'':Math.round(x.min),abierto:x.abierto?'sí':'no'})));};
+  const b=$('#xTransito');if(b)b.onclick=()=>csv(`transitabilidad_${$('#fDesde').value}_${$('#fHasta').value}.csv`,['fecha','lote','usuario','evaluador','transitabilidad','hora_entrada'],
+    filasTransito(JORF,l=>loteSel(l)&&enProg(l)).map(x=>({...x,transitabilidad:x.entrada,hora_entrada:hhmm(x.t_entrada)})));};
 
 /* ---------- MAPA DE AVANCE DE LA POLINIZACIÓN: palmas visitadas (1.ª, 2.ª… entrada) y sin intervenir, como los mapas oficiales ---------- */
 const AV_CLASES=[{k:0,t:'Sin intervenir',c:'#c8191f'},{k:1,t:'1ra Entrada',c:'#47c21b'},{k:2,t:'2da Entrada',c:'#24631b'},{k:3,t:'3ra Entrada o más',c:'#0c3a10'}];

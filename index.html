@@ -695,7 +695,6 @@ svg.leaflet-image-layer.leaflet-interactive path {
 .pol-bts .deshacer{background:#37474f;color:#fff}
 #polNfc{flex:none;height:26px;padding:0 8px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#cfd8dc;font-size:11.5px;font-weight:700;white-space:nowrap;cursor:default}
 #polNfc.listo{background:rgba(34,211,154,.18);border-color:#22d39a;color:#7ff0c6}#polNfc.apagado,#polNfc.activar,#polNfc.error{background:rgba(255,197,61,.16);border-color:#ffc53d;color:#ffe08a;cursor:pointer}
-#polFin{flex:none;min-height:0;height:32px;padding:0 10px;font-size:13px;white-space:nowrap}
 body.con-polbar #flot{bottom:calc(var(--dock) + var(--inf) + 250px)}body.con-polbar #btLeyenda,body.con-polbar #leyenda{bottom:calc(var(--dock) + var(--inf) + 205px)}
 .pol-cont{display:grid;grid-template-columns:auto 1fr 52px 48px 52px;align-items:center;gap:8px;margin:8px 0}
 .pol-cont output{text-align:center;font:700 26px Rajdhani,system-ui}.pol-cont .btn{min-height:46px;font-size:24px;padding:0}
@@ -1048,7 +1047,7 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
   <div class="tit">POLINIZACIÓN<small>REGISTRO DE POLINIZACIÓN GEORREFERENCIADO</small></div>
   <div class="carga"><i></i></div>
   <div id="splashMsg">Iniciando…</div>
-  <div id="splashVer">VERSIÓN 20261119:2016</div>
+  <div id="splashVer">VERSIÓN 20261119:2050</div>
 </div>
 
 <div id="login" hidden>
@@ -1063,7 +1062,7 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
     <p class="tenue" id="lgMsg"></p>
   </form>
   <p id="lgRed"></p>
-  <div id="lgVer2">VERSIÓN 20261119:2016</div>
+  <div id="lgVer2">VERSIÓN 20261119:2050</div>
   <button type="button" class="btn" id="lgAct" style="margin-top:4px;font-size:13px;padding:7px 12px">⟳ BUSCAR ACTUALIZACIÓN</button>
   <button type="button" class="btn" id="lgInstalar" hidden>📲 INSTALAR EN ESTE CELULAR</button>
 </div>
@@ -1104,7 +1103,7 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
   <button id="btDesbloq" class="btn ancho grande">🔓 MANTENER 2 s PARA DESBLOQUEAR</button>
 </div>
 <div id="polBar" class="glass" hidden>
-  <div class="pol-cab"><div id="polInfo">—</div><button id="polNfc" class="nfc no" type="button" disabled>NFC</button><button id="polFin" class="btn" hidden>Finalizar lote</button></div>
+  <div class="pol-cab"><div id="polInfo">—</div><button id="polNfc" class="nfc no" type="button" disabled>NFC</button></div>
   <div class="pol-bts"><button data-c="A" class="cA" aria-label="A: Inflorescencia en Antesis"><b>A</b><small>Inflorescencia en Antesis</small><i class="pol-n" hidden></i></button><button data-c="P" class="cP" aria-label="P: Inflorescencia en Post-Antesis"><b>P</b><small>Inflorescencia en Post-Antesis</small><i class="pol-n" hidden></i></button><button data-c="B" class="cB" aria-label="B: Balón (Post-Antesis pasada)"><b>B</b><small>Balón (Post-Antesis pasada)</small><i class="pol-n" hidden></i></button><button data-c="R" class="cR" aria-label="R: Palma Rancho / Tapada"><b>R</b><small>Palma Rancho / Tapada</small><i class="pol-n" hidden></i></button><button data-c="V" class="cV" aria-label="V: Palma con Avispas"><b>V</b><small>Palma con Avispas</small><i class="pol-n" hidden></i></button><button id="polDeshacer" class="deshacer" aria-label="Deshacer el último registro"><b>↶</b><small>Deshacer</small></button></div>
 </div>
 <button id="btLeyenda" class="glass">LEYENDA</button>
@@ -1195,7 +1194,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
    Registro de polinización georreferenciado sin conexión, con jornadas,
    registro del recorrido y sincronización con GitHub.
    ===================================================================== */
-const VERSION='20261119:2016';
+const VERSION='20261119:2050';
 /* Ejecutándose dentro de la APK de Android (Capacitor) o en el navegador. */
 const NATIVO=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
 /* APK sin puente nativo (copia guardada antigua): con internet se recarga una vez para recibirlo. */
@@ -2189,7 +2188,6 @@ async function finalizarJornada(){
   const j=S.jornada;if(!j)return;
   const c=censoTotal();
   if(!confirm(`¿Finalizar la jornada?\n\nCensadas: ${c.hec} de ${c.tot} palmas.\nSe detendrá el registro del recorrido.`))return;
-  {const ab=tramoAbierto();if(ab&&!await cerrarTramo(ab,'fin_jornada'))return;}
   await cerrarRecorrido(j);
   j.fin=new Date().toISOString();j.fin_real=new Date(ahoraReal()).toISOString();j.hora_fin=estadoHora();j.estado='finalizada';j.sync='pendiente';j.cierre={modo:'boton',usuario:SES?SES.u:'',fecha:j.fin};
   const regs=S.registros.filter(r=>r.jornada_id===j.id);const pts=await puntosTrack(j.id);
@@ -2719,29 +2717,26 @@ function frasePol(r){if(r.cond)return NOMBRE_COD[r.cond];
   const n=(k,s,p)=>r[k]?`${r[k]===1?(k==='b'?'un':'una'):paraVoz(r[k])} ${r[k]===1?s:p}`:'';
   return [n('a','antesis','antesis'),n('p','post antesis','post antesis'),n('b','balón','balones')].filter(Boolean).join(', ');}
 
-/* ----- Transitabilidad del lote: obligatoria al entrar y al salir ----- */
-function tramoAbierto(){const j=S.jornada;if(!j||!Array.isArray(j.transito))return null;return j.transito.find(t=>!t.salida)||null;}
-function elegirTransito(lote,momento){if(typeof BLOQ!=='undefined'&&BLOQ.on){desbloquearPantalla();if(HAY_VOZ())hablar(`Elija la transitabilidad de ${momento==='entrada'?'entrada al':'salida del'} lote ${paraVoz(lote)}`,true);}
+/* ----- Transitabilidad del lote: se pregunta UNA sola vez, la primera vez que se registra en el lote durante la jornada.
+   No se pregunta al salir ni al finalizar; si el operario vuelve a un lote ya registrado, se usa la misma transitabilidad. ----- */
+function tramoDe(lote){const j=S.jornada;if(!j||!Array.isArray(j.transito))return null;return j.transito.find(t=>t.lote===String(lote))||null;}
+/* Lote actual (el último donde registró) con su transitabilidad. */
+function tramoAbierto(){const j=S.jornada;if(!j||!Array.isArray(j.transito)||!j.transito.length)return null;
+  return (j.lote_actual!=null&&tramoDe(j.lote_actual))||j.transito[j.transito.length-1];}
+function elegirTransito(lote){if(typeof BLOQ!=='undefined'&&BLOQ.on){desbloquearPantalla();if(HAY_VOZ())hablar(`Elija la transitabilidad del lote ${paraVoz(lote)}`,true);}
   return new Promise(res=>{let listo=false;
-  abrirHoja(`Transitabilidad · ${momento==='entrada'?'entrada al':'salida del'} lote ${lote}`,`
-    <p>${momento==='entrada'?'Antes de registrar palmas en este lote':'Para cerrar este lote'}, elija cómo está la transitabilidad:</p>
+  abrirHoja(`Transitabilidad · lote ${lote}`,`
+    <p>Primera vez en este lote durante la jornada. Elija cómo está la transitabilidad (se pregunta una sola vez):</p>
     <div style="display:grid;gap:10px">${TRANSIT.map(t=>`<button type="button" class="btn ancho grande${t==='Transitable'?' prim':''}" data-t="${esc(t)}">${esc(t)}</button>`).join('')}</div>`,
     {alCerrar:()=>{if(!listo)res(null);}});
   document.querySelectorAll('#hojaCuerpo [data-t]').forEach(b=>b.onclick=()=>{listo=true;const t=b.dataset.t;cerrarHoja();res(t);});});}
-async function cerrarTramo(t,motivo){
-  const v=await elegirTransito(t.lote,'salida');if(!v)return false;
-  t.salida=v;t.t_salida=new Date(ahoraReal()).toISOString();t.cierre=motivo||'boton';
-  S.jornada.sync='pendiente';await dbPut('jornadas',S.jornada);await marcarJornadaPendiente(S.jornada.id);pintarPolBar();return true;}
-/* Devuelve true cuando el lote tiene la entrada registrada (la pide si falta; si había otro lote abierto, primero pide su salida). */
+/* Devuelve true cuando el lote ya tiene su transitabilidad (la pide solo la primera vez que se registra en él). */
 async function asegurarEntradaLote(lote){
   const j=S.jornada;if(!j||!lote)return true;if(!Array.isArray(j.transito))j.transito=[];
-  const ab=tramoAbierto();if(ab&&ab.lote===lote)return true;
-  if(ab){toast(`Cierre el lote ${ab.lote}: elija la transitabilidad de salida.`,4000);if(!await cerrarTramo(ab,'cambio_lote'))return false;}
-  const v=await elegirTransito(lote,'entrada');if(!v)return false;
-  j.transito.push({lote:String(lote),entrada:v,t_entrada:new Date(ahoraReal()).toISOString(),salida:'',t_salida:''});
+  if(tramoDe(lote)){if(j.lote_actual!==String(lote)){j.lote_actual=String(lote);try{await dbPut('jornadas',j);}catch(_){}pintarPolBar();}return true;}
+  const v=await elegirTransito(lote);if(!v)return false;
+  j.transito.push({lote:String(lote),entrada:v,t_entrada:new Date(ahoraReal()).toISOString()});j.lote_actual=String(lote);
   j.sync='pendiente';await dbPut('jornadas',j);await marcarJornadaPendiente(j.id);pintarPolBar();return true;}
-async function finalizarLoteActual(){const ab=tramoAbierto();if(!ab){toast('No hay un lote abierto.');return;}
-  if(await cerrarTramo(ab,'boton'))toast(`✅ Lote ${ab.lote} cerrado (${ab.salida}).`);}
 
 /* ----- Registro rápido: tarjeta NFC, botón de la barra o voz. Va a la palma existente más cercana a radioSel o menos. ----- */
 const DESHACER=[];
@@ -2799,7 +2794,7 @@ function nuevoRegistroPol(f){const p=f.properties;const [lng,lat]=f.geometry.coo
 async function guardarPol(r,op={}){
   if(SYNC.activo){alert('Se está sincronizando con GitHub. Intente de nuevo en unos segundos.');return false;}
   completarPol(r);
-  {const ab=tramoAbierto();r.transitabilidad=ab&&ab.lote===String(r.lote)?ab.entrada:(r.transitabilidad||'');}
+  {const tr=tramoDe(r.lote);r.transitabilidad=tr?tr.entrada:(r.transitabilidad||'');}
   if(!r.creado){{const tr=ahoraReal();r.creado=new Date(tr).toISOString();r.fecha=ahoraLocalDe(tr);r.creado_telefono=new Date().toISOString();r.hora_fuente=HORA.desfase==null?'telefono':HORA.fuente;r.desfase_hora_s=Math.round((HORA.desfase||0)/1000);}
     if(S.gps){r.gps_lat=+S.gps.lat.toFixed(7);r.gps_lng=+S.gps.lng.toFixed(7);r.gps_acc=Math.round(S.gps.acc*10)/10;r.dist_gps=Math.round(dist(S.gps.lat,S.gps.lng,r.lat,r.lng)*10)/10;}
     else{r.gps_lat=null;r.gps_lng=null;r.gps_acc=null;r.dist_gps=null;}}
@@ -2828,12 +2823,11 @@ function pintarPolBar(rUlt){
   {const rp=f?((rUlt&&rUlt.palma_id===f.properties._id)?rUlt:S.hechos.get(f.properties._id)):null;
    document.querySelectorAll('#polBar [data-c]').forEach(b=>{const c=b.dataset.c,k=(COD_INF.find(x=>x.c===c)||{}).k;
      const v=rp?(k?(rp[k]||0):(rp.cond===c?'✓':0)):0;const i=b.querySelector('.pol-n');if(i){i.textContent=v||'';i.hidden=!v;}});}
-  $('#polFin').hidden=!ab;
   sincronizarBloqueo();actualizarBloqueo(rUlt);
 }
 function iniciarPolBar(){
   document.querySelectorAll('#polBar [data-c]').forEach(b=>b.onclick=()=>sumarCodigo(b.dataset.c,'boton'));
-  $('#polDeshacer').onclick=deshacerPol;$('#polFin').onclick=finalizarLoteActual;$('#polNfc').onclick=()=>tocarNfc();
+  $('#polDeshacer').onclick=deshacerPol;$('#polNfc').onclick=()=>tocarNfc();
   setInterval(()=>{if(S.jornada&&!$('#polBar').hidden)pintarPolBar();},3000);
 }
 
@@ -3314,10 +3308,7 @@ async function procesarVoz(t){
   VOZ.silPol=true;VOZ.ultimoPol=null;VOZ.ultimoPolMal=false;
   try{
     if(q.cmd==='deshacer'){while(POL_OCUPADO)await esperar(40);await deshacerPol();if(!VOZ.ultimoPol)VOZ.ultimoPol='No hay nada para deshacer.';}
-    else if(q.cmd==='finalizar'){const ab=tramoAbierto();
-      if(!ab)VOZ.ultimoPol='No hay un lote abierto.';
-      else{decir('Elija la transitabilidad de salida del lote '+paraVoz(ab.lote)+'.');await finalizarLoteActual();
-        VOZ.ultimoPol=ab.salida?`Lote ${paraVoz(ab.lote)} cerrado, ${ab.salida}.`:'El lote sigue abierto.';}}
+    else if(q.cmd==='finalizar'){VOZ.ultimoPol='No hace falta cerrar el lote: la transitabilidad solo se pregunta al entrar.';}
     else{fuera:for(const [c,n] of q.items){const veces=(c==='R'||c==='V')?1:n;
       for(let k=0;k<veces;k++){VOZ.ultimoPol=null;VOZ.ultimoPolMal=false;await sumarEnCola(c,'voz');
         if(!VOZ.ultimoPol||VOZ.ultimoPolMal)break fuera;}}}   // un rechazo (o la transitabilidad cancelada) detiene el resto

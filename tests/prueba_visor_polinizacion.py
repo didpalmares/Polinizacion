@@ -131,7 +131,7 @@ with sync_playwright() as p:
     # Detalle de jornada: transitabilidad
     vz.evaluate("abrirDetalle(JOR.find(j=>j.id==='J2'))"); time.sleep(.4)
     det = vz.inner_text('#detalle')
-    check('Detalle de la jornada: transitabilidad por lote y lote abierto', 'TRANSITABILIDAD POR LOTE' in det.upper() and 'Sin salida (lote abierto)' in det and 'Registros: 5' in det, det[-300:])
+    check('Detalle de la jornada: transitabilidad por lote (sin salida)', 'TRANSITABILIDAD POR LOTE' in det.upper() and 'Sin salida' not in det and 'Registros: 5' in det, det[-300:])
     vz.evaluate("cerrarDetalle()")
 
     # ---- 3. Gerencia · 🐝 Polinización ----
@@ -145,10 +145,10 @@ with sync_playwright() as p:
     check('KPIs: 8 palmas registradas, A 5, P 7, B 4, % balón 25,0 %, R 1, V 1', K == ['8 Palmas registradas', '5 Total A: Inflorescencia en Antesis', '7 Total P: Inflorescencia en Post-Antesis', '4 Total B: Balón (Post-Antesis pasada)',
           '25,0 % % Balón = B ÷ (A + P + B)', '1 Palmas R: Palma Rancho / Tapada', '1 Palmas V: Palma con Avispas'], K)
     filas = vz.evaluate("[...document.querySelectorAll('#polLotes tbody tr')].map(t=>[...t.cells].map(c=>c.innerText.trim()))")
-    check('Por lote: IT01 4 palmas, A 3, P 1, B 4, 50,0 %, R 1, V 0, entrada Transitable, salida Poco transitable (1 sin salida)',
-          filas[0] == ['IT01', '—', '4', '3', '1', '4', '50,0 %', '1', '0', 'Transitable', 'Poco transitable 1 sin salida'], filas[0] if filas else filas)
-    check('Por lote: IT05 4 palmas, A 2, P 6, B 0, 0,0 %, R 0, V 1, entrada Poco transitable, salida Transitable',
-          len(filas) == 2 and filas[1] == ['IT05', '—', '4', '2', '6', '0', '0,0 %', '0', '1', 'Poco transitable', 'Transitable'], filas[1:] )
+    check('Por lote: IT01 4 palmas, A 3, P 1, B 4, 50,0 %, R 1, V 0, transitabilidad Transitable',
+          filas[0] == ['IT01', '—', '4', '3', '1', '4', '50,0 %', '1', '0', 'Transitable'], filas[0] if filas else filas)
+    check('Por lote: IT05 4 palmas, A 2, P 6, B 0, 0,0 %, R 0, V 1, transitabilidad Poco transitable',
+          len(filas) == 2 and filas[1] == ['IT05', '—', '4', '2', '6', '0', '0,0 %', '0', '1', 'Poco transitable'], filas[1:] )
     bar = vz.evaluate("[...document.querySelectorAll('#polBarLote rect')].map(r=>r.dataset.lc)")
     check('Gráfico por lote: barras A/P/B apiladas', sorted(bar) == sorted(['IT01|A|3', 'IT01|P|1', 'IT01|B|4', 'IT05|A|2', 'IT05|P|6']), bar)
     sem = vz.evaluate("[...document.querySelectorAll('#polSemana rect')].map(r=>r.dataset.sc.split('|').slice(1).join(''))")
@@ -178,9 +178,9 @@ with sync_playwright() as p:
     vz.click('[data-gt=transito]'); time.sleep(.4)
     T = vz.inner_text('#gerPanel')
     tr = vz.evaluate("[...document.querySelectorAll('#trTabla tbody tr')].map(t=>[...t.cells].map(c=>c.innerText.trim()))")
-    check('Transitabilidad por lote: 3 entradas (lote, operario, entrada + hora, salida + hora, duración)',
-          len(tr) == 3 and tr[0][1:] == ['IT01', 'GOMEZ PEREZ ANDRES', 'Transitable 07:05', 'Poco transitable 08:00', '0:55'] and tr[1][1:] == ['IT05', 'LOPEZ DIAZ CARLOS', 'Poco transitable 08:30', 'Transitable 08:50', '0:20'], tr)
-    check('Transitabilidad: marca el lote abierto (sin salida)', tr[2][1] == 'IT01' and 'Sin salida' in tr[2][4] and tr[2][5] == '—' and '1 lote(s) quedaron abiertos' in T, tr[2] if len(tr) > 2 else T[:200])
+    check('Transitabilidad por lote: 3 entradas (lote, operario, transitabilidad, hora de entrada)',
+          len(tr) == 3 and tr[0][1:] == ['IT01', 'GOMEZ PEREZ ANDRES', 'Transitable', '07:05'] and tr[1][1:] == ['IT05', 'LOPEZ DIAZ CARLOS', 'Poco transitable', '08:30'] and tr[2][1:] == ['IT01', 'LOPEZ DIAZ CARLOS', 'Transitable', '08:55'], tr)
+    check('Transitabilidad: sin columnas ni avisos de salida', 'Sin salida' not in T and 'abiertos' not in T and 'salida' not in T.lower(), T[:200])
     # Calidad y auditoría con el registro de polinización
     vz.click('[data-gt=calidad]'); time.sleep(.4); T = vz.inner_text('#gerPanel')
     check('Calidad: registros (sin «Sin foto» ni diagnósticos)', 'Registros de polinización' in T and 'Sin foto' not in T and 'iagnóstico' not in T, re.sub(r'\s+', ' ', T)[:200])

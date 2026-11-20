@@ -1,5 +1,5 @@
 """Registro de polinización: botones A/P/B/R/V a la palma existente más cercana (10 m), combinaciones,
-R y V solas, existencia 0 excluida, transitabilidad de entrada y salida del lote y deshacer. GitHub simulado."""
+R y V solas, existencia 0 excluida, transitabilidad una sola vez al entrar a cada lote (nunca al salir) y deshacer. GitHub simulado."""
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 from comun import CANAL, INIT_VOZ, BASE
@@ -71,7 +71,7 @@ with sync_playwright() as p:
     check('P1 = 2A + 1P + 1B', r and (r['a'], r['p'], r['b']) == (2, 1, 1) and r['n1'] == '2A + 1P + 1B', r)
     check('Transitabilidad de entrada en el registro', r and r['tr'] == 'Poco transitable', r)
     tramo = pg.evaluate("S.jornada.transito")
-    check('Tramo del lote L1 abierto', len(tramo) == 1 and tramo[0]['lote'] == 'L1' and tramo[0]['entrada'] == 'Poco transitable' and not tramo[0]['salida'], tramo)
+    check('Tramo del lote L1 abierto', len(tramo) == 1 and tramo[0]['lote'] == 'L1' and tramo[0]['entrada'] == 'Poco transitable' and 'salida' not in tramo[0], tramo)
 
     # R no se combina con inflorescencias
     tocar('R')
@@ -98,30 +98,28 @@ with sync_playwright() as p:
     tocar('A')
     check('A más de 10 m de cualquier palma: no registra', pg.evaluate("S.registros.length") == n0)
 
-    # Cambio de lote: pide salida de L1 y entrada a L2
+    # Cambio de lote: NO pregunta salida de L1; pregunta solo la entrada a L2 (primera vez)
     pg.evaluate("__gps(200)")
     pg.evaluate("void(window.__p=sumarCodigo('A','nfc'))")
-    pg.wait_for_selector('#hojaCuerpo [data-t="No transitable"]', timeout=5000)
-    titulo1 = pg.text_content('#hojaTitulo')
-    pg.eval_on_selector('#hojaCuerpo [data-t="No transitable"]', 'b=>b.click()')
-    pg.wait_for_function("document.querySelector('#hojaTitulo').textContent.includes('entrada')", timeout=5000)
+    pg.wait_for_selector('#hojaCuerpo [data-t="Transitable"]', timeout=5000)
     titulo2 = pg.text_content('#hojaTitulo')
     pg.eval_on_selector('#hojaCuerpo [data-t="Transitable"]', 'b=>b.click()')
     pg.evaluate("window.__p"); time.sleep(.2)
     tramo = pg.evaluate("S.jornada.transito")
-    check('Cambio de lote: salida de L1 y entrada a L2', 'salida' in titulo1 and 'L1' in titulo1 and 'L2' in titulo2
-          and tramo[0]['salida'] == 'No transitable' and tramo[1]['lote'] == 'L2' and tramo[1]['entrada'] == 'Transitable', tramo)
+    check('Cambio de lote: sin pregunta de salida de L1; una sola pregunta al entrar a L2', 'L2' in titulo2 and 'salida' not in titulo2.lower()
+          and len(tramo) == 2 and 'salida' not in tramo[0] and tramo[1]['lote'] == 'L2' and tramo[1]['entrada'] == 'Transitable', tramo)
     check('Q1 = 1A (fuente NFC)', reg('Q1') and reg('Q1')['a'] == 1 and pg.evaluate("S.hechos.get('Q1').fuente") == 'nfc')
 
     # Formulario manual de la palma: existencia 0 bloqueada
     rg = pg.evaluate("reglaDiagnostico(S.idx.get('P3'))")
     check('Formulario: existencia 0 bloqueada', not rg['ok'] and 'existencia 0' in rg['motivo'], rg.get('motivo'))
 
-    # Botón Finalizar lote
-    pg.eval_on_selector('#polFin', 'b=>b.click()')
-    pg.eval_on_selector('#hojaCuerpo [data-t="Poco transitable"]', 'b=>b.click()'); time.sleep(.3)
-    tramo = pg.evaluate("S.jornada.transito")
-    check('Finalizar lote: salida de L2', tramo[1]['salida'] == 'Poco transitable' and pg.is_hidden('#polFin'), tramo[1])
+    # Volver a un lote ya registrado: no vuelve a preguntar y usa la misma transitabilidad
+    pg.evaluate("__gps(1)"); n0 = len(pg.evaluate("S.jornada.transito"))
+    pg.evaluate("sumarCodigo('P','boton')"); time.sleep(.6)
+    check('Volver a L1: no pregunta otra vez (una sola vez por lote)', pg.evaluate("document.querySelector('#hoja').classList.contains('oculto')") and reg('P1')['p'] == 2
+          and len(pg.evaluate("S.jornada.transito")) == n0 and reg('P1')['tr'] == 'Poco transitable', pg.evaluate("S.jornada.transito"))
+    check('Sin botón «Finalizar lote»', pg.evaluate("!document.querySelector('#polFin')"))
 
     check('Sin errores de JavaScript', not errores, errores[:3])
     nav.close()
