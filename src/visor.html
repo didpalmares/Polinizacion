@@ -1145,8 +1145,81 @@ function pintarPanel(){
 function marcarFila(){if(TAB==='jornadas')pintarPanel();}
 
 /* ---------- Exportación ---------- */
-function descargar(nombre,contenido,tipo){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([contenido],{type:tipo}));a.download=nombre;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
-function csv(nombre,cols,filas){const q=v=>{if(v==null)return '';const s=typeof v==='number'?String(v).replace('.',','):String(v);return /[;"\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
+/* ---------- Descarga en Excel (.xlsx) con formato de TABLA (encabezados con filtro, filas en bandas, encabezado fijo) ----------
+   Cada botón «⬇ CSV …» del visor tiene al lado su «⬇ Excel …»: genera el mismo contenido como libro de Excel. */
+let XLSX_MODO=false;
+function colXl(n){let s='';n++;while(n>0){const m=(n-1)%26;s=String.fromCharCode(65+m)+s;n=Math.floor((n-1)/26);}return s;}
+const xmlEsc=v=>String(v).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+async function excel(nombre,cols,filas){
+  nombre=String(nombre).replace(/\.csv$/i,'')+'.xlsx';
+  const enc=[];const vistos=new Set();
+  cols.forEach((c,i)=>{let h=String(c==null||c===''?'Columna'+(i+1):c).replace(/\s+/g,' ').trim();let k=h,n=2;while(vistos.has(k.toLowerCase()))k=h+'_'+(n++);vistos.add(k.toLowerCase());enc.push(k);});
+  const val=v=>{if(v==null)return null;if(Array.isArray(v))return v.join(', ');if(typeof v==='object')return JSON.stringify(v);if(typeof v==='boolean')return v?'sí':'no';return v;};
+  const celda=(r,c,v)=>{const ref=colXl(c)+r;v=val(v);if(v==null||v==='')return '';
+    if(typeof v==='number'&&isFinite(v))return `<c r="${ref}"><v>${v}</v></c>`;
+    return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xmlEsc(v)}</t></is></c>`;};
+  const n=filas.length,ultima=colXl(cols.length-1)+(n+1);
+  const anchos=cols.map((c,i)=>{let w=enc[i].length;for(let k=0;k<Math.min(n,300);k++){const v=val(filas[k][c]);if(v!=null)w=Math.max(w,String(v).length);}return Math.min(60,Math.max(8,w+2));});
+  const filasXml=[`<row r="1">${enc.map((h,i)=>`<c r="${colXl(i)}1" t="inlineStr" s="1"><is><t>${xmlEsc(h)}</t></is></c>`).join('')}</row>`]
+    .concat(filas.map((f,k)=>`<row r="${k+2}">${cols.map((c,i)=>celda(k+2,i,f[c])).join('')}</row>`));
+  const hoja=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
+<cols>${anchos.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')}</cols>
+<sheetData>${filasXml.join('')}</sheetData><tableParts count="1"><tablePart r:id="rId1"/></tableParts></worksheet>`;
+  const ref=`A1:${n?ultima:colXl(cols.length-1)+'2'}`;
+  const tabla=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="1" name="Tabla1" displayName="Tabla1" ref="${ref}" totalsRowShown="0">
+<autoFilter ref="${ref}"/><tableColumns count="${cols.length}">${enc.map((h,i)=>`<tableColumn id="${i+1}" name="${xmlEsc(h)}"/>`).join('')}</tableColumns>
+<tableStyleInfo name="TableStyleMedium2" showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/></table>`;
+  const hojaNom=xmlEsc(nombre.replace(/\.xlsx$/,'').replace(/_\d{4}-\d{2}-\d{2}.*$/,'').replace(/[\[\]:*?\/\\]/g,' ').slice(0,31)||'Datos');
+  const z=new JSZip();
+  z.file('[Content_Types].xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+<Override PartName="/xl/tables/table1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`);
+  z.file('_rels/.rels',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`);
+  z.file('xl/workbook.xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${hojaNom}" sheetId="1" r:id="rId1"/></sheets></workbook>`);
+  z.file('xl/_rels/workbook.xml.rels',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`);
+  z.file('xl/styles.xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>
+<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs>
+<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`);
+  z.file('xl/worksheets/sheet1.xml',hoja);
+  z.file('xl/worksheets/_rels/sheet1.xml.rels',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/table" Target="../tables/table1.xml"/></Relationships>`);
+  z.file('xl/tables/table1.xml',tabla);
+  const blob=await z.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',compression:'DEFLATE'});
+  window.__ultimoExcel={nombre,cols:enc,filas:n};
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=nombre;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);
+}
+/* CSV ya armado como texto (separador «;», coma decimal) → Excel: números de verdad donde corresponde. */
+function excelDeCsv(nombre,txt){
+  txt=String(txt).replace(/^\uFEFF/,'');const filas=[];let f=[],c='',q=false;
+  for(let i=0;i<txt.length;i++){const ch=txt[i];
+    if(q){if(ch==='"'){if(txt[i+1]==='"'){c+='"';i++;}else q=false;}else c+=ch;}
+    else if(ch==='"')q=true;else if(ch===';'){f.push(c);c='';}else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&txt[i+1]==='\n')i++;f.push(c);filas.push(f);f=[];c='';}else c+=ch;}
+  if(c!==''||f.length){f.push(c);filas.push(f);}
+  const cols=filas.shift()||[];
+  const num=v=>/^-?(0|[1-9]\d{0,9})(,\d+)?$/.test(v)?Number(v.replace(',','.')):v;
+  excel(nombre,cols,filas.map(r=>Object.fromEntries(cols.map((k,i)=>[k,num(r[i]??'')]))));
+}
+/* Botón «⬇ Excel …» al lado de cada «⬇ CSV …» (también en los paneles que se pintan después). */
+function botonesExcel(raiz){
+  (raiz||document).querySelectorAll('button[id]').forEach(b=>{
+    if(b.dataset.xl||!/^⬇\s*CSV/.test(b.textContent.trim()))return;b.dataset.xl='1';
+    const e=document.createElement('button');e.className=b.className;e.dataset.xlsxDe=b.id;e.id=b.id+'Xl';e.style.cssText=b.style.cssText;e.style.marginLeft='6px';
+    e.textContent=b.textContent.replace(/CSV/,'Excel');e.title='Descargar en Excel con formato de tabla';
+    e.onclick=ev=>{ev.preventDefault();ev.stopPropagation();XLSX_MODO=true;try{b.click();}finally{XLSX_MODO=false;}};
+    b.after(e);});
+}
+new MutationObserver(()=>botonesExcel()).observe(document.documentElement,{childList:true,subtree:true});
+function descargar(nombre,contenido,tipo){if(XLSX_MODO&&/^text\/csv/.test(tipo||'')){excelDeCsv(nombre,contenido);return;}const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([contenido],{type:tipo}));a.download=nombre;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
+function csv(nombre,cols,filas){if(XLSX_MODO){excel(nombre,cols,filas);return;}const q=v=>{if(v==null)return '';const s=typeof v==='number'?String(v).replace('.',','):String(v);return /[;"\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
   descargar(nombre,'﻿'+cols.join(';')+'\r\n'+filas.map(f=>cols.map(c=>q(f[c])).join(';')).join('\r\n'),'text/csv;charset=utf-8');}
 function csvJornadas(){csv(`jornadas_${$('#fDesde').value}_${$('#fHasta').value}.csv`,['id','fecha','usuario','evaluador','hora_inicio','hora_fin','duracion_min','km','ha','palmas','registros','inflorescencias','n_paradas','min_paradas','velocidad_kmh','inicio_labor','fin_labor','min_despl_inicial','min_despl_entre_lotes','min_despl_final','metodo','palmas_buffer','lotes'],
   JORF.map(j=>({id:j.id,fecha:j.fecha,usuario:j.usuario,evaluador:j.evaluador,hora_inicio:j.hora_inicio,hora_fin:j.hora_fin,duracion_min:j.duracion_min,km:j.km,ha:j.ha,palmas:j.palmas,registros:j.diags.length,inflorescencias:j.diags.reduce((a,d)=>a+(polN(d).inflorescencias||0),0),n_paradas:j.n_paradas,min_paradas:j.min_paradas,velocidad_kmh:j.vel==null?'':j.vel,inicio_labor:(j.tiempos||{}).hora_inicio_labor||'',fin_labor:(j.tiempos||{}).hora_fin_labor||'',min_despl_inicial:(j.tiempos||{}).min_desplazamiento_inicial??'',min_despl_entre_lotes:(j.tiempos||{}).min_desplazamiento_entre_lotes??'',min_despl_final:(j.tiempos||{}).min_desplazamiento_final??'',metodo:j.metodo,palmas_buffer:j.comp?j.comp.palmas_visitadas:'',lotes:[...j.lotes].sort(ordenNat).join(',')})));}

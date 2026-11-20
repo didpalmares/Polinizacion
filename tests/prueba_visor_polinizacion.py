@@ -181,6 +181,29 @@ with sync_playwright() as p:
     check('Transitabilidad por lote: 3 entradas (lote, operario, transitabilidad, hora de entrada)',
           len(tr) == 3 and tr[0][1:] == ['IT01', 'GOMEZ PEREZ ANDRES', 'Transitable', '07:05'] and tr[1][1:] == ['IT05', 'LOPEZ DIAZ CARLOS', 'Poco transitable', '08:30'] and tr[2][1:] == ['IT01', 'LOPEZ DIAZ CARLOS', 'Transitable', '08:55'], tr)
     check('Transitabilidad: sin columnas ni avisos de salida', 'Sin salida' not in T and 'abiertos' not in T and 'salida' not in T.lower(), T[:200])
+    # Excel con formato de tabla: botón «⬇ Excel» junto a cada «⬇ CSV»
+    check('Botón «⬇ Excel transitabilidad» junto al CSV', vz.is_visible('#xTransitoXl') and 'Excel' in vz.inner_text('#xTransitoXl'))
+    import openpyxl, tempfile
+    def leer_xlsx(dl):
+        ruta = _os.path.join(tempfile.mkdtemp(), dl.suggested_filename); dl.save_as(ruta)
+        wb = openpyxl.load_workbook(ruta); ws = wb.active
+        return dl.suggested_filename, ws, ws.tables
+    with vz.expect_download() as d: vz.click('#xTransitoXl')
+    nom, ws, tabs_xl = leer_xlsx(d.value)
+    filas_xl = [[c.value for c in r] for r in ws.iter_rows()]
+    t1 = list(tabs_xl.values())[0] if tabs_xl else None
+    check('Excel transitabilidad: .xlsx con tabla (filtro y estilo) y encabezado fijo',
+          nom.endswith('.xlsx') and t1 is not None and t1.ref == 'A1:F4' and t1.tableStyleInfo.name == 'TableStyleMedium2' and ws.freeze_panes == 'A2', (nom, t1 and t1.ref, ws.freeze_panes))
+    check('Excel transitabilidad: mismas columnas y filas que el CSV',
+          filas_xl[0] == ['fecha', 'lote', 'usuario', 'evaluador', 'transitabilidad', 'hora_entrada'] and filas_xl[1][1:] == ['IT01', 'op1', 'GOMEZ PEREZ ANDRES', 'Transitable', '07:05'], filas_xl[:2])
+    with vz.expect_download() as d: vz.evaluate("XLSX_MODO=true;try{csvDiag()}finally{XLSX_MODO=false}")
+    nom, ws, tabs_xl = leer_xlsx(d.value)
+    enc = [c.value for c in ws[1]]; f2 = {enc[i]: c.value for i, c in enumerate(ws[2])}
+    check('Excel registros: números como número (A, P, B, lat) y tabla', nom.startswith('polinizacion_registros') and len(tabs_xl) == 1
+          and isinstance(f2.get('a'), (int, float)) and isinstance(f2.get('lat'), float) and ws.max_row == 1 + vz.evaluate('DIAGF.length'), f2)
+    with vz.expect_download() as d: vz.evaluate(r"XLSX_MODO=true;try{descargar('prueba.csv','\ufeffcol;texto;n\r\n001;\"a;b\";2,5\r\n','text/csv;charset=utf-8')}finally{XLSX_MODO=false}")
+    nom, ws, tabs_xl = leer_xlsx(d.value)
+    check('CSV armado a mano (auditoría) también sale en Excel', nom == 'prueba.xlsx' and [c.value for c in ws[2]] == ['001', 'a;b', 2.5], [c.value for c in ws[2]])
     # Calidad y auditoría con el registro de polinización
     vz.click('[data-gt=calidad]'); time.sleep(.4); T = vz.inner_text('#gerPanel')
     check('Calidad: registros (sin «Sin foto» ni diagnósticos)', 'Registros de polinización' in T and 'Sin foto' not in T and 'iagnóstico' not in T, re.sub(r'\s+', ' ', T)[:200])
