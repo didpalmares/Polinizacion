@@ -1,4 +1,4 @@
-"""Reproducción: ficha automática del diagnóstico (pausa 3 s) y resumen Inicio/Fin/HA/T. efectivo, en app y visor."""
+"""Reproducción: ficha automática del registro (pausa 1 s) y resumen Inicio/Fin/HA/T. efectivo, en app y visor."""
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 from comun import CANAL, INIT_VOZ, PLANTACION, TMP, BASE
@@ -36,10 +36,10 @@ with sync_playwright() as p:
     pg.wait_for_function("!document.querySelector('#plCard').hidden", timeout=15000)
     c1 = pg.evaluate("document.querySelector('#plCard').innerText.replace(/\\n/g,' ')")
     check('App: ficha automática del 1er diagnóstico', 'Pudrición del cogollo' in c1 and 'IT01' in c1 and 'P10' in c1, c1)
-    ta = pg.evaluate('PLAY.t'); time.sleep(1.5); tb = pg.evaluate('PLAY.t')
+    ta = pg.evaluate('PLAY.t'); time.sleep(.4); tb = pg.evaluate('PLAY.t')
     check('App: la reproducción se pausa mientras muestra el diagnóstico', abs(tb - ta) < 1, (ta, tb))
-    time.sleep(4.2); tc = pg.evaluate('PLAY.t')
-    check('App: luego continúa sola', tc > tb, tc - tb)
+    time.sleep(1.4); tc = pg.evaluate('PLAY.t')
+    check('App: luego de 1 s continúa sola', tc > tb, tc - tb)
     pg.wait_for_function("document.querySelector('#plCard').innerText.includes('Marchitez')", timeout=20000)
     check('App: ficha del 2.º diagnóstico', True)
     check('App: HA en vivo en el pie', pg.evaluate("document.querySelector('#plHa')!==null"))
@@ -66,11 +66,11 @@ with sync_playwright() as p:
     vz.wait_for_function("!!document.querySelector('.leaflet-popup-content')", timeout=15000)
     pc = vz.evaluate("document.querySelector('.leaflet-popup-content').innerText.replace(/\\n/g,' ')")
     check('Visor: ficha automática del registro', '2A + 1P' in pc, pc[:100])
-    va = vz.evaluate('PLAY.t'); time.sleep(1.5); vb = vz.evaluate('PLAY.t')
+    va = vz.evaluate('PLAY.t'); time.sleep(.4); vb = vz.evaluate('PLAY.t')
     check('Visor: pausa mientras muestra el diagnóstico', abs(vb - va) < 1, (va, vb))
     vz.wait_for_function("(document.querySelector('.leaflet-popup-content')||{innerText:''}).innerText.includes('V: Palma con Avispas')", timeout=20000)
     check('Visor: ficha del 2.º registro', True)
-    # Foto que tarda en bajar: una sola descarga, la ficha muestra la foto y la pausa son 5 s desde que se ve
+    # Foto que tarda en bajar: una sola descarga y la ficha muestra la foto; la reproducción no espera la foto (pausa 1 s)
     import io, zipfile, base64 as b64
     png = b64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==')
     bz = io.BytesIO(); zf = zipfile.ZipFile(bz, 'w'); zf.writestr('f1.jpg', png); zf.close()
@@ -80,11 +80,10 @@ with sync_playwright() as p:
       const j=SEL;j.zipSha='ZIP1';j.diags[0].n_fotos=1;j.diags[0].fotos='f1.jpg';FOTO1.clear();ZIPS.clear();abrirDetalle(j);}""", b64.b64encode(bz.getvalue()).decode())
     vz.select_option('#pVel', '600'); vz.click('#pBt')
     vz.wait_for_function("!!document.querySelector('.leaflet-popup-content .ppFoto img')", timeout=20000)
-    t_img = time.time(); f1 = vz.evaluate('PLAY.t'); time.sleep(4); f2 = vz.evaluate('PLAY.t')
+    f1 = vz.evaluate('PLAY.t')
     check('Visor: la foto se ve en la ficha (una sola descarga del archivo de fotos)', vz.evaluate('_nz') == 1, vz.evaluate('_nz'))
-    check('Visor: la pausa dura 5 s desde que aparece la foto', abs(f2 - f1) < 1, (f1, f2))
-    vz.wait_for_function("PLAY.t>%d" % (f1 + 1000), timeout=6000)
-    check('Visor: después de la pausa continúa', 4.5 < time.time() - t_img < 7.5, round(time.time() - t_img, 1))
+    time.sleep(1.5)
+    check('Visor: la reproducción sigue sin esperar la foto', vz.evaluate('PLAY.t') > f1 + 1000, (f1, vz.evaluate('PLAY.t')))
     check('Sin errores de JavaScript', not errores, errores[:4])
     nav.close()
 print('\nRESULTADO:', 'TODO OK' if ok else 'HAY FALLAS'); sys.exit(0 if ok else 1)

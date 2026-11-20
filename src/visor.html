@@ -977,7 +977,7 @@ function ponerRep(T){REP.T=T;let act=0,nd=0,km=0;const uno=REP.modo==='uno';
       q.m.on('click',ev=>{L.DomEvent.stopPropagation(ev);popupDiag({...q.d,_j:x.j},ev.latlng);});nuevos.push(q);k++;}
     while(k>0&&x.diags[k-1].t>T){k--;const q=x.diags[k];if(q.m){REP.capa.removeLayer(q.m);q.m=null;}}
     x.dN=k;nd+=k;
-    if(uno&&REP.run&&nuevos.length&&$('#repDiag')&&$('#repDiag').checked){const q=nuevos[nuevos.length-1];REP.espera=Date.now()+5000;
+    if(uno&&REP.run&&nuevos.length&&$('#repDiag')&&$('#repDiag').checked){const q=nuevos[nuevos.length-1];REP.espera=Date.now()+PAUSA_REG_MS;
       if(mapa.getZoom()<19)mapa.setView([q.d.lat,q.d.lng],19,{animate:true});else mapa.panTo([q.d.lat,q.d.lng]);pausaConFoto(REP,popupDiag({...q.d,_j:x.j},[q.d.lat,q.d.lng]));}
     if(uno&&REP.run&&x.activa&&!nuevos.length&&$('#repSeg')&&$('#repSeg').checked&&Date.now()>REP.espera)seguirOperario(x.marca.getLatLng());}
   const e=$('#repReloj');if(e)e.textContent=REP.modo==='todos'&&REP.varias?hms(T):(()=>{const d=new Date(T);return [d.getHours(),d.getMinutes(),d.getSeconds()].map(v=>String(v).padStart(2,'0')).join(':');})();
@@ -1041,15 +1041,15 @@ function seguirOperario(pos){if(mapa.getZoom()<18){mapa.setView(pos,18,{animate:
 function iniciarPlay(){const tr=SEL&&SEL.track;if(!tr)return;precargarFotos(SEL);if(PLAY.t>=tr.t[tr.t.length-1])PLAY.t=tr.t[0];PLAY.on=true;$('#pBt').textContent='❚❚';
   let prev=performance.now();const paso=ahora=>{if(!PLAY.on)return;const dt=ahora-prev;prev=ahora;if(Date.now()<PLAY.espera){PLAY.raf=requestAnimationFrame(paso);return;}const t=Math.min(tr.t[tr.t.length-1],PLAY.t+dt*PLAY.vel);ponerT(t);
     if(t>=tr.t[tr.t.length-1]){pararPlay();return;}PLAY.raf=requestAnimationFrame(paso);};PLAY.raf=requestAnimationFrame(paso);}
-/* Al pasar por un diagnóstico: pausa 5 s, centra la palma y abre su ficha. */
-function mostrarDiagPlay(x){const d=x.d;PLAY.espera=Date.now()+5000;
+/* Al pasar por un registro: pausa 1 s, centra la palma y abre su ficha. */
+const PAUSA_REG_MS=1000;
+function mostrarDiagPlay(x){const d=x.d;PLAY.espera=Date.now()+PAUSA_REG_MS;
   if(mapa.getZoom()<19)mapa.setView([d.lat,d.lng],19,{animate:true});else mapa.panTo([d.lat,d.lng],{animate:true});
   const anillo=L.circleMarker([d.lat,d.lng],{renderer:rend,radius:16,color:'#ffd54f',weight:3,fill:false,interactive:false,className:'pulso-diag'}).addTo(capaSel);
-  setTimeout(()=>{try{capaSel.removeLayer(anillo);}catch(e){}},5200);
+  setTimeout(()=>{try{capaSel.removeLayer(anillo);}catch(e){}},2500);
   pausaConFoto(PLAY,popupDiag(d,[d.lat,d.lng]));}
-/* Pausa de la reproducción en un diagnóstico: espera a que la foto se vea (máx. 30 s) y luego 5 s más. */
-function pausaConFoto(st,pr){const id=(st.pausaId=(st.pausaId||0)+1);st.espera=Date.now()+30000;
-  Promise.resolve(pr).catch(()=>{}).then(()=>{if(st.pausaId===id)st.espera=Date.now()+5000;});}
+/* Pausa de la reproducción en un registro: 1 s (la ficha y la foto siguen cargando sin detener la reproducción). */
+function pausaConFoto(st,pr){st.pausaId=(st.pausaId||0)+1;st.espera=Date.now()+PAUSA_REG_MS;Promise.resolve(pr).catch(()=>{});}
 /* Tiempo efectivo de la jornada (labor en lotes, sin paradas). */
 function efecJ(j,sq){const m=j.tiempos&&j.tiempos.min_efectivo_labor!=null?Number(j.tiempos.min_efectivo_labor):(sq||[]).filter(x=>x.tipo==='lote').reduce((a,x)=>a+(Number(x.min_efectivo)||0),0);return m?minHM(m):'—';}
 function pararPlay(){PLAY.on=false;cancelAnimationFrame(PLAY.raf);const b=$('#pBt');if(b)b.textContent='▶';}

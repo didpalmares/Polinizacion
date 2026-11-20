@@ -2859,12 +2859,12 @@ function pintarPlay(){
   if($('#plSeguir').checked&&PLAY.run&&!mapa.getBounds().pad(-.2).contains([lat,lng]))mapa.panTo([lat,lng],{animate:true});
   if(nuevo&&PLAY.run&&$('#plDiagAuto').checked)mostrarDiagPlay(nuevo,true);
 }
-/* Al pasar por un registro en la reproducción: pausa 5 s, centra la palma, la resalta y muestra la ficha del registro. */
+/* Al pasar por un registro en la reproducción: pausa 1 s, centra la palma, la resalta y muestra la ficha del registro. */
 async function mostrarDiagPlay(x,auto){
-  const r=x.r;if(!r)return;if(auto)PLAY.espera=Date.now()+5000;
+  const r=x.r;if(!r)return;if(auto)PLAY.espera=Date.now()+1000;
   if(mapa.getZoom()<19)mapa.setView([r.lat,r.lng],19,{animate:true});else mapa.panTo([r.lat,r.lng],{animate:true});
   if(PLAY.capa){const an=L.circleMarker([r.lat,r.lng],{radius:16,color:'#ffd54f',weight:3,fill:false,interactive:false,className:'pulso-diag'}).addTo(PLAY.capa);
-    setTimeout(()=>{try{PLAY.capa&&PLAY.capa.removeLayer(an);}catch(e){}},5200);x.m.bringToFront();}
+    setTimeout(()=>{try{PLAY.capa&&PLAY.capa.removeLayer(an);}catch(e){}},2500);x.m.bringToFront();}
   const e=estadoDe(r.estado)||{n:r.estado||''};const sint=(r.sintomas||[]).join(' / ');
   const c=$('#plCard');c.dataset.id=r.id;
   c.innerHTML=`<img class="foto" alt="" hidden><div class="txt"><b class="et">${esc(etiquetaReg(r))}</b>

@@ -1048,7 +1048,7 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
   <div class="tit">POLINIZACIÓN<small>REGISTRO DE POLINIZACIÓN GEORREFERENCIADO</small></div>
   <div class="carga"><i></i></div>
   <div id="splashMsg">Iniciando…</div>
-  <div id="splashVer">VERSIÓN 20261119:1454</div>
+  <div id="splashVer">VERSIÓN 20261119:2016</div>
 </div>
 
 <div id="login" hidden>
@@ -1063,7 +1063,7 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
     <p class="tenue" id="lgMsg"></p>
   </form>
   <p id="lgRed"></p>
-  <div id="lgVer2">VERSIÓN 20261119:1454</div>
+  <div id="lgVer2">VERSIÓN 20261119:2016</div>
   <button type="button" class="btn" id="lgAct" style="margin-top:4px;font-size:13px;padding:7px 12px">⟳ BUSCAR ACTUALIZACIÓN</button>
   <button type="button" class="btn" id="lgInstalar" hidden>📲 INSTALAR EN ESTE CELULAR</button>
 </div>
@@ -1195,7 +1195,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
    Registro de polinización georreferenciado sin conexión, con jornadas,
    registro del recorrido y sincronización con GitHub.
    ===================================================================== */
-const VERSION='20261119:1454';
+const VERSION='20261119:2016';
 /* Ejecutándose dentro de la APK de Android (Capacitor) o en el navegador. */
 const NATIVO=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
 /* APK sin puente nativo (copia guardada antigua): con internet se recarga una vez para recibirlo. */
@@ -3630,12 +3630,12 @@ function pintarPlay(){
   if($('#plSeguir').checked&&PLAY.run&&!mapa.getBounds().pad(-.2).contains([lat,lng]))mapa.panTo([lat,lng],{animate:true});
   if(nuevo&&PLAY.run&&$('#plDiagAuto').checked)mostrarDiagPlay(nuevo,true);
 }
-/* Al pasar por un registro en la reproducción: pausa 5 s, centra la palma, la resalta y muestra la ficha del registro. */
+/* Al pasar por un registro en la reproducción: pausa 1 s, centra la palma, la resalta y muestra la ficha del registro. */
 async function mostrarDiagPlay(x,auto){
-  const r=x.r;if(!r)return;if(auto)PLAY.espera=Date.now()+5000;
+  const r=x.r;if(!r)return;if(auto)PLAY.espera=Date.now()+1000;
   if(mapa.getZoom()<19)mapa.setView([r.lat,r.lng],19,{animate:true});else mapa.panTo([r.lat,r.lng],{animate:true});
   if(PLAY.capa){const an=L.circleMarker([r.lat,r.lng],{radius:16,color:'#ffd54f',weight:3,fill:false,interactive:false,className:'pulso-diag'}).addTo(PLAY.capa);
-    setTimeout(()=>{try{PLAY.capa&&PLAY.capa.removeLayer(an);}catch(e){}},5200);x.m.bringToFront();}
+    setTimeout(()=>{try{PLAY.capa&&PLAY.capa.removeLayer(an);}catch(e){}},2500);x.m.bringToFront();}
   const e=estadoDe(r.estado)||{n:r.estado||''};const sint=(r.sintomas||[]).join(' / ');
   const c=$('#plCard');c.dataset.id=r.id;
   c.innerHTML=`<img class="foto" alt="" hidden><div class="txt"><b class="et">${esc(etiquetaReg(r))}</b>

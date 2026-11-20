@@ -57,8 +57,10 @@ with sync_playwright() as p:
     # Pausa en diagnóstico (uno a uno)
     pg.evaluate("pausarRep();REP.i=0;prepararRep();REP.vel=3600;document.querySelector('#repDiag').checked=true;iniciarRep()")
     pg.wait_for_function("!!document.querySelector('.leaflet-popup-content')", timeout=15000)
-    t1 = pg.evaluate("REP.T"); time.sleep(1.2); t2 = pg.evaluate("REP.T")
-    check('Uno a uno: muestra el diagnóstico y pausa', abs(t2 - t1) < 1 and '2A + 1P' in pg.evaluate("document.querySelector('.leaflet-popup-content').innerText"))
+    t1 = pg.evaluate("REP.T"); time.sleep(.5); t2 = pg.evaluate("REP.T")
+    check('Uno a uno: muestra el registro y pausa', abs(t2 - t1) < 1 and '2A + 1P' in pg.evaluate("document.querySelector('.leaflet-popup-content').innerText"))
+    time.sleep(1.3); t3 = pg.evaluate("REP.T")
+    check('La pausa en el registro dura solo 1 s y sigue', t3 > t2, (t2, t3))
     # Cerrar
     pg.click('#repX'); time.sleep(.5)
     c = pg.evaluate("({vis:!document.querySelector('#rep').hidden,rec:mapa.hasLayer(capaRec),diag:mapa.hasLayer(capaDiag),on:REP.on})")
