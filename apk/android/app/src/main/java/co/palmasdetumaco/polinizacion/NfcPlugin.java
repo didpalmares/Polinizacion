@@ -1,7 +1,12 @@
 package co.palmasdetumaco.polinizacion;
 
 import android.app.Activity;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.Handler;
+import android.os.Looper;
 import android.net.Uri;
 import android.nfc.NdefMessage;
 import android.nfc.NdefRecord;
@@ -41,9 +46,78 @@ public class NfcPlugin extends Plugin implements NfcAdapter.ReaderCallback {
     private volatile PluginCall grabarCall = null;
     private volatile String grabarTexto = null;
 
+    /* ---- Vigilancia del lector (validado en campo: en algunos celulares, p. ej. Ulefone Armor X16 con Android 16, el modo lector
+     * deja de entregar tarjetas tras 1 o 2 horas sin avisar; apagar y encender la pantalla lo revivía). Se rearma el lector:
+     * cada 45 s cuando no se ha leído nada en los últimos 10 s, al encender o desbloquear la pantalla, al volver la app al frente
+     * y cuando el NFC del sistema se vuelve a encender. Una tarjeta que quedó apoyada no se cuenta otra vez tras el rearme. */
+    private static final long VIGIA_MS = 45000L, REPOSO_MS = 10000L, ECO_REARME_MS = 2500L;
+    private final Handler h = new Handler(Looper.getMainLooper());
+    private volatile boolean enFrente = false;
+    private volatile long tUltTag = 0L, tRearme = 0L;
+    private volatile String ultId = "";
+    private volatile int lecturas = 0, rearmes = 0, ecos = 0;
+    private volatile String motivoRearme = "";
+    private BroadcastReceiver receptor;
+    private final Runnable vigia = new Runnable() {
+        @Override public void run() {
+            if (activo && enFrente && grabarCall == null && System.currentTimeMillis() - tUltTag > REPOSO_MS) rearmar("periodico");
+            h.removeCallbacks(this);
+            if (activo && enFrente) h.postDelayed(this, VIGIA_MS);
+        }
+    };
+
+    private void vigilar() { h.removeCallbacks(vigia); if (activo && enFrente) h.postDelayed(vigia, VIGIA_MS); }
+
+    /** Apaga y enciende el modo lector de inmediato (sin pausa: no se pierde una tarjeta que se acerque en ese momento). */
+    private void rearmar(String motivo) {
+        final Activity act = getActivity();
+        final NfcAdapter a = adaptador();
+        if (act == null || a == null || !activo || !enFrente) return;
+        final NfcPlugin yo = this;
+        act.runOnUiThread(() -> {
+            try { a.disableReaderMode(act); } catch (Exception ignored) { }
+            try {
+                Bundle extras = new Bundle();
+                extras.putInt(NfcAdapter.EXTRA_READER_PRESENCE_CHECK_DELAY, 250);
+                a.enableReaderMode(act, yo, BANDERAS, extras);
+                tRearme = System.currentTimeMillis(); rearmes++; motivoRearme = motivo;
+            } catch (Exception ignored) { }
+        });
+    }
+
+    private void escucharSistema() {
+        if (receptor != null) return;
+        receptor = new BroadcastReceiver() {
+            @Override public void onReceive(Context c, Intent i) {
+                String ac = i.getAction();
+                if (NfcAdapter.ACTION_ADAPTER_STATE_CHANGED.equals(ac)) {
+                    if (i.getIntExtra(NfcAdapter.EXTRA_ADAPTER_STATE, 0) == NfcAdapter.STATE_ON) h.postDelayed(() -> rearmar("nfc_encendido"), 600);
+                } else if (Intent.ACTION_SCREEN_ON.equals(ac)) h.postDelayed(() -> rearmar("pantalla_encendida"), 700);
+                else if (Intent.ACTION_USER_PRESENT.equals(ac)) h.postDelayed(() -> rearmar("desbloqueo"), 500);
+            }
+        };
+        IntentFilter f = new IntentFilter();
+        f.addAction(NfcAdapter.ACTION_ADAPTER_STATE_CHANGED);
+        f.addAction(Intent.ACTION_SCREEN_ON);
+        f.addAction(Intent.ACTION_USER_PRESENT);
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= 33) getContext().registerReceiver(receptor, f, Context.RECEIVER_EXPORTED);
+            else getContext().registerReceiver(receptor, f);
+        } catch (Exception ignored) { receptor = null; }
+    }
+
     @Override
     public void load() {
+        enFrente = true;
+        escucharSistema();
         try { procesarIntento(getActivity().getIntent()); } catch (Exception ignored) { }
+    }
+
+    @Override
+    protected void handleOnDestroy() {
+        h.removeCallbacksAndMessages(null);
+        if (receptor != null) { try { getContext().unregisterReceiver(receptor); } catch (Exception ignored) { } receptor = null; }
+        super.handleOnDestroy();
     }
 
     /** La app se abrió (o volvió al frente) porque se acercó una tarjeta con la app cerrada o en segundo plano. */
@@ -73,6 +147,13 @@ public class NfcPlugin extends Plugin implements NfcAdapter.ReaderCallback {
         r.put("disponible", a != null);
         r.put("habilitado", a != null && a.isEnabled());
         r.put("activo", activo);
+        r.put("lecturas", lecturas);
+        r.put("rearmes", rearmes);
+        r.put("ecos", ecos);
+        r.put("motivoRearme", motivoRearme);
+        r.put("ultimaLectura", tUltTag);
+        r.put("ultimoRearme", tRearme);
+        r.put("enFrente", enFrente);
         return r;
     }
 
@@ -84,6 +165,7 @@ public class NfcPlugin extends Plugin implements NfcAdapter.ReaderCallback {
         if (adaptador() == null) { call.reject("Este celular no tiene NFC."); return; }
         activo = true;
         encender();
+        vigilar();
         call.resolve(estadoObj());
     }
 
@@ -97,6 +179,8 @@ public class NfcPlugin extends Plugin implements NfcAdapter.ReaderCallback {
         final Activity act = getActivity();
         if (act != null) act.getWindow().getDecorView().postDelayed(this::encender, 250);
         else encender();
+        tRearme = System.currentTimeMillis(); rearmes++; motivoRearme = call.getString("motivo", "app");
+        vigilar();
         call.resolve(estadoObj());
     }
 
@@ -154,6 +238,7 @@ public class NfcPlugin extends Plugin implements NfcAdapter.ReaderCallback {
     @PluginMethod
     public void detener(PluginCall call) {
         activo = false;
+        h.removeCallbacks(vigia);
         apagar();
         call.resolve(estadoObj());
     }
@@ -201,11 +286,18 @@ public class NfcPlugin extends Plugin implements NfcAdapter.ReaderCallback {
     @Override
     protected void handleOnResume() {
         super.handleOnResume();
-        if (activo) encender();
+        enFrente = true;
+        if (activo) {
+            encender();
+            h.postDelayed(() -> rearmar("reanudar"), 700); // con la pantalla de bloqueo encima, el primer encendido puede no quedar activo
+            vigilar();
+        }
     }
 
     @Override
     protected void handleOnPause() {
+        enFrente = false;
+        h.removeCallbacks(vigia);
         if (activo) apagar();
         super.handleOnPause();
     }
@@ -219,6 +311,13 @@ public class NfcPlugin extends Plugin implements NfcAdapter.ReaderCallback {
     private void entregar(Tag tag, boolean retener) {
         if (grabarCall != null && !retener) { escribir(tag); return; } // modo grabar: esta tarjeta se graba, no se registra
         final String id = hex(tag.getId());
+        final long ahora = System.currentTimeMillis();
+        // Eco del rearme: la misma tarjeta de la última lectura, detectada justo después de rearmar el lector, es una tarjeta que
+        // quedó apoyada cerca del celular (no un toque nuevo): no se cuenta.
+        if (!retener && !id.isEmpty() && id.equals(ultId) && ahora - tRearme < ECO_REARME_MS && tRearme > tUltTag) {
+            ecos++; tUltTag = ahora; return;
+        }
+        tUltTag = ahora; ultId = id; lecturas++;
         String texto = "";
         String motivo = "";
         Ndef ndef = Ndef.get(tag);

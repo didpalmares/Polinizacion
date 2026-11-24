@@ -2558,7 +2558,7 @@ function nfcNativoDisponible(){try{return !!(NATIVO&&window.Capacitor&&typeof Ca
 /* «A», «a», «pol:A», «POL://B» → código; null si la tarjeta no es de polinización. */
 function codigoNfc(t){const m=String(t??'').trim().toUpperCase().match(/^(?:POL:(?:\/\/)?)?\s*([APBRV])\s*$/);return m?m[1]:null;}
 /* Lectura de una tarjeta (la llaman el plugin nativo y Web NFC). Devuelve 'ok', 'repetida' o 'desconocida'. */
-function nfcLeido(ev){ev=ev||{};if(NFC.verificar&&typeof NFC.verificar==='function'){const f=NFC.verificar;NFC.verificar=null;f(ev);return 'verificada';}NFC.ultLect=Date.now();const ahora=Date.now(),texto=String(ev.texto??''),clave=ev.id?'id:'+ev.id:'tx:'+texto;
+function nfcLeido(ev){ev=ev||{};if(ev.t!=null)NFC.recibidas=(NFC.recibidas||0)+1;if(NFC.verificar&&typeof NFC.verificar==='function'){const f=NFC.verificar;NFC.verificar=null;f(ev);return 'verificada';}NFC.ultLect=Date.now();const ahora=Date.now(),texto=String(ev.texto??''),clave=ev.id?'id:'+ev.id:'tx:'+texto;
   const st=statsNfc();st.lecturas++;
   const u=NFC.ult;
   if(u&&u.clave===clave&&!u.retirada&&ahora-u.t<NFC_REPOSO){st.repetidas++;return 'repetida';} // rebote de la misma pasada
@@ -2656,12 +2656,33 @@ async function tocarNfc(){if(NFC.estado==='apagado'&&NFC.modo==='nativo'){try{aw
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&NFC.modo==='nativo')asegurarNfc('volver');});
 /* Mantiene el lector NFC activo durante la jornada: al iniciarla, al volver a la app, al cerrar los avisos de transitabilidad
    y cada 20 s se revisa; si Android lo dejó inactivo (permisos, ajustes, diálogos) se reinicia. */
+/* Vigilancia del lector (validado en campo: Ulefone Armor X16 / Android 16 dejaba de entregar tarjetas tras 1-2 h aunque el
+   sistema lo reportaba «activo»). Cada 20 s:
+   · APK 1.0.10 o superior: el lector se rearma solo (cada 45 s en reposo, al encender o desbloquear la pantalla). La app compara
+     las lecturas del lector con las que recibió: si el lector leyó y la app no se enteró, vuelve a conectar la escucha.
+   · APK anterior: la app rearma el lector si lleva 60 s sin lecturas.
+   Cada acción queda anotada en la jornada (nfc.eventos) para validar en campo. */
+const NFC_VIGIA={base:null,sospecha:0};
+function eventoNfc(tipo,extra){const st=statsNfc();if(!st)return;const ev=st.eventos||(st.eventos=[]);ev.push({t:new Date(ahoraReal()).toISOString(),tipo,...(extra||{})});if(ev.length>150)ev.splice(0,ev.length-150);}
+async function reconectarEscuchaNfc(){const N=NAT_N();
+  for(const l of NFC.lis||[]){try{await l.remove();}catch(_){}}
+  NFC.lis=[await N.addListener('tarjeta',nfcLeido),await N.addListener('retirada',nfcRetirada)];}
 async function asegurarNfc(motivo){
   if(NFC.modo!=='nativo'){if(NFC.estado!=='listo')await iniciarNfc(false);return;}
   try{const N=NAT_N();const e=await N.estado();
     if(!e.disponible){NFC.estado='no';}else if(!e.habilitado){NFC.estado='apagado';}
-    else if(motivo!=='revisar'||!e.activo){NFC.ultReinicio=Date.now();try{await N.reiniciar();}catch(_){await N.iniciar();}NFC.estado='listo';}
-    else NFC.estado='listo';
+    else if(motivo!=='revisar'||!e.activo){NFC.ultReinicio=Date.now();try{await N.reiniciar({motivo});}catch(_){await N.iniciar();}NFC.estado='listo';if(S.jornada&&motivo!=='jornada')eventoNfc('rearme_app',{motivo});}
+    else{NFC.estado='listo';
+      if(typeof e.lecturas==='number'){   // APK con vigilancia nativa
+        if(NFC_VIGIA.base==null||e.lecturas-NFC_VIGIA.base<(NFC.recibidas||0))NFC_VIGIA.base=e.lecturas-(NFC.recibidas||0);
+        const perdidas=e.lecturas-NFC_VIGIA.base-(NFC.recibidas||0);
+        if(perdidas>0&&Date.now()-(e.ultimaLectura||0)>3000){NFC_VIGIA.sospecha++;
+          if(NFC_VIGIA.sospecha>=2){await reconectarEscuchaNfc();NFC_VIGIA.base=e.lecturas-(NFC.recibidas||0);NFC_VIGIA.sospecha=0;eventoNfc('escucha_reconectada',{perdidas});}}
+        else NFC_VIGIA.sospecha=0;
+        const st=statsNfc();if(st){st.rearmes_lector=e.rearmes;st.ecos_ignorados=e.ecos;}
+      }else if(S.jornada&&Date.now()-(NFC.ultLect||0)>60000&&Date.now()-(NFC.ultReinicio||0)>60000){  // APK 1.0.9 o anterior
+        NFC.ultReinicio=Date.now();try{await N.reiniciar({motivo:'reposo'});}catch(_){}eventoNfc('rearme_reposo');}
+    }
   }catch(e){NFC.estado='error';}
   pintarNfc();}
 setInterval(()=>{if(S.jornada&&document.visibilityState==='visible')asegurarNfc('revisar');},20000);
