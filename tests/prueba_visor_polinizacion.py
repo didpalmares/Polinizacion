@@ -216,6 +216,24 @@ with sync_playwright() as p:
     with vz.expect_download() as d: vz.evaluate(r"XLSX_MODO=true;try{descargar('prueba.csv','\ufeffcol;texto;n\r\n001;\"a;b\";2,5\r\n','text/csv;charset=utf-8')}finally{XLSX_MODO=false}")
     nom, ws, tabs_xl = leer_xlsx(d.value)
     check('CSV armado a mano (auditoría) también sale en Excel', nom == 'prueba.xlsx' and [c.value for c in ws[2]] == ['001', 'a;b', 2.5], [c.value for c in ws[2]])
+    # Acumulado por línea de cada lote (como en el celular): detalle de la jornada y pestaña Lotes
+    vz.evaluate("JOR.find(j=>j.id==='J2').header.acumulado_lineas=[{lote:'IT05',linea:'1',visitadas:12}];abrirDetalle(JOR.find(j=>j.id==='J2'))"); time.sleep(.4)
+    lj = vz.evaluate("[...document.querySelectorAll('#tLinJ tbody tr')].map(t=>[...t.cells].map(c=>c.innerText.trim()))")
+    tot_j = vz.evaluate("(()=>{const d=JOR.find(j=>j.id==='J2').diags.map(polN);return {a:d.reduce((s,x)=>s+(x.a|0),0),p:d.reduce((s,x)=>s+(x.p|0),0),n:d.length};})()")
+    check('Detalle de la jornada: tabla por línea con total por lote', any(r[0].startswith('Total lote IT05') for r in lj) and 'ACUMULADO POR LÍNEA' in vz.inner_text('#detalle').upper(), lj)
+    fila = [r for r in lj if r[0] == 'IT05' and r[1] == '1']
+    check('Detalle: línea IT05-1 con visitadas del celular (12)', bool(fila) and fila[0][-1] == '12', fila)
+    filas_tot = [r for r in lj if r[0].startswith('TOTAL') or r[0].startswith('Total lote')]
+    suma_a = sum(int(r[2]) for r in lj if not r[0].startswith('T')); suma_p = sum(int(r[3]) for r in lj if not r[0].startswith('T'))
+    check('Detalle: A y P de las líneas suman lo de la jornada', (suma_a, suma_p) == (tot_j['a'], tot_j['p']), (suma_a, suma_p, tot_j))
+    with vz.expect_download() as d: vz.eval_on_selector('#xLinJXl', 'b=>b.click()')
+    check('Detalle: descarga Excel de líneas', d.value.suggested_filename == 'lineas_J2.xlsx', d.value.suggested_filename)
+    vz.evaluate("cerrarDetalle();TAB='lotes';pintarPanel()"); time.sleep(.4)
+    ll = vz.evaluate("[...document.querySelectorAll('#tLin tbody tr')].map(t=>[...t.cells].map(c=>c.innerText.trim()))")
+    check('Pestaña Lotes: acumulado por línea de todas las jornadas con TOTAL', len(ll) > 2 and ll[-1][0] == 'TOTAL' and vz.is_visible('#xLin') and vz.is_visible('#xLinXl'), ll[-1] if ll else ll)
+    tot_all = vz.evaluate("DIAGF.map(polN).reduce((s,x)=>s+(x.a|0),0)")
+    check('Pestaña Lotes: total A = suma de los registros filtrados', ll and int(ll[-1][1]) == tot_all, (ll[-1] if ll else None, tot_all))
+    vz.evaluate("TAB='resumen';pintarPanel()")
     # Calidad y auditoría con el registro de polinización
     vz.click('[data-gt=calidad]'); time.sleep(.4); T = vz.inner_text('#gerPanel')
     check('Calidad: registros (sin «Sin foto» ni diagnósticos)', 'Registros de polinización' in T and 'Sin foto' not in T and 'iagnóstico' not in T, re.sub(r'\s+', ' ', T)[:200])
