@@ -867,6 +867,11 @@ function tablaLineas(filas,id){
   return `<div style="overflow-x:auto"><table class="t" id="${id}"><thead><tr><th>Lote</th><th>Línea</th>${C.map(c=>`<th class="n" title="${esc(etqCod(c))}">${c}</th>`).join('')}<th class="n">Palmas reg.</th><th class="n">Visitadas</th></tr></thead><tbody>${h}</tbody></table></div>`;
 }
 function csvLineas(nombre,filas){csv(nombre,['lote','linea','A','P','B','R','V','palmas_registradas','palmas_visitadas'],filas.map(x=>({...x,palmas_registradas:x.palmas,palmas_visitadas:x.visitadas??''})));}
+/* Tramos de marcación de la jornada (método «marcación»): lote, inicio, fin, duración y cómo se inició / finalizó. */
+const MARC_POR={entrada:'Al entrar al lote',boton:'Botón',voz:'Voz',salida_lote:'Salió del lote',cambio_lote:'Cambió de lote',fin_jornada:'Fin de jornada'};
+function bloqueMarcacion(j){const m=((j.header||{}).marcacion)||[];if(!m.length)return '';
+  return `<h3 style="margin-top:6px">Marcación por lote</h3><div style="overflow-x:auto"><table class="t" id="tMarc"><thead><tr><th>Lote</th><th>Inicio</th><th>Fin</th><th class="n">Min</th><th>Inició</th><th>Finalizó</th></tr></thead><tbody>${
+    m.map(x=>`<tr><td><b>${esc(x.lote)}</b></td><td>${esc(hhmm(x.inicio))}</td><td>${x.fin?esc(hhmm(x.fin)):'—'}</td><td class="n">${x.min==null?'—':num(x.min)}</td><td>${esc(MARC_POR[x.inicio_por]||x.inicio_por||'')}</td><td>${esc(MARC_POR[x.fin_por]||x.fin_por||'')}</td></tr>`).join('')}</tbody></table></div>`;}
 function abrirDetalle(j){
   if(REP.on)detenerRep();
   SEL=j;pararPlay();capaSel.clearLayers();
@@ -890,9 +895,10 @@ function abrirDetalle(j){
       <div><b>Vel. caminata:</b> ${j.vel==null?'—':num(j.vel,1)+' km/h'}</div>${j.tiempos?`<div><b>Labor:</b> ${esc(j.tiempos.hora_inicio_labor||'—')} – ${esc(j.tiempos.hora_fin_labor||'—')}</div>
       <div><b>Despl. inicial:</b> ${minHM(j.tiempos.min_desplazamiento_inicial)}</div><div><b>Despl. entre lotes:</b> ${minHM(j.tiempos.min_desplazamiento_entre_lotes)}</div>
       <div><b>Despl. final:</b> ${minHM(j.tiempos.min_desplazamiento_final)}</div><div><b>Efectivo en lotes:</b> ${minHM(j.tiempos.min_efectivo_labor)}</div>`:''}
-      <div><b>Método:</b> ${j.metodo==='calle_entre_lineas'?'Por calle':'Buffer'}</div><div>${j.comp?`<b>Buffer ${esc(j.comp.buffer_m)} m:</b> ${num(j.comp.palmas_visitadas)} palmas`:''}</div></div>
+      <div><b>Método:</b> ${j.metodo==='calle_entre_lineas'?'Por calle':j.metodo==='marcacion'?'Marcación ('+num(Number((j.header||{}).buffer_m)||3.2,1)+' m)':'Buffer'}</div><div>${j.comp?`<b>Buffer ${esc(j.comp.buffer_m)} m:</b> ${num(j.comp.palmas_visitadas)} palmas`:''}</div></div>
     ${bloqueCortes(j)}
     ${bloqueTransito(j)}
+    ${bloqueMarcacion(j)}
     <h3 style="margin-top:6px">Acumulado por línea de cada lote</h3>${tablaLineas(acumLineas(j.diags,[j]),'tLinJ')}
     <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap"><button class="btn mini" id="xLinJ">⬇ CSV líneas</button></div>
     ${conT?`<div class="play"><div class="play-res"><span>Inicio <b>${esc(j.hora_inicio||hhmm(j.inicio))}</b></span><span>Fin <b>${esc(j.hora_fin||hhmm(j.fin))}</b></span><span>Ha <b>${num(j.ha,2)}</b></span><span>T. efectivo <b>${efecJ(j,sq)}</b></span></div>
