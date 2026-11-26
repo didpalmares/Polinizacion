@@ -1047,7 +1047,7 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
   <div class="tit">POLINIZACIÓN<small>REGISTRO DE POLINIZACIÓN GEORREFERENCIADO</small></div>
   <div class="carga"><i></i></div>
   <div id="splashMsg">Iniciando…</div>
-  <div id="splashVer">VERSIÓN 20261124:1415</div>
+  <div id="splashVer">VERSIÓN 20261126:1350</div>
 </div>
 
 <div id="login" hidden>
@@ -1062,7 +1062,7 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
     <p class="tenue" id="lgMsg"></p>
   </form>
   <p id="lgRed"></p>
-  <div id="lgVer2">VERSIÓN 20261124:1415</div>
+  <div id="lgVer2">VERSIÓN 20261126:1350</div>
   <button type="button" class="btn" id="lgAct" style="margin-top:4px;font-size:13px;padding:7px 12px">⟳ BUSCAR ACTUALIZACIÓN</button>
   <button type="button" class="btn" id="lgInstalar" hidden>📲 INSTALAR EN ESTE CELULAR</button>
 </div>
@@ -1194,7 +1194,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
    Registro de polinización georreferenciado sin conexión, con jornadas,
    registro del recorrido y sincronización con GitHub.
    ===================================================================== */
-const VERSION='20261124:1415';
+const VERSION='20261126:1350';
 /* Ejecutándose dentro de la APK de Android (Capacitor) o en el navegador. */
 const NATIVO=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
 /* APK sin puente nativo (copia guardada antigua): con internet se recarga una vez para recibirlo. */
@@ -2184,42 +2184,77 @@ function tablaAcumuladoLineas(filas){
   return `<div style="overflow-x:auto"><table class="res" id="tabAcum"><thead><tr><th>Lote</th><th>Línea</th>${C.map(c=>`<th title="${esc(nombreCod(c))}">${c}</th>`).join('')}<th>Palmas reg.</th><th>Visitadas</th></tr></thead><tbody>${h}</tbody></table></div>
     <p class="tenue">${C.map(c=>`<b>${c}</b> ${esc(nombreCod(c))}`).join(' · ')}.</p>`;
 }
-async function finalizarJornada(){
+/* Finalizar la jornada SIEMPRE: cada paso tiene tiempo límite y su propio manejo de errores (si el registro nativo del recorrido,
+   la lectura del recorrido o el cálculo de palmas visitadas se demora o falla, la jornada igual se cierra y se guarda; el paso que
+   falló queda anotado en la jornada, «errores_cierre»). Mientras calcula, muestra el avance (en celulares lentos puede tardar). */
+const FIN={activo:false,escala:1};
+/* Confirmación dentro de la app (no usa el diálogo nativo confirm(), que en algunos celulares con la app fijada y a pantalla completa
+   se cierra solo y responde «no»: la jornada no se finalizaba). */
+function confirmarApp(titulo,html,si,no){return new Promise(res=>{let listo=false;const fin=v=>{if(listo)return;listo=true;res(v);};
+  abrirHoja(titulo,`${html}<div style="display:grid;gap:10px;margin-top:14px"><button type="button" class="btn peligro ancho grande" id="cfSi">${esc(si||'Aceptar')}</button><button type="button" class="btn ancho" id="cfNo">${esc(no||'Cancelar')}</button></div>`,{alCerrar:()=>fin(false)});
+  $('#cfSi').onclick=()=>{fin(true);};$('#cfNo').onclick=()=>{cerrarHoja();};});}
+function conLimite(pr,ms,nombre){let t;return Promise.race([Promise.resolve(pr).finally(()=>clearTimeout(t)),new Promise((_,rej)=>{t=setTimeout(()=>rej(new Error('tiempo agotado ('+Math.round(ms/1000)+' s) en '+nombre)),ms);})]);}
+async function finalizarJornada(op){op=op&&typeof op==='object'&&!op.type?op:{};
   const j=S.jornada;if(!j)return;
-  const c=censoTotal();
-  if(!confirm(`¿Finalizar la jornada?\n\nCensadas: ${c.hec} de ${c.tot} palmas.\nSe detendrá el registro del recorrido.`))return;
-  await cerrarRecorrido(j);
-  j.fin=new Date().toISOString();j.fin_real=new Date(ahoraReal()).toISOString();j.hora_fin=estadoHora();j.estado='finalizada';j.sync='pendiente';j.cierre={modo:'boton',usuario:SES?SES.u:'',fecha:j.fin};
-  const regs=S.registros.filter(r=>r.jornada_id===j.id);const pts=await puntosTrack(j.id);
-  const E=await calcularVisita(pts,j.densidad,j.buffer,j.metodoVisita||'buffer',true,true,j.seleccion,j.bufferTerraza,regs);const par=detectarParadas(pts,j.paradaRadio,j.paradaMin,regs);
-  j.paradas=par;j.resumen_paradas=resumenParadas(par,j);j.visita=paradasEnLotes(resumenVisita(E,regs,true),par);
-  j.secuencias=secuenciasDe(pts,{inicio:Date.parse(j.inicio),fin:Date.parse(j.fin),paradas:par,regs,densidad:j.densidad,visitas:E.conf});
-  j.tiempos=tiemposJornada(j.secuencias,j);
-  if(E.metodo==='calle'){const Eb=await calcularVisita(pts,j.densidad,j.buffer,'buffer',false,true,j.seleccion);const rb=resumenVisita(Eb,regs);
-    j.visita.comparativo_buffer={buffer_m:Eb.buffer,palmas_visitadas:rb.palmas_visitadas,ha_recorridas:rb.ha_recorridas,por_lote:rb.por_lote.map(x=>({lote:x.lote,palmas_visitadas:x.palmas_visitadas,ha:x.ha}))};}
-  j.acumulado_lineas=acumuladoLineas(regs,j.visita);
-  await dbPut('jornadas',j);
-  S.jornada=null;S.cfg.jornadaActiva=null;await guardarCfg();VIS=null;
-  S.palmas=null;S.hechos.clear();indexar();dibujarPalmas();capaTrack.clearLayers();TRACK.linea=null;TRACK.pts=[];PAR.lista=[];capaParadas.clearLayers();
-  if(VOZ.activa)alternarVoz();pantallaEncendida(false);gpsFondo(false);actualizarJornadaUI();dibujarLotes();
-  {const fin=msjFin();hablar(fin,true);}avisoJornada(false);
-  const res=j.visita;
+  if(FIN.activo){toast('La jornada se está finalizando. Espere un momento…',3000);return;}
+  let c={tot:0,hec:0};try{c=censoTotal();}catch(e){}
+  if(!op.sinConfirmar&&!await confirmarApp('¿Finalizar la jornada?',`<p>Censadas <b>${num(c.hec)}</b> de <b>${num(c.tot)}</b> palmas seleccionadas.</p><p class="tenue">Se detendrá el registro del recorrido.</p>`,'SÍ, FINALIZAR','Seguir trabajando'))return;
+  FIN.activo=true;const errs=[];const t0=Date.now();if(op.fuente)j.cierre_fuente=op.fuente;
+  const paso=async(nombre,fn,ms)=>{try{return await conLimite(fn(),ms*(FIN.escala||1),nombre);}catch(e){errs.push({paso:nombre,error:String(e&&e.message||e).slice(0,200)});console.warn('finalizar',nombre,e);return undefined;}};
+  const pasoSinc=(nombre,fn,def)=>{try{return fn();}catch(e){errs.push({paso:nombre,error:String(e&&e.message||e).slice(0,200)});console.warn('finalizar',nombre,e);return def;}};
+  abrirHoja('Finalizando jornada…',`<div style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:18px 6px;text-align:center">
+    <div class="giro" style="width:42px;height:42px;border:4px solid rgba(255,255,255,.18);border-top-color:#22d39a;border-radius:50%;animation:girar 1s linear infinite"></div>
+    <b id="finPaso">Cerrando el registro del recorrido…</b><span class="tenue" style="font-size:13px">No cierre la app. Con jornadas largas puede tardar hasta un minuto.</span></div>
+    <style>@keyframes girar{to{transform:rotate(360deg)}}</style>`);
+  const avance=async t=>{const e=$('#finPaso');if(e)e.textContent=t;await esperar(40);};
+  let regs=[],par=[],res=null;
+  try{
+    await avance('Cerrando el registro del recorrido…');
+    await paso('cerrar_recorrido',()=>cerrarRecorrido(j),25000);
+    j.fin=new Date().toISOString();j.fin_real=new Date(ahoraReal()).toISOString();j.hora_fin=pasoSinc('hora',()=>estadoHora(),null);j.estado='finalizada';j.sync='pendiente';j.cierre={modo:op.fuente||'boton',usuario:SES?SES.u:'',fecha:j.fin};
+    regs=S.registros.filter(r=>r.jornada_id===j.id);
+    await dbPut('jornadas',j);   // lo esencial queda guardado ya: la jornada está finalizada aunque falle un cálculo
+    await avance('Leyendo el recorrido…');
+    const pts=(await paso('leer_recorrido',()=>puntosTrack(j.id),25000))||[];
+    await avance(`Calculando palmas visitadas (${num(pts.length)} puntos)…`);
+    const E=await paso('palmas_visitadas',()=>calcularVisita(pts,j.densidad,j.buffer,j.metodoVisita||'buffer',true,true,j.seleccion,j.bufferTerraza,regs),120000);
+    await avance('Calculando paradas y tiempos…');
+    par=pasoSinc('paradas',()=>detectarParadas(pts,j.paradaRadio,j.paradaMin,regs),[])||[];
+    j.paradas=par;j.resumen_paradas=pasoSinc('resumen_paradas',()=>resumenParadas(par,j),null);
+    j.visita=E?pasoSinc('resumen_visita',()=>paradasEnLotes(resumenVisita(E,regs,true),par),null):null;
+    if(!j.visita)j.visita={metodo:j.metodoVisita||'',densidad_palmas_ha:j.densidad||115,palmas_visitadas:0,palmas_existentes_visitadas:0,ha_recorridas:0,por_lote:[],no_calculado:true};
+    j.secuencias=pasoSinc('secuencias',()=>secuenciasDe(pts,{inicio:Date.parse(j.inicio),fin:Date.parse(j.fin),paradas:par,regs,densidad:j.densidad,visitas:E?E.conf:[]}),[])||[];
+    j.tiempos=pasoSinc('tiempos',()=>tiemposJornada(j.secuencias,j),null)||{};
+    if(E&&E.metodo==='calle'&&Date.now()-t0<60000){await avance('Comparando con el método buffer…');
+      const Eb=await paso('comparativo_buffer',()=>calcularVisita(pts,j.densidad,j.buffer,'buffer',false,true,j.seleccion),45000);
+      if(Eb)pasoSinc('comparativo_buffer',()=>{const rb=resumenVisita(Eb,regs);j.visita.comparativo_buffer={buffer_m:Eb.buffer,palmas_visitadas:rb.palmas_visitadas,ha_recorridas:rb.ha_recorridas,por_lote:rb.por_lote.map(x=>({lote:x.lote,palmas_visitadas:x.palmas_visitadas,ha:x.ha}))};});}
+    j.acumulado_lineas=pasoSinc('acumulado_lineas',()=>acumuladoLineas(regs,j.visita),[])||[];
+    j.cierre.segundos=Math.round((Date.now()-t0)/1000);if(errs.length)j.errores_cierre=errs;
+    try{await dbPut('jornadas',j);}catch(e){errs.push({paso:'guardar',error:String(e&&e.message||e)});await esperar(500);try{await dbPut('jornadas',JSON.parse(JSON.stringify(j)));}catch(_){}}
+    res=j.visita;
+  }finally{FIN.activo=false;}
+  S.jornada=null;S.cfg.jornadaActiva=null;try{await guardarCfg();}catch(e){}VIS=null;
+  pasoSinc('limpiar_mapa',()=>{S.palmas=null;S.hechos.clear();indexar();dibujarPalmas();capaTrack.clearLayers();TRACK.linea=null;TRACK.pts=[];PAR.lista=[];capaParadas.clearLayers();});
+  pasoSinc('apagar',()=>{if(VOZ.activa)alternarVoz();pantallaEncendida(false);gpsFondo(false);actualizarJornadaUI();dibujarLotes();});
+  pasoSinc('despedida',()=>{const fin=msjFin();hablar(fin,true);avisoJornada(false);});
+  const tm=j.tiempos||{};const sec=(t,f)=>{try{return f();}catch(e){return `<p class="tenue">No se pudo mostrar ${t}.</p>`;}};
   abrirHoja('Jornada finalizada',`
+    ${errs.length?`<div class="aviso" style="margin-bottom:10px">⚠ La jornada quedó finalizada y guardada. Algunos cálculos no se completaron (${esc(errs.map(e=>e.paso).join(', '))}); se revisan en el visor.</div>`:''}
     <div class="stats">
       <div class="stat"><b>${hhmm(j.inicio)}</b><span>Hora de inicio</span></div>
       <div class="stat"><b>${hhmm(j.fin)}</b><span>Hora de fin</span></div>
       <div class="stat"><b>${fmtDur(Date.parse(j.fin)-Date.parse(j.inicio)).slice(0,5)}</b><span>Duración</span></div>
       <div class="stat"><b>${(j.km||0).toFixed(2)}</b><span>Km</span></div>
-      <div class="stat"><b>${res.ha_recorridas.toFixed(2)}</b><span>Ha recorridas</span></div>
+      <div class="stat"><b>${(Number(res&&res.ha_recorridas)||0).toFixed(2)}</b><span>Ha recorridas</span></div>
       <div class="stat"><b>${num(regs.length)}</b><span>Registros</span></div>
-      <div class="stat"><b>${j.tiempos.hora_inicio_labor||'—'}</b><span>Inicio de labor</span></div>
-      <div class="stat"><b>${j.tiempos.hora_fin_labor||'—'}</b><span>Fin de labor</span></div>
-      <div class="stat"><b>${j.tiempos.velocidad_kmh==null?'—':j.tiempos.velocidad_kmh.toFixed(1)}</b><span>Vel. caminata km/h</span></div>
+      <div class="stat"><b>${tm.hora_inicio_labor||'—'}</b><span>Inicio de labor</span></div>
+      <div class="stat"><b>${tm.hora_fin_labor||'—'}</b><span>Fin de labor</span></div>
+      <div class="stat"><b>${tm.velocidad_kmh==null?'—':Number(tm.velocidad_kmh).toFixed(1)}</b><span>Vel. caminata km/h</span></div>
     </div>
-    <h3>Acumulado por línea de cada lote</h3>${tablaAcumuladoLineas(j.acumulado_lineas)}
-    <h3>Secuencias por lote</h3>${tablaSecuencias(j.secuencias)}
-    <h3>Recorrido por lote</h3>${tablaLotes(res,j)}
-    <h3>Paradas</h3>${tablaParadas(par,j.resumen_paradas)}
+    <h3>Acumulado por línea de cada lote</h3>${sec('el acumulado por línea',()=>tablaAcumuladoLineas(j.acumulado_lineas))}
+    <h3>Secuencias por lote</h3>${sec('las secuencias',()=>tablaSecuencias(j.secuencias))}
+    <h3>Recorrido por lote</h3>${sec('el recorrido por lote',()=>tablaLotes(res,j))}
+    <h3>Paradas</h3>${sec('las paradas',()=>tablaParadas(par,j.resumen_paradas))}
     <p class="tenue">Censadas ${num(c.hec)} de ${num(c.tot)} palmas seleccionadas. La jornada completa se sincronizará con GitHub en cuanto haya WiFi; después quedará bloqueada.</p>
     <button class="btn prim ancho" id="fPlay">${IC.play} Ver el recorrido del día</button>
     <button class="btn ancho" id="fSync">${IC.sync} Sincronizar ahora</button>`);
@@ -2859,11 +2894,18 @@ function sincronizarBloqueo(){
   try{if(NAT&&NAT.bt)NAT.bt.capturar({on});}catch(e){}
   if(!on&&BLOQ.on)desbloquearPantalla();
 }
+async function finalizarPorVolumen(){
+  if(!S.jornada||FIN.activo)return;
+  try{if(typeof BLOQ!=='undefined'&&BLOQ.on)desbloquearPantalla();}catch(e){}
+  toast('🔚 Volumen abajo 10 s: finalizando la jornada…',4000);try{if(HAY_VOZ())hablar('Finalizando la jornada',true);}catch(e){}
+  await finalizarJornada({sinConfirmar:true,fuente:'volumen_abajo'});}
 function iniciarBloqueo(){
   $('#btBloq').onclick=bloquearPantalla;
   botonMantener($('#btDesbloq'),desbloquearPantalla,2000,'Mantenga presionado 2 segundos para desbloquear.');
   ['pointerdown','click','touchstart','wheel','contextmenu'].forEach(ev=>$('#bloqueo').addEventListener(ev,e=>{if(!e.target.closest('#btDesbloq')){e.preventDefault();e.stopPropagation();}},{passive:false}));
   try{if(NAT&&NAT.bt&&NAT.bt.addListener)NAT.bt.addListener('volumenLargo',alternarBloqueo);}catch(e){}
+  // VOLUMEN ABAJO 10 s (APK 1.0.11 o superior): finaliza la jornada sin tocar la pantalla (el gesto largo es la confirmación)
+  try{if(NAT&&NAT.bt&&NAT.bt.addListener)NAT.bt.addListener('volumenAbajoLargo',finalizarPorVolumen);}catch(e){}
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&BLOQ.on){try{NAT&&NAT.bt&&NAT.bt.brillo({nivel:0.01});}catch(e){}}});
 }
 
@@ -3795,7 +3837,7 @@ function geoJornada(j,regs,pts,ahora,archivoFotos){
     jornada:{id:j.id,labor:j.labor||LABOR_APP,evaluador:j.evaluador,usuario:j.usuario||'',dispositivo:j.dispositivo||S.cfg.dispositivo,fecha:fechaLocal(j.inicio),transito:Array.isArray(j.transito)?j.transito:[],
       hora_inicio:hhmm(j.inicio),hora_fin:hhmm(j.fin),duracion_min:j.fin?Math.round((Date.parse(j.fin)-Date.parse(j.inicio))/60000):null,inicio:j.inicio,fin:j.fin,
       km:+(j.km||0).toFixed(3),...(j.visita||{}),...(j.resumen_paradas||{}),secuencias:j.secuencias||[],tiempos:j.tiempos||null,velocidad_kmh:j.tiempos?j.tiempos.velocidad_kmh:null,lotes_seleccionados:j.seleccion,diagnosticos:regs.length,puntos_recorrido:pts.length,fotos:regs.reduce((a,r)=>a+(r.fotos||[]).length,0),
-      archivo_fotos:archivoFotos||null,desfase_hora_s:j.desfase_hora_s??null,prueba:j.prueba||null,nfc:j.nfc||null,desbloqueos_supervisor:j.desbloqueos||[],pantalla_reencendida:j.pantalla_reencendida||[],acumulado_lineas:j.acumulado_lineas||[],hora_validacion_inicio:j.hora||null,hora_validacion_fin:j.hora_fin||null,cartografia:j.carto_version||'',equipo:j.equipo||null,cortes_gps:j.cortes_gps||[],eventos_gps:j.eventos_gps||[],app:'Polinización '+VERSION,sincronizado:ahora},
+      archivo_fotos:archivoFotos||null,desfase_hora_s:j.desfase_hora_s??null,prueba:j.prueba||null,nfc:j.nfc||null,desbloqueos_supervisor:j.desbloqueos||[],pantalla_reencendida:j.pantalla_reencendida||[],errores_cierre:j.errores_cierre||null,cierre_segundos:(j.cierre&&j.cierre.segundos)||null,acumulado_lineas:j.acumulado_lineas||[],hora_validacion_inicio:j.hora||null,hora_validacion_fin:j.hora_fin||null,cartografia:j.carto_version||'',equipo:j.equipo||null,cortes_gps:j.cortes_gps||[],eventos_gps:j.eventos_gps||[],app:'Polinización '+VERSION,sincronizado:ahora},
     features:feats};
 }
 async function sincronizar(manual){

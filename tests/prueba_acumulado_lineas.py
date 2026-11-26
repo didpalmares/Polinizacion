@@ -51,7 +51,7 @@ with sync_playwright() as p:
     check('L1 línea 2: A1 P1 B1 V1 · 2 palmas · 3 visitadas', (x['A'], x['P'], x['B'], x['R'], x['V'], x['palmas'], x['visitadas']) == (1, 1, 1, 0, 1, 2, 3), x)
     x = d[('L2', '5')]
     check('L2 línea 5: P3 · 1 palma', (x['P'], x['palmas'], x['visitadas']) == (3, 1, 1), x)
-    pg.evaluate("finalizarJornada()"); time.sleep(4)
+    pg.evaluate("void(window.__f=finalizarJornada())"); time.sleep(.5); pg.eval_on_selector('#cfSi', 'b=>b.click()'); time.sleep(4)
     tx = pg.evaluate("(document.querySelector('#tabAcum')||{}).innerText||''")
     check('Al finalizar: se muestra la tabla de acumulado por línea', 'Total lote L1' in tx and 'Total lote L2' in tx and 'TOTAL JORNADA' in tx, tx[:200])
     tot = pg.evaluate("[...document.querySelectorAll('#tabAcum tbody tr')].pop().innerText")

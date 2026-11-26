@@ -40,6 +40,21 @@ public class BotonesPlugin extends Plugin {
     private final Runnable largo = () -> {
         if (presionado) notifyListeners("volumenLargo", new JSObject());
     };
+    /* VOLUMEN ABAJO sostenido 10 s durante la jornada: evento «volumenAbajoLargo» (la app finaliza la jornada).
+       Vibra al empezar, a los 5 s y al cumplir los 10 s; si se suelta antes, no pasa nada. */
+    private static final long FIN_MS = 10000L;
+    private boolean presionadoAbajo = false;
+    private final Runnable aviso5 = () -> { if (presionadoAbajo) vibrar(new long[]{0, 80}); };
+    private final Runnable largoAbajo = () -> {
+        if (presionadoAbajo) { vibrar(new long[]{0, 120, 80, 120, 80, 300}); notifyListeners("volumenAbajoLargo", new JSObject()); }
+    };
+    private void vibrar(long[] patron) {
+        try {
+            android.os.Vibrator v = (android.os.Vibrator) getContext().getSystemService(Context.VIBRATOR_SERVICE);
+            if (v == null) return;
+            if (Build.VERSION.SDK_INT >= 26) v.vibrate(android.os.VibrationEffect.createWaveform(patron, -1)); else v.vibrate(patron, -1);
+        } catch (Exception ignored) { }
+    }
 
     @Override
     public void load() { instancia = this; }
@@ -115,7 +130,23 @@ public class BotonesPlugin extends Plugin {
     /** Llamado desde MainActivity.dispatchKeyEvent. Devuelve true si la tecla se consumió. */
     static boolean tecla(KeyEvent e) {
         BotonesPlugin p = instancia;
-        if (p == null || !capturar || e.getKeyCode() != KeyEvent.KEYCODE_VOLUME_UP) return false;
+        if (p == null || !capturar) return false;
+        if (e.getKeyCode() == KeyEvent.KEYCODE_VOLUME_DOWN) {
+            if (e.getAction() == KeyEvent.ACTION_DOWN) {
+                if (e.getRepeatCount() == 0 && !p.presionadoAbajo) {
+                    p.presionadoAbajo = true;
+                    p.vibrar(new long[]{0, 40});
+                    p.h.removeCallbacks(p.largoAbajo); p.h.removeCallbacks(p.aviso5);
+                    p.h.postDelayed(p.aviso5, FIN_MS / 2);
+                    p.h.postDelayed(p.largoAbajo, FIN_MS);
+                }
+            } else if (e.getAction() == KeyEvent.ACTION_UP) {
+                p.presionadoAbajo = false;
+                p.h.removeCallbacks(p.largoAbajo); p.h.removeCallbacks(p.aviso5);
+            }
+            return true;
+        }
+        if (e.getKeyCode() != KeyEvent.KEYCODE_VOLUME_UP) return false;
         if (e.getAction() == KeyEvent.ACTION_DOWN) {
             if (e.getRepeatCount() == 0 && !p.presionado) {
                 p.presionado = true;
@@ -132,7 +163,7 @@ public class BotonesPlugin extends Plugin {
     @PluginMethod
     public void capturar(PluginCall call) {
         capturar = call.getBoolean("on", false);
-        if (!capturar) { presionado = false; h.removeCallbacks(largo); }
+        if (!capturar) { presionado = false; h.removeCallbacks(largo); presionadoAbajo = false; h.removeCallbacks(largoAbajo); h.removeCallbacks(aviso5); }
         call.resolve();
     }
 
