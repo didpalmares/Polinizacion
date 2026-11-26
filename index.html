@@ -1048,7 +1048,7 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
   <div class="tit">POLINIZACIÓN<small>REGISTRO DE POLINIZACIÓN GEORREFERENCIADO</small></div>
   <div class="carga"><i></i></div>
   <div id="splashMsg">Iniciando…</div>
-  <div id="splashVer">VERSIÓN 20261126:1420</div>
+  <div id="splashVer">VERSIÓN 20261126:1503</div>
 </div>
 
 <div id="login" hidden>
@@ -1063,7 +1063,7 @@ input[type=range]{flex:1;accent-color:var(--acento);height:28px}
     <p class="tenue" id="lgMsg"></p>
   </form>
   <p id="lgRed"></p>
-  <div id="lgVer2">VERSIÓN 20261126:1420</div>
+  <div id="lgVer2">VERSIÓN 20261126:1503</div>
   <button type="button" class="btn" id="lgAct" style="margin-top:4px;font-size:13px;padding:7px 12px">⟳ BUSCAR ACTUALIZACIÓN</button>
   <button type="button" class="btn" id="lgInstalar" hidden>📲 INSTALAR EN ESTE CELULAR</button>
 </div>
@@ -1195,7 +1195,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
    Registro de polinización georreferenciado sin conexión, con jornadas,
    registro del recorrido y sincronización con GitHub.
    ===================================================================== */
-const VERSION='20261126:1420';
+const VERSION='20261126:1503';
 /* Ejecutándose dentro de la APK de Android (Capacitor) o en el navegador. */
 const NATIVO=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
 /* APK sin puente nativo (copia guardada antigua): con internet se recarga una vez para recibirlo. */
@@ -2485,14 +2485,15 @@ async function visitarTramo(E,p){
   const d0=E.ult?dist(E.ult.lat,E.ult.lng,p.lat,p.lng):0;
   const a=E.ult&&d0<=SALTO_MAX&&(!(p.t&&E.ult.t)||p.t-E.ult.t<=90000||d0<=15)?E.ult:p;E.ult=p; // saltos grandes o huecos de señal (>90 s) no barren área
   const ax=a.lng*KX,ay=a.lat*KY,bx=p.lng*KX,by=p.lat*KY,nuevos=[];
-  if(E.metodo==='marcacion'){ // solo con la marcación del lote activa: palmas del lote a <= buffer (3,2 m) del recorrido
+  if(E.metodo==='marcacion'){ // igual que terraza: con la marcación del lote activa, toda palma del lote a <= buffer (3,2 m) del recorrido
     const m=marcEn(E,p.t);if(!m)return nuevos;
-    if(a!==p&&p.t&&a.t&&p.t>a.t&&d0/((p.t-a.t)/1000)>MARC_VMAX)return nuevos; // va en vehículo o corriendo: no marca
+    // el tramo que empezó antes de iniciar la marcación solo cuenta desde su punto final (igual en vivo y al recalcular)
+    const ax2=(a!==p&&a.t!=null&&a.t<m.t0)?bx:ax,ay2=(a!==p&&a.t!=null&&a.t<m.t0)?by:ay;
     const l=String(m.lote);if(!CARTO.lotes[l])return nuevos;
     const grid=await indiceVisita(l);if(!grid)return nuevos;E.grids.set(l,grid);(E.tipos||(E.tipos=new Map())).set(l,grid.tipo);const B=E.buffer;
     const i0=Math.floor((Math.min(ax,bx)-B)/CV),i1=Math.floor((Math.max(ax,bx)+B)/CV),j0=Math.floor((Math.min(ay,by)-B)/CV),j1=Math.floor((Math.max(ay,by)+B)/CV);
     for(let i=i0;i<=i1;i++)for(let j=j0;j<=j1;j++){const g=grid.get(i+','+j);if(!g)continue;
-      for(const q of g)if(!E.set.has(q.id)&&dSeg(q.x,q.y,ax,ay,bx,by)<=B)marcarVisita(E,l,q,nuevos,p.t);}
+      for(const q of g)if(!E.set.has(q.id)&&dSeg(q.x,q.y,ax2,ay2,bx,by)<=B)marcarVisita(E,l,q,nuevos,p.t);}
     return nuevos;
   }
   if(E.metodo==='calle'){
@@ -2859,13 +2860,13 @@ async function guardarPol(r,op={}){
 
 /* ---------- Marcación de palmas visitadas (método «marcacion») ----------
    El operario declara cuándo está trabajando un lote: al entrar (por GPS) a un lote programado la app pregunta en pantalla y por
-   voz «¿Iniciar marcación?»; también hay botón ▶ MARCAR en la barra y comandos de voz «iniciar marcación» / «finalizar marcación».
+   voz que inicie la marcación (obligatorio: botón ▶ MARCAR o decir «marcar»); también botón en la barra y voz «finalizar marcación».
    Mientras la marcación está activa, cuentan como visitadas las palmas del lote a <= 3,2 m del recorrido (aunque no aplique nada en
-   esa calle). Sin marcación (desplazamientos) solo cuentan las palmas registradas. Al salir del lote (90 s fuera) se finaliza sola.
-   La transitabilidad se pregunta al iniciar la marcación del lote (la primera vez). Todo queda en la jornada (marcacion). */
+   esa calle), igual que en terraza: sin otras restricciones. Sin marcación solo cuentan las palmas registradas. Al salir del lote
+   (90 s fuera) se finaliza sola. La transitabilidad se pide al entrar por primera vez al polígono del lote. Todo queda en la jornada. */
 const MARC_VMAX=6/3.6,MARC_ENTRADA_N=3,MARC_SALIDA_MS=90000,MARC_REPREGUNTA_MS=10*60000,MARC_TOL_INICIO=0;
 const tMarc=()=>TRACK.ultimo&&TRACK.ultimo.t?Math.max(TRACK.ultimo.t,0):Date.now(); // misma base de tiempo que el recorrido
-const MARC={cand:null,n:0,fueraT:0,preguntado:new Map(),preguntando:false};
+const MARC={cand:null,n:0,lote:null,pendiente:null,fueraT:0,preguntando:false,resolver:null,porVoz:false};
 function usaMarcacion(j=S.jornada){return !!j&&j.metodoVisita==='marcacion'&&!(typeof esLaborRuta==='function'&&esLaborRuta(j));}
 function marcActiva(j=S.jornada){return j&&Array.isArray(j.marcacion)?j.marcacion.find(m=>!m.t1)||null:null;}
 function marcEn(E,t){const L=(E===VIS&&S.jornada)?S.jornada.marcacion:E.marcacion;if(!Array.isArray(L)||t==null)return null;
@@ -2875,7 +2876,7 @@ function loteProgramadoEn(lat,lng){const j=S.jornada;if(!j||!S.lotes)return null
   const progs=(j.seleccion||[]).map(x=>String(x.lote));
   for(const l of lotesCercanos(sx,sy,sx,sy,1))if((!progs.length||progs.includes(String(l)))&&dentroLote(l,sx,sy,0))return String(l);
   return null;}
-async function iniciarMarcacion(lote,por){
+async function iniciarMarcacion(lote,por,desde){
   const j=S.jornada;if(!j){avisoPol('Inicie una jornada para marcar.',true);return false;}
   if(!lote){const g=S.gps;lote=g?loteProgramadoEn(g.lat,g.lng):null;}
   if(!lote){avisoPol('Ubíquese dentro de un lote programado para iniciar la marcación.',true);return false;}
@@ -2883,24 +2884,48 @@ async function iniciarMarcacion(lote,por){
   if(act&&act.lote===lote){avisoPol(`La marcación del lote ${lote} ya está activa.`);return true;}
   if(act)await finalizarMarcacion('cambio_lote',true);
   if(!await asegurarEntradaLote(lote))return false; // transitabilidad: solo la primera vez en el lote
-  (j.marcacion||(j.marcacion=[])).push({lote,t0:tMarc(),inicio:new Date(ahoraReal()).toISOString(),inicio_por:por||'boton',t1:null,fin:null,fin_por:null});
-  MARC.fueraT=0;j.sync='pendiente';try{await dbPut('jornadas',j);}catch(e){}pintarPolBar();
+  const t0=desde&&desde<=tMarc()?desde:tMarc();
+  (j.marcacion||(j.marcacion=[])).push({lote,t0,inicio:new Date(ahoraReal()).toISOString(),inicio_por:por||'boton',t1:null,fin:null,fin_por:null});
+  MARC.fueraT=0;j.sync='pendiente';try{await dbPut('jornadas',j);}catch(e){}
+  if(t0<tMarc())try{await remarcarDesde(t0);}catch(e){} // el tramo recorrido desde que entró al lote también cuenta
+  pintarPolBar();
   avisoPol(`Marcación iniciada en el lote ${paraVoz(lote)}.`);return true;}
+/* Vuelve a pasar el recorrido desde t0 (entrada al lote) con la marcación ya activa: marca las palmas de ese tramo. */
+async function remarcarDesde(t0){if(!VIS||!TRACK.pts)return;const pts=TRACK.pts.filter(q=>q.t>=t0);if(!pts.length)return;
+  const ult=VIS.ult;VIS.ult=null;const nv=[];for(const q of pts)nv.push(...await visitarTramo(VIS,q));VIS.ult=ult||VIS.ult;
+  if(nv.length){nv.forEach(repintarPalma);actualizarVisitaUI();}}
 async function finalizarMarcacion(por,silencio,t1){
   const j=S.jornada,m=marcActiva();if(!m){if(!silencio)avisoPol('No hay marcación activa.',true);return false;}
   m.t1=t1||tMarc();m.fin=new Date(ahoraReal()).toISOString();m.fin_por=por||'boton';
   j.sync='pendiente';try{await dbPut('jornadas',j);}catch(e){}pintarPolBar();
   if(!silencio)avisoPol(`Marcación finalizada en el lote ${paraVoz(m.lote)}.`);return true;}
 function alternarMarcacion(){if(marcActiva())finalizarMarcacion('boton');else iniciarMarcacion(null,'boton');}
-async function preguntarMarcacion(lote){
-  if(MARC.preguntando)return;MARC.preguntando=true;MARC.preguntado.set(lote,Date.now());
-  try{if(typeof BLOQ!=='undefined'&&BLOQ.on)desbloquearPantalla();}catch(e){}
-  try{if(HAY_VOZ())hablar(`Llegó al lote ${paraVoz(lote)}. ¿Inicia la marcación? Toque iniciar, o diga iniciar marcación.`,true);}catch(e){}
-  try{pitido(880,120);navigator.vibrate&&navigator.vibrate([120,80,120]);}catch(e){}
-  try{const si=await confirmarApp(`Lote ${lote}`,`<p style="font-size:17px">Llegó al lote <b>${esc(lote)}</b>.</p><p>¿Inicia la <b>marcación</b> de palmas visitadas?</p><p class="tenue">Mientras esté activa, cuentan las palmas por donde pase (a ${num(Number(S.jornada&&S.jornada.buffer)||3.2,1)} m), aunque no aplique nada en esa calle. También puede decir «iniciar marcación».</p>`,'▶ SÍ, INICIAR MARCACIÓN','Todavía no');
-    if(si&&S.jornada&&!marcActiva())await iniciarMarcacion(lote,'entrada');}
-  finally{MARC.preguntando=false;}}
-/* Con cada punto del recorrido: pregunta al entrar a un lote programado y finaliza sola al salir del lote marcado. */
+/* Entrada a un lote programado (detectada por GPS con 3 puntos seguidos dentro del polígono):
+   1) la primera vez en el lote: transitabilidad (obligatoria);  2) marcación: obligatoria, solo se responde tocando ▶ MARCAR o
+   diciendo «marcar» (la ventana no tiene «cancelar»; si se cierra, vuelve a aparecer). Al volver a entrar al lote (después de
+   salir) se pregunta otra vez la marcación, pero no la transitabilidad. */
+function pedirMarcar(lote){return new Promise(res=>{let listo=false;const fin=v=>{if(listo)return;listo=true;MARC.resolver=null;res(v);};
+  MARC.resolver=v=>{fin(v);if(v)cerrarHoja();};
+  abrirHoja(`Lote ${lote}`,`<p style="font-size:18px;margin:4px 0 8px">Llegó al lote <b>${esc(lote)}</b>.</p>
+    <p>Para continuar, inicie la <b>marcación</b> de palmas visitadas: toque el botón o diga <b>«marcar»</b>.</p>
+    <p class="tenue">Mientras esté activa cuentan todas las palmas del lote a ${num(Number(S.jornada&&S.jornada.buffer)||3.2,1)} m o menos de su recorrido, aunque no aplique nada en esa calle.</p>
+    <button type="button" class="btn prim ancho grande" id="mkSi" style="margin-top:12px;font-size:20px;padding:18px">▶ MARCAR</button>`,{alCerrar:()=>fin(false)});
+  $('#mkSi').onclick=()=>{fin(true);cerrarHoja();};});}
+async function atenderEntrada(lote){
+  if(MARC.preguntando)return;MARC.preguntando=true;
+  try{
+    try{if(typeof BLOQ!=='undefined'&&BLOQ.on)desbloquearPantalla();}catch(e){}
+    try{pitido(880,120);navigator.vibrate&&navigator.vibrate([120,80,120]);}catch(e){}
+    if(!tramoDe(lote)){ // primera vez en el lote: transitabilidad
+      try{if(HAY_VOZ())hablar(`Llegó al lote ${paraVoz(lote)}. Elija la transitabilidad.`,true);}catch(e){}
+      if(!await asegurarEntradaLote(lote))return; // la cerró sin elegir: se vuelve a pedir con el siguiente punto
+    }
+    const act=marcActiva();if(act&&act.lote===lote){MARC.pendiente=null;return;}
+    try{if(HAY_VOZ())hablar(`Lote ${paraVoz(lote)}. Para iniciar la marcación diga marcar, o toque el botón.`,true);}catch(e){}
+    if(await pedirMarcar(lote)&&S.jornada){if(await iniciarMarcacion(lote,MARC.porVoz?'voz':'entrada',MARC.lote===lote?MARC.entradaT:null))MARC.pendiente=null;}
+  }finally{MARC.preguntando=false;MARC.porVoz=false;}}
+/* Con cada punto del recorrido: detecta la entrada a un lote programado (pide transitabilidad y marcación) y finaliza sola la
+   marcación al salir 90 s del lote marcado. */
 async function vigilarLoteMarcacion(p){
   if(!usaMarcacion()||!p)return;
   const l=loteProgramadoEn(p.lat,p.lng),act=marcActiva();
@@ -2909,14 +2934,14 @@ async function vigilarLoteMarcacion(p){
     else{if(!MARC.fueraT)MARC.fueraT=p.t||Date.now();
       if((p.t||Date.now())-MARC.fueraT>=MARC_SALIDA_MS){const ts=MARC.fueraT;MARC.fueraT=0;await finalizarMarcacion('salida_lote',true,ts);
         avisoPol(`Salió del lote ${paraVoz(act.lote)}. Marcación finalizada.`);}}
-    if(!l||l===act.lote){MARC.cand=null;MARC.n=0;return;}
   }
-  if(!l){MARC.cand=null;MARC.n=0;return;}
-  if(MARC.cand===l)MARC.n++;else{MARC.cand=l;MARC.n=1;}
-  if(MARC.n<MARC_ENTRADA_N||MARC.preguntando||POL_OCUPADO)return;
-  const hojaAbierta=!$('#hoja').classList.contains('oculto');if(hojaAbierta)return; // otra ventana abierta: se pregunta en el siguiente punto
-  const ya=MARC.preguntado.get(l);if(ya&&Date.now()-ya<MARC_REPREGUNTA_MS)return;
-  preguntarMarcacion(l);}
+  if(MARC.cand===l)MARC.n++;else{MARC.cand=l;MARC.n=1;MARC.candT=p.t||Date.now();}
+  if(MARC.n>=MARC_ENTRADA_N&&MARC.lote!==l){MARC.lote=l;MARC.pendiente=l||null;MARC.entradaT=l?MARC.candT:null;} // cambió de lote (o salió): entrada nueva
+  const pend=MARC.pendiente;if(!pend)return;
+  const a2=marcActiva();if(a2&&a2.lote===pend&&tramoDe(pend)){MARC.pendiente=null;return;}
+  if(MARC.preguntando||POL_OCUPADO)return;
+  if(!$('#hoja').classList.contains('oculto'))return; // otra ventana abierta: se pide con el siguiente punto
+  atenderEntrada(pend);}
 /* ----- Barra de registro (botones A, P, B, R, V y deshacer) ----- */
 function pintarPolBar(rUlt){
   const bar=$('#polBar');if(!bar)return;
@@ -3349,12 +3374,13 @@ const PAL_COD={a:'A',ah:'A',ha:'A',antesis:'A',antecis:'A',
 const RELLENO=new Set(['y','e','de','del','con','en','la','el','los','las','palma','inflorescencia','inflorescencias','mas','registrar','registro','codigo','letra','por','favor','otra','otro']);
 /* Gramática de Vosk: solo estas palabras y frases (el reconocimiento sin conexión es mucho más preciso así). */
 const GRAM_POL=[...new Set(['a','antesis','pe','post antesis','pos antesis','posantesis','be','balón','balones','erre','rancho','tapada','ve','uve','avispa','avispas',
-  'un','una','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez','y','de','deshacer','borrar','finalizar lote','repetir','iniciar marcación','finalizar marcación','marcación'])];
+  'un','una','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez','y','de','deshacer','borrar','finalizar lote','repetir','marcar','iniciar marcación','finalizar marcación','marcación'])];
 /* Devuelve {cmd} ('deshacer' | 'finalizar' | 'repetir'), {items:[[código, veces], …]} o null si no se entendió. */
 function interpretarVoz(t){
   const toks=normV(t).replace(/(\d+)([a-z]+)/g,'$1 $2').split(' ').filter(Boolean);if(!toks.length)return null;
   const tj=' '+toks.join(' ')+' ';
-  if(/ (iniciar|inicia|inicie|iniciar la|empezar|empiece|comenzar|comience|arrancar) (la )?marcacion /.test(tj))return {cmd:'marcar_on'};
+  if(/ (finalizar|finaliza|finalice|terminar|termina|termine|parar|pare|detener) (la )?marcacion /.test(tj))return {cmd:'marcar_off'};
+  if(/ (marcar|marca|marque|marcando) /.test(tj)||/ (iniciar|inicia|inicie|empezar|empiece|comenzar|comience|arrancar) (la )?marcacion /.test(tj))return {cmd:'marcar_on'};
   if(/ (finalizar|finaliza|finalice|terminar|termina|termine|parar|pare|detener) (la )?marcacion /.test(tj))return {cmd:'marcar_off'};
   if(/ (deshacer|deshaga|deshace|borrar|borra|borre|anular) /.test(tj))return {cmd:'deshacer'};
   if(/ (finalizar|finaliza|cerrar|terminar) (el )?lote /.test(tj))return {cmd:'finalizar'};
@@ -3429,7 +3455,7 @@ async function procesarVoz(t){
   try{
     if(q.cmd==='deshacer'){while(POL_OCUPADO)await esperar(40);await deshacerPol();if(!VOZ.ultimoPol)VOZ.ultimoPol='No hay nada para deshacer.';}
     else if(q.cmd==='finalizar'){VOZ.ultimoPol='No hace falta cerrar el lote: la transitabilidad solo se pregunta al entrar.';}
-    else if(q.cmd==='marcar_on'){if(MARC.preguntando)cerrarHoja();while(POL_OCUPADO)await esperar(40);await iniciarMarcacion(MARC.cand||null,'voz');}
+    else if(q.cmd==='marcar_on'){if(MARC.resolver){MARC.porVoz=true;MARC.resolver(true);}else{while(POL_OCUPADO)await esperar(40);await iniciarMarcacion(MARC.lote||null,'voz');}}
     else if(q.cmd==='marcar_off'){await finalizarMarcacion('voz');}
     else{fuera:for(const [c,n] of q.items){const veces=(c==='R'||c==='V')?1:n;
       for(let k=0;k<veces;k++){VOZ.ultimoPol=null;VOZ.ultimoPolMal=false;await sumarEnCola(c,'voz');

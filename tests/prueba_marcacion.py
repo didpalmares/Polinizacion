@@ -1,8 +1,9 @@
 """Marcación de palmas visitadas (pedido de campo: no se marcaban las palmas de las calles donde no se aplicaba nada).
-Al entrar por GPS a un lote programado la app pregunta «¿Iniciar marcación?» (pantalla y voz); al aceptar pide la transitabilidad
-(primera vez) y, con la marcación activa, cuentan las palmas del lote a <= 3,2 m del recorrido; sin marcación no cuenta el recorrido
-(solo los registros); al salir del lote 90 s se finaliza sola; botón ▶ MARCAR y voz «iniciar / finalizar marcación»;
-el recálculo (fin de jornada) da lo mismo que en vivo; la marcación queda en el reporte."""
+Al entrar por GPS al polígono de un lote programado: 1) la primera vez, transitabilidad; 2) marcación OBLIGATORIA (solo ▶ MARCAR o
+decir «marcar»; si se cierra la ventana vuelve a aparecer). Con la marcación activa cuentan, igual que en terraza, todas las palmas del
+lote a <= 3,2 m del recorrido (sin otras restricciones: ni velocidad), desde que entró al lote; sin marcación no cuenta el recorrido.
+Al salir del lote 90 s se finaliza sola; al volver a entrar se pide otra vez la marcación (no la transitabilidad). Botón en la barra.
+El recálculo (fin de jornada) da lo mismo que en vivo y la marcación queda en el reporte."""
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 from comun import CANAL, INIT_VOZ
@@ -44,56 +45,55 @@ with sync_playwright() as p:
       await dbPut('jornadas',S.jornada);VIS=nuevoEstadoVisita(115,3.2,'marcacion',8);TRACK.ultimo=null;TRACK.pts=[];actualizarJornadaUI();
       window.__T=Date.now();window.__pt=async(x,y,dt)=>{__T+=dt*1000;const g={lat:lat0+y/ky,lng:lng0+x/kx,acc:4,t:__T};S.gps={...g};await registrarPunto(g);};
     }""")
+    oculta = lambda: pg.evaluate("document.querySelector('#hoja').classList.contains('oculto')")
     check('Botón ▶ MARCAR visible en la barra', pg.is_visible('#polMarc') and 'MARCAR' in pg.text_content('#polMarc'))
-    # Afuera del lote: no pregunta
     pg.evaluate("(async()=>{for(let k=0;k<4;k++)await __pt(1.5,-20-k*5,5);})()"); time.sleep(.4)
-    check('Fuera del lote: no pregunta', pg.evaluate("document.querySelector('#hoja').classList.contains('oculto')"))
-    # Entra al lote por la línea 1 (x=1,5 m): sin marcación todavía no cuenta
-    pg.evaluate("(async()=>{for(const y of [5,9,13,17])await __pt(1.5,y,4);})()"); time.sleep(.6)
-    check('Al entrar al lote programado: pregunta «¿Inicia la marcación?»', pg.is_visible('#cfSi') and 'Lote T1' in pg.text_content('#hojaTitulo') and 'marcación' in pg.text_content('#hojaCuerpo'), pg.text_content('#hojaTitulo'))
-    check('Sin marcación: el recorrido no marca palmas', pg.evaluate("VIS.set.size") == 0)
-    pg.eval_on_selector('#cfSi', 'b=>b.click()')
-    pg.wait_for_selector('#hojaCuerpo [data-t="Transitable"]', timeout=5000)
-    check('Al iniciar la marcación pide la transitabilidad (primera vez)', 'Transitabilidad' in pg.text_content('#hojaTitulo'))
-    pg.eval_on_selector('#hojaCuerpo [data-t="Transitable"]', 'b=>b.click()'); time.sleep(.5)
-    check('Marcación activa (botón «■ MARCANDO T1»)', pg.evaluate("!!marcActiva()&&marcActiva().lote==='T1'") and 'MARCANDO T1' in pg.text_content('#polMarc'))
-    # Recorre la línea 1 a 1,5 m sin aplicar nada (4 m cada 4 s)
+    check('Fuera del lote: no pregunta nada', oculta())
+    # Entra al polígono (línea 1, x=1,5 m)
+    pg.evaluate("(async()=>{for(const y of [5,9,13])await __pt(1.5,y,4);})()"); time.sleep(.6)
+    check('Al entrar por primera vez al polígono: pide la transitabilidad', pg.is_visible('#hojaCuerpo [data-t="Transitable"]') and 'lote T1' in pg.text_content('#hojaTitulo'), pg.text_content('#hojaTitulo'))
+    pg.eval_on_selector('#hojaCuerpo [data-t="Poco transitable"]', 'b=>b.click()'); time.sleep(.6)
+    check('Luego la marcación: obligatoria (solo ▶ MARCAR, sin «Todavía no»)', pg.is_visible('#mkSi') and not pg.query_selector('#cfNo') and 'marcar' in pg.text_content('#hojaCuerpo'))
+    check('Transitabilidad guardada al entrar (sin registros)', pg.evaluate("S.jornada.transito.length") == 1 and pg.evaluate("S.jornada.transito[0].entrada") == 'Poco transitable' and pg.evaluate("S.registros.length") == 0)
+    pg.evaluate("cerrarHoja()"); time.sleep(.3)
+    pg.evaluate("(async()=>{await __pt(1.5,17,4);})()"); time.sleep(.6)
+    check('Si la cierra sin marcar: vuelve a aparecer', pg.is_visible('#mkSi') and pg.evaluate("S.jornada.transito.length") == 1)
+    check('Sin marcación: el recorrido aún no marca', pg.evaluate("VIS.set.size") == 0)
+    pg.eval_on_selector('#mkSi', 'b=>b.click()'); time.sleep(.6)
+    check('▶ MARCAR: marcación activa (botón «■ MARCANDO T1»)', pg.evaluate("!!marcActiva()&&marcActiva().lote==='T1'") and 'MARCANDO T1' in pg.text_content('#polMarc') and oculta())
+    check('Cuenta desde que entró al lote: la palma 1 (pasó mientras respondía) ya está marcada', pg.evaluate("VIS.set.has('1')"), pg.evaluate("[...VIS.set]"))
     pg.evaluate("(async()=>{for(let y=21;y<=125;y+=4)await __pt(1.5,y,4);})()"); time.sleep(1.2)
     ids = pg.evaluate("[...VIS.set].map(Number).sort((a,b)=>a-b)")
-    check('Con marcación: cuentan las palmas de la línea 1 (a <= 3,2 m) desde que inicia, aunque no haya registros', ids == list(range(2, 13)), ids)
-    check('La palma 1 (pasó antes de iniciar la marcación) no cuenta', 1 not in ids)
+    check('Con marcación: las 12 palmas de la línea 1 (a <= 3,2 m) sin registros', ids == list(range(1, 13)), ids)
     check('No cuenta la línea vecina (a 7,2 m)', not any(13 <= i <= 24 for i in ids))
-    # Sale del lote más de 90 s: se finaliza sola
+    # Sale 90 s: se finaliza sola
     pg.evaluate("(async()=>{for(let k=0;k<6;k++)await __pt(1.5,150+k*5,20);})()"); time.sleep(.6)
     m = pg.evaluate("S.jornada.marcacion")
     check('Al salir del lote 90 s: la marcación se finaliza sola', len(m) == 1 and m[0]['fin_por'] == 'salida_lote' and not pg.evaluate("marcActiva()"), m)
-    # Vuelve por la línea 3 sin marcación: no cuenta; registrar una palma sí
-    pg.evaluate("MARC.preguntado.set('T1',Date.now())")   # ya le preguntaron hace poco: no vuelve a preguntar
-    pg.evaluate("(async()=>{for(let y=125;y>=80;y-=4)await __pt(17.4+1.5,y,4);})()"); time.sleep(.8)
-    check('Sin marcación (desplazamiento): no marca la línea 3', not any(25 <= i <= 36 for i in pg.evaluate("[...VIS.set].map(Number)")))
-    check('Dentro del lote y preguntado hace poco: no vuelve a preguntar', pg.evaluate("document.querySelector('#hoja').classList.contains('oculto')"))
-    # Botón: inicia y finaliza
-    pg.eval_on_selector('#polMarc', 'b=>b.click()'); time.sleep(.5)
-    check('Botón ▶ MARCAR: inicia (sin volver a pedir transitabilidad)', pg.evaluate("!!marcActiva()") and pg.evaluate("S.jornada.marcacion[1].inicio_por") == 'boton' and pg.evaluate("document.querySelector('#hoja').classList.contains('oculto')"))
-    pg.evaluate("(async()=>{for(let y=78;y>=40;y-=4)await __pt(17.4+1.5,y,4);})()"); time.sleep(.8)
+    # Vuelve a entrar (línea 3): pide la marcación otra vez, no la transitabilidad; responde por voz «marcar»
+    pg.evaluate("(async()=>{for(let y=135;y>=123;y-=4)await __pt(17.4+1.5,y,4);})()"); time.sleep(.6)
+    check('Al volver a entrar: pide marcar otra vez (sin transitabilidad)', pg.is_visible('#mkSi') and pg.evaluate("S.jornada.transito.length") == 1)
+    check('Voz: «marcar» se entiende como iniciar marcación', pg.evaluate("interpretarVoz('marcar').cmd") == 'marcar_on' and pg.evaluate("interpretarVoz('finalizar marcación').cmd") == 'marcar_off'
+          and pg.evaluate("interpretarVoz('dos a').items[0][0]") == 'A')
+    pg.evaluate("MARC.porVoz=true;MARC.resolver(true)"); time.sleep(.6)
+    check('Respondida por voz: marcación activa, iniciada por «voz»', pg.evaluate("!!marcActiva()") and pg.evaluate("S.jornada.marcacion[1].inicio_por") == 'voz' and oculta())
+    # Sin restricción de velocidad (igual que terraza)
+    pg.evaluate("(async()=>{for(let y=119;y>=40;y-=20)await __pt(17.4+1.5,y,2);})()"); time.sleep(.8)
     l3 = [i for i in pg.evaluate("[...VIS.set].map(Number)") if 25 <= i <= 36]
-    check('Con marcación por botón: marca la línea 3 desde ahí', len(l3) >= 3, sorted(l3))
+    check('Rápido (36 km/h simulado) también marca: sin otras restricciones', len(l3) >= 6, sorted(l3))
+    # Botón: finaliza; dentro del lote no vuelve a preguntar
     pg.eval_on_selector('#polMarc', 'b=>b.click()'); time.sleep(.4)
-    check('Botón «■ MARCANDO»: finaliza', not pg.evaluate("marcActiva()") and pg.evaluate("S.jornada.marcacion[1].fin_por") == 'boton' and 'MARCAR' in pg.text_content('#polMarc'))
-    # Vehículo / carrera (> 6 km/h): no marca
-    pg.evaluate("marcActiva()||S.jornada.marcacion.push({lote:'T1',t0:tMarc(),inicio:new Date().toISOString(),inicio_por:'prueba',t1:null})")
-    n0 = pg.evaluate("VIS.set.size")
-    pg.evaluate("(async()=>{for(let y=125;y>=40;y-=20)await __pt(8.7+1,y,2);})()"); time.sleep(.6)
-    check('A más de 6 km/h no marca', pg.evaluate("VIS.set.size") == n0)
+    check('Botón «■ MARCANDO»: finaliza', not pg.evaluate("marcActiva()") and pg.evaluate("S.jornada.marcacion[1].fin_por") == 'boton')
+    pg.evaluate("(async()=>{for(let y=40;y>=20;y-=4)await __pt(8.7+1,y,4);})()"); time.sleep(.6)
+    check('Finalizada a mano dentro del lote: no vuelve a preguntar hasta salir y entrar', oculta())
+    pg.eval_on_selector('#polMarc', 'b=>b.click()'); time.sleep(.4)
+    check('Botón ▶ MARCAR: vuelve a iniciar', pg.evaluate("!!marcActiva()") and pg.evaluate("S.jornada.marcacion[2].inicio_por") == 'boton')
     pg.evaluate("finalizarMarcacion('prueba',true)")
-    # Voz
-    check('Voz: «iniciar marcación» y «finalizar marcación»', pg.evaluate("interpretarVoz('iniciar marcación').cmd") == 'marcar_on' and pg.evaluate("interpretarVoz('finalizar la marcación').cmd") == 'marcar_off')
-    # Recalcular como al finalizar: mismo resultado que en vivo
     r = pg.evaluate("""async()=>{const pts=TRACK.pts.map(p=>({...p}));const E=await calcularVisita(pts,115,3.2,'marcacion',true,true,S.jornada.seleccion,8,[],S.jornada.marcacion);
       return {vivo:[...VIS.set].sort(),recalc:[...E.set].sort(),res:resumenVisita(E,[]).metodo};}""")
-    check('Recalcular (fin de jornada) da las mismas palmas que en vivo', r['vivo'] == r['recalc'] and r['res'] == 'marcacion', (len(r['vivo']), len(r['recalc'])))
+    check('Recalcular (fin de jornada) da las mismas palmas que en vivo', r['vivo'] == r['recalc'] and r['res'] == 'marcacion', (len(r['vivo']), len(r['recalc']), sorted(set(r['vivo']) ^ set(r['recalc']))))
     g = pg.evaluate("geoJornada(S.jornada,[],[],new Date().toISOString(),null).jornada.marcacion")
-    check('El reporte de la jornada lleva la marcación por lote', len(g) == 3 and g[0]['lote'] == 'T1' and g[0]['fin_por'] == 'salida_lote', g[:1])
+    check('El reporte de la jornada lleva la marcación por lote', len(g) == 3 and g[0]['fin_por'] == 'salida_lote' and g[1]['inicio_por'] == 'voz', [x['inicio_por'] for x in g])
     check('Sin errores de JavaScript', not errores, errores[:3])
     nav.close()
 
